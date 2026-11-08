@@ -5,3 +5,4 @@ spikes/out/
 .specrun/
 *.tsbuildinfo
 .DS_Store
+.tmp/
