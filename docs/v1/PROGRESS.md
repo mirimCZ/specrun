@@ -8,24 +8,25 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 
 - 2026-11-08 — SR-1 blocked: Bash permissions denied every command (typecheck, tests, git).
 - 2026-11-09 — SR-1 done.
+- 2026-11-09 — SR-2 done.
 
 ## Tasks
 
-| Phase | Task  | Title                                             | Status | Commit | Notes                              |
-| ----- | ----- | ------------------------------------------------- | ------ | ------ | ---------------------------------- |
-| 1     | SR-1  | Config and spec.json schemas + loaders            | done   |        | Schemas, loaders, topologicalOrder |
-| 1     | SR-2  | Event log, state reducer, PROGRESS.md view        | todo   |        |                                    |
-| 1     | SR-3  | Git worktree, commits, parking; verify steps      | todo   |        |                                    |
-| 1     | SR-4  | Usage windows, pause policy, waiting              | todo   |        |                                    |
-| 1     | SR-5  | Runner protocol, prompt, specrun tools            | todo   |        |                                    |
-| 1     | SR-6  | Agent session (SDK) and transcripts               | todo   |        |                                    |
-| 1     | SR-7  | Runner orchestration loop                         | todo   |        |                                    |
-| 1     | SR-8  | Session analytics                                 | todo   |        |                                    |
-| 1     | SR-9  | CLI: init, run (line reporter), status, set       | todo   |        |                                    |
-| 1     | SR-10 | CLI: stats, calibrate, deviations, analyze        | todo   |        |                                    |
-| 1     | SR-11 | Ink dashboard                                     | todo   |        |                                    |
-| 1     | SR-12 | Plugin: marketplace, refine and write-spec skills | todo   |        |                                    |
-| 1     | SR-13 | Feedback skill                                    | todo   |        |                                    |
+| Phase | Task  | Title                                             | Status | Commit | Notes                                           |
+| ----- | ----- | ------------------------------------------------- | ------ | ------ | ----------------------------------------------- |
+| 1     | SR-1  | Config and spec.json schemas + loaders            | done   |        | Schemas, loaders, topologicalOrder              |
+| 1     | SR-2  | Event log, state reducer, PROGRESS.md view        | done   |        | Event schema/store, deriveState, renderProgress |
+| 1     | SR-3  | Git worktree, commits, parking; verify steps      | todo   |        |                                                 |
+| 1     | SR-4  | Usage windows, pause policy, waiting              | todo   |        |                                                 |
+| 1     | SR-5  | Runner protocol, prompt, specrun tools            | todo   |        |                                                 |
+| 1     | SR-6  | Agent session (SDK) and transcripts               | todo   |        |                                                 |
+| 1     | SR-7  | Runner orchestration loop                         | todo   |        |                                                 |
+| 1     | SR-8  | Session analytics                                 | todo   |        |                                                 |
+| 1     | SR-9  | CLI: init, run (line reporter), status, set       | todo   |        |                                                 |
+| 1     | SR-10 | CLI: stats, calibrate, deviations, analyze        | todo   |        |                                                 |
+| 1     | SR-11 | Ink dashboard                                     | todo   |        |                                                 |
+| 1     | SR-12 | Plugin: marketplace, refine and write-spec skills | todo   |        |                                                 |
+| 1     | SR-13 | Feedback skill                                    | todo   |        |                                                 |
 
 ### Dependencies
 

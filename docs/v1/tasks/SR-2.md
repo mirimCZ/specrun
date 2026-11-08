@@ -86,3 +86,21 @@ budgetExceeded: boolean }`. `lastCompleted` = the latest `task.completed` before
 ## Implementation notes
 
 <!-- Filled in by the implementing agent: files, exported names, deviations. -->
+
+- `src/events/eventSchema.ts`: `EventSchema`, `SpecrunEvent`, `EventType`, `EventOf<T>`, `NewEvent`,
+  `EVENT_TYPES`, `CompleteTaskPayloadSchema`, `DeviationSchema`, `DEVIATION_KINDS`, `SESSION_REASONS`,
+  `SESSION_OUTCOMES`, one `<Type>Schema` per event. Non-strict objects (extra fields stripped).
+- `src/events/eventStore.ts`: `EVENTS_FILE`, `createEventStore({ file, runId, clock: { now() },
+onWarning?, fsync? })` → `{ append, read }`; `readEvents(file, { onWarning? })` → `{ events, unknown }`.
+  Bad events → `SpecrunError('events-invalid')` (new code in `src/errors.ts`).
+- `src/events/taskState.ts`: `deriveState`, `runnableTasks`, `lowestOpenPhase(spec, state): number |
+null` (lowest phase with a task neither done nor blocked); types `TaskState`, `TaskStatus`,
+  `SpecState`, `SessionStats` (finished segment + `attempt`/`model`/`reason` of its start).
+- `src/progress/renderProgress.ts`: `renderProgress`, `PROGRESS_FILE`, `GENERATED_MARKER`,
+  `formatTokens`/`formatUsd`/`formatDuration`. Output is Prettier-stable (tested).
+- Decision: `append` repairs a torn tail first (half-written last line truncated with a warning,
+  complete line missing `\n` terminated) — else the next append makes a corrupt middle line.
+- Decision: any `session.started` after the latest status event → `interrupted`; `resumeSessionId` =
+  start's id or its finished segment's; unknown id → null, `nextSegment` 0. `lastCompleted`/`commit` only when `done`.
+- Deviation: `sessionId` of `session.finished`/`task.completed` and `usage.snapshot` `*Left` nullable
+  (SDK may fail before an id; SR-4 windows can be null). `.gitattributes` added; SR-8 adds it to `init`.
