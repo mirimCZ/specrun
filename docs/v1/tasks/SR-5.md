@@ -73,4 +73,21 @@ agent ends every session with.
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- `src/session/protocol.md` (57 lines); `scripts/copy-assets.mjs` copies it to `dist/session/`
+  (`build` = `tsc -p tsconfig.build.json && node scripts/copy-assets.mjs`; `ASSETS` list there).
+- `src/session/specrunTools.ts`: `createSpecrunTools(onCall)` → `{ server, allowedTools, tools }`;
+  `allowedTools` = `[COMPLETE_TASK_TOOL, BLOCK_TASK_TOOL]` only (SR-6 adds Read/Edit/Write/Bash).
+  Also `SPECRUN_SERVER = 'specrun'` (key for `mcpServers`), `BLOCK_KINDS`, `BlockTaskInputSchema`,
+  `ToolCall`, `RECORDED_REPLY`. Invalid input → `isError` result listing `path: message`, no `onCall`.
+- `src/session/buildPrompt.ts`: `buildPrompt({ spec, task, state, protocol })` → `{ text, parts }`
+  (`parts` matches `session.started.prompt`); `loadProtocol(path = PROTOCOL_PATH)`. Parts are
+  trimmed, joined with `\n\n---\n\n`; empty parts (no TASK_PROMPT.md, no needs) are left out.
+  Brief files are read with `readFileSync` (no deps object, like `loadSpec`).
+- `src/session/followUps.ts`: `verifyFailedPrompt(summary, round, maxRounds)` (round 1-based; last
+  round says so), `limitResumePrompt()`, `crashResumePrompt()`, `noCallNudgePrompt()`.
+- Deviation: `createSpecrunTools` also returns `tools` (our definitions, `handler(args: unknown)`)
+  — the SDK server hides its tool list, and casting SDK definitions to one array needs `any`.
+- Decision: handlers re-parse with the SR-2 schemas (SDK `InferShape` doesn't model optional
+  fields under `exactOptionalPropertyTypes`); the tool shape is SR-2's shape + `describe()` texts.
+- Decision: a dependency whose `lastCompleted` has neither notes nor deviations also gets
+  "No notes recorded."; a deviation without `decision` renders `[kind] what — why`.

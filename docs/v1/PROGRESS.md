@@ -11,6 +11,7 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 - 2026-11-09 — SR-2 done.
 - 2026-11-09 — SR-3 done.
 - 2026-11-09 — SR-4 done.
+- 2026-11-09 — SR-5 done.
 
 ## Tasks
 
@@ -20,7 +21,7 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 | 1     | SR-2  | Event log, state reducer, PROGRESS.md view        | done   |        | Event schema/store, deriveState, renderProgress |
 | 1     | SR-3  | Git worktree, commits, parking; verify steps      | done   |        | Git API, worktree, commit message, runVerify    |
 | 1     | SR-4  | Usage windows, pause policy, waiting              | done   |        | Usage snapshots, decide/waitTarget, waitUntil   |
-| 1     | SR-5  | Runner protocol, prompt, specrun tools            | todo   |        |                                                 |
+| 1     | SR-5  | Runner protocol, prompt, specrun tools            | done   |        | protocol.md, specrun MCP tools, buildPrompt     |
 | 1     | SR-6  | Agent session (SDK) and transcripts               | todo   |        |                                                 |
 | 1     | SR-7  | Runner orchestration loop                         | todo   |        |                                                 |
 | 1     | SR-8  | Session analytics                                 | todo   |        |                                                 |
