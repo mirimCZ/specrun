@@ -6,13 +6,13 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 
 ## Run log
 
-_No runs yet._
+- 2026-11-08 — SR-1 blocked: Bash permissions denied every command (typecheck, tests, git).
 
 ## Tasks
 
 | Phase | Task  | Title                                             | Status | Commit | Notes |
 | ----- | ----- | ------------------------------------------------- | ------ | ------ | ----- |
-| 1     | SR-1  | Config and spec.json schemas + loaders            | todo   |        |       |
+| 1     | SR-1  | Config and spec.json schemas + loaders            | blocked |        | Every Bash command (npm run typecheck, npx vitest, tools/spec-verify.sh, git status) was denied "requires approval" — code written but unverified and uncommitted (untracked files in src/errors.ts, src/config/, src/spec/) |
 | 1     | SR-2  | Event log, state reducer, PROGRESS.md view        | todo   |        |       |
 | 1     | SR-3  | Git worktree, commits, parking; verify steps      | todo   |        |       |
 | 1     | SR-4  | Usage windows, pause policy, waiting              | todo   |        |       |
