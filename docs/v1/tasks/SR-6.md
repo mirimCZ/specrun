@@ -76,4 +76,22 @@ CumulativeTotals }`. `SegmentStats` matches SR-2's `session.finished` numeric fi
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- `agentSession.ts`: `AgentSession`, `SegmentInput/Result/Outcome/Stats`, `SessionObserver`,
+  `CumulativeTotals` (turns, tokens, cacheRead/Write, costUsd), `TurnUsage` (+ `context`).
+  `SegmentStats` = totals + `peakContext`, `durationMs`; `sessionId` is `string | null`.
+- `sdkSession.ts`: `createSdkSession({ query?, createTools?, clock? })`, `SESSION_TOOLS`. Precedence:
+  tool call (even after abort/limit) → interrupted → limit → max-turns → error → no-call; `error`
+  only for outcome `error`. Reset: exhausted window of the latest event → its `resetsAt` →
+  `|<epoch>` in the error text → null. No `result`: stats from turns seen, cost 0.
+- `onTurn` once per main-agent API message id (subagents excluded, also from peak context).
+  Transcript opens at the first message with a session id; write failures are ignored.
+- `transcript.ts`: `createTranscriptWriter(file)` → `{ write, close }`, `readTranscript(file)`.
+- `probeUsage.ts`: `probeUsage({ query?, cwd, clock?, timeoutMs? })`; timeout via `clock.sleep`.
+  Not checked by hand (the real SDK call needed an approval); on the first real run, confirm that
+  `system:init` arrives with the empty prompt, otherwise switch to the haiku fallback.
+- `test/fakes/fakeQuery.ts`: `createFakeQuery(scripts[][], { usage? })` → `{ query, createTools,
+calls, closed, interrupted, usageCalls }`; steps `{ control: 'throw' | 'wait-abort' | 'hang' }`.
+- `test/fixtures/sdkMessages.ts`: `initMessage`, `assistantMessage`, `toolResultMessage`,
+  `rateLimitEvent`, `resultSuccess`, `resultError`, `SESSION_ID`.
+- Deviation: added a `createTools` dep, since a fake can't call the SDK MCP server; pass
+  `fake.createTools` so the fake runs the specrun tool handlers on `tool_use`.
