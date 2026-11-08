@@ -47,3 +47,12 @@ gets their implementation notes.
 | SR-11 | SR-9                         |
 | SR-12 | SR-9                         |
 | SR-13 | SR-10, SR-12                 |
+
+## Run stats
+
+Appended by `tools/spec-run.sh` after every finished task session (`Attempt` counts usage-limit
+restarts; stats of interrupted attempts are only in the log dir's `stats.tsv`).
+
+| Task | Date       | Model | Result | Attempt | Turns | Peak context | Cache read | Cache write | Output | Cost  |
+| ---- | ---------- | ----- | ------ | ------- | ----- | ------------ | ---------- | ----------- | ------ | ----- |
+| SR-1 | 2026-11-08 | opus  | done   | 1       | 15    | 33k          | 0.3M       | 30k         | 4k     | $0.38 |
