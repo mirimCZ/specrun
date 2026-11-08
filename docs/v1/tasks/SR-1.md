@@ -70,4 +70,19 @@ needs (id[]), model ("default" | "strong"), size ("S" | "M" | "L") }[] }`. Task 
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- `src/errors.ts`: `SpecrunError(code, summary, details = [])` — `code`, `summary`, `details`;
+  `message` = summary + one `  - detail` line per problem. Codes add `'repo-missing'`
+  (thrown by `findRepoRoot` when no `.git` is found up to `/`).
+- `src/config/configSchema.ts`: `ConfigSchema`, `SizeSchema`, `DEFAULT_SIZES`, `Config`, `Size`,
+  `SizeName`. Nested objects (`models`, `limits`, `sizes`) are strict and use `prefault({})`,
+  so a partial override keeps the other defaults. `models.*` are free strings (model aliases/ids).
+- `src/config/loadConfig.ts`: `CONFIG_FILE`, `findRepoRoot(cwd)`, `loadConfig(repoRoot, deps?)`
+  with `deps: { homedir }` (default `os.homedir`). Also exports the shared helpers
+  `formatIssues(zodError): string[]` (`path: message`, root issues as `(root): …`) and
+  `readJsonFile(path)` → `{ ok, value } | { ok: false, error }` — reuse them for other authored files.
+  Broken JSON → `config-invalid` / `spec-invalid` with the parse error as detail.
+- `src/spec/specSchema.ts`: `SpecSchema` (strict, `tasks` ≥ 1), `TaskSchema`, `Spec`, `SpecTask`,
+  `TASK_ID_PATTERN`. `src/spec/loadSpec.ts`: `SPEC_FILE`, `TASK_PROMPT_FILE`, `LoadedSpec`,
+  `specDir`, `loadSpec`, `listSpecs` (sorted). Cross-task checks run only after the schema passes.
+- `src/spec/taskOrder.ts`: `topologicalOrder(spec)`; throws `spec-invalid` on a cycle (loadSpec
+  already rejects those) and ignores unknown needs.

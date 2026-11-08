@@ -1,9 +1,5 @@
 export type SpecrunErrorCode =
-  | 'config-invalid'
-  | 'config-missing'
-  | 'spec-invalid'
-  | 'spec-missing'
-  | 'repo-missing';
+  'config-invalid' | 'config-missing' | 'spec-invalid' | 'spec-missing' | 'repo-missing';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */
 export class SpecrunError extends Error {
