@@ -61,3 +61,4 @@ restarts; stats of interrupted attempts are only in the log dir's `stats.tsv`).
 | SR-1 | 2026-11-08 | opus   | done   | 1       | 15    | 33k          | 0.3M       | 30k         | 4k     | $0.38 |
 | SR-2 | 2026-11-08 | opus   | done   | 1       | 31    | 68k          | 1.0M       | 63k         | 37k    | $1.44 |
 | SR-3 | 2026-11-08 | sonnet | done   | 1       | 21    | 38k          | 0.3M       | 35k         | 20k    | $0.36 |
+| SR-4 | 2026-11-08 | sonnet | done   | 1       | 25    | 38k          | 0.3M       | 33k         | 19k    | $0.35 |
