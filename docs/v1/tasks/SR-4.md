@@ -63,4 +63,17 @@ snapshot, decides whether the runner may start or resume a session, and implemen
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- `src/limits/usage.ts`: `UsageWindow`, `UsageSnapshot`, `fromRateLimitEvent(info, at)`,
+  `fromUsageProbe(response, at)`. `leftPercent` = 100 − utilization%, clamped 0–100. An event
+  object without windows still yields a snapshot (windows null); non-objects → null. A probe
+  without `rate_limits` → null. Unparseable dates → `resetsAt: null`.
+- `src/limits/policy.ts`: `PauseDecision`, `decide(snapshot, limits, now)`, `waitTarget(resetsAt, now)`,
+  `limitHitTarget(snapshot, now)` (uses the session window's reset). Thresholds are exclusive
+  (`left < min`); weekly wins over session.
+- `src/limits/clock.ts`: `Clock`, `systemClock`, `waitUntil(target, { clock, signal?, onTick?, tickMs? })`;
+  `onTick(remainingMs)` is called before each sleep; abort → `AbortError` (name set).
+- `src/limits/keepAwake.ts`: `keepAwake({ pid, platform, spawn })` → `{ stop() }`; `spawn` is a
+  minimal `(cmd, args, { stdio: 'ignore' }) => KeepAwakeChild` (Node's `spawn` fits). A missing
+  binary is tolerated via the child's `error` event, not a pre-check.
+- `test/fakes/fakeClock.ts`: `createFakeClock(start)` → `Clock` + `sleeps: number[]`, `advance(ms)`.
+- No deviations; no other docs needed a "superseded" note.
