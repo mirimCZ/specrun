@@ -72,4 +72,15 @@ summary the runner hands back to the agent.
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- Files: `src/process/run.ts` (`ProcessRunner`, `runCommand`, `runShell(command, opts, run = runCommand)`, `RunOptions`, `RunResult`; code -1 on spawn error/kill),
+  `src/git/git.ts` (`createGit(cwd, run)` → `Git`, `DiffStat`, `WorktreeEntry`), `src/git/worktree.ts`
+  (`ensureWorktree`, `worktreePath`, `PROTECTED_BRANCHES`), `src/git/commitMessage.ts` (`buildCommitMessage` →
+  `{ subject, body, trailers }` = `CommitMessageParts`, which `git.commit` takes), `src/verify/verify.ts`
+  (`runVerify`, `summarizeFailure`, `VerifyResult`).
+- `SpecrunError` codes added: `git-failed`, `setup-failed`, `branch-protected` (protected branch; not in the brief).
+- `commit` uses `--allow-empty` (a task may legitimately change nothing) and returns `HEAD` after committing.
+- `ensureWorktree` reuses any worktree already checked out on the branch (found via `worktree list`), wherever it is.
+  It takes `spec` only for the path; `branch`/`base` must be resolved by the caller (`spec.branch ?? specrun/<spec>`).
+- `summarizeFailure` returns header + lines (≤ 79 lines); `runVerify` appends `Full log: <path>`. `durationMs` = sum of steps.
+- `parkChanges` message goes via stdin; the caller builds `refs/specrun/parked/<spec>/<task>`.
+- Nothing in other docs needed a "superseded by SR-3" note.

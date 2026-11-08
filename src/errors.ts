@@ -4,7 +4,10 @@ export type SpecrunErrorCode =
   | 'spec-invalid'
   | 'spec-missing'
   | 'repo-missing'
-  | 'events-invalid';
+  | 'events-invalid'
+  | 'git-failed'
+  | 'setup-failed'
+  | 'branch-protected';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */
 export class SpecrunError extends Error {
