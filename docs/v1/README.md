@@ -1,0 +1,169 @@
+# specrun v1
+
+specrun replaces the `tools/spec-run.sh` / `spec-autorun.sh` scripts of rebel-industry with a
+robust, project-agnostic CLI: tasks run in Agent SDK sessions inside a dedicated git worktree,
+the runner owns git and verification, state is an append-only event log, and every session
+leaves analytics and structured deviations for a feedback skill. Backward compatibility with
+the old `PROGRESS.md` format is explicitly not a goal.
+
+| Document                         | Contents                                                   |
+| -------------------------------- | ---------------------------------------------------------- |
+| README.md (this file)            | Request, analysis, decision log, task overview, questions  |
+| [tasks/](tasks/)                 | One self-contained brief per task (+ implementation notes) |
+| [PROGRESS.md](PROGRESS.md)       | Task status and dependency tables, filled by runs          |
+| [TASK_PROMPT.md](TASK_PROMPT.md) | Prompt for unattended per-task runs                        |
+
+Runner (bootstrap): `tools/spec-run.sh v1 1` (branch `v1/phase-1`, Opus tasks in
+[run.env](run.env)). specrun is built by the old script, so this spec itself still uses the old
+`PROGRESS.md` format.
+
+---
+
+## 1. Request (product owner, 2026-11-08)
+
+| #   | Request                                                                                                                                                              | Tasks                  |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| R1  | Turn spec-run / spec-autorun into a quality, interactive system CLI tool instead of "wild scripts"; robustness over backward compatibility, key patterns may change. | all                    |
+| R2  | Unattended work on tasks with dependencies (each task continues from what its dependencies built).                                                                   | SR-1, SR-2, SR-5, SR-7 |
+| R3  | Waiting out session limits.                                                                                                                                          | SR-4, SR-6, SR-7       |
+| R4  | Run analytics (turns, context, cache, cost) — also to develop the tool and prompts, mainly to save tokens; tied to S/M/L estimates.                                  | SR-2, SR-8, SR-10      |
+| R5  | Recording deviations from the brief, for a follow-up feedback tool / skill.                                                                                          | SR-5, SR-10, SR-13     |
+| R6  | Distribute the spec skills with the tool; include a basic feedback skill.                                                                                            | SR-12, SR-13           |
+| R7  | An interactive CLI: subcommands and a live dashboard.                                                                                                                | SR-9, SR-11            |
+
+## 2. Analysis
+
+### What the old scripts do (reference: `tools/spec-run.sh`, `tools/spec-autorun.sh`)
+
+Copied into this repo only to bootstrap specrun; they are the behavioural reference to port:
+
+- Prompt = `TASK_PROMPT.md` + brief `tasks/<ID>.md` + the "Implementation notes" of every
+  dependency (`build_prompt`). A task runs only when its dependencies are `done`.
+- Pause mode: before each task the 5h-session and weekly usage left are read from the last
+  `rate_limit_event`; below a threshold the run pauses until the reset + 60 s (`pause_if_low`,
+  `handle_pause`, `wait_until` with a countdown); weekly low stops the run.
+- On a usage-limit stop the partial work is stashed and the task restarts from scratch.
+- Stats per task (`task_stats`): turns, peak context, cache read/write, output, cost.
+- Weak points this spec fixes: the agent commits (red commits land before verification), the
+  run switches branches in the user's checkout, state and notes are free text in markdown
+  tables parsed by column position, a limit stop throws away the session.
+
+### Agent SDK facts (spike: [docs/spikes/agent-sdk.md](../spikes/agent-sdk.md))
+
+- Subscription auth works without an API key; custom in-process tools via `createSdkMcpServer`
+  - `tool(name, description, zodShape, handler)`, exposed as `mcp__<server>__<tool>`.
+- `rate_limit_event.rate_limit_info.unifiedWindows.{five_hour,seven_day}` — `utilization`
+  0–1, `resetsAt` epoch seconds. The experimental usage probe
+  (`query.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET`) returns
+  `rate_limits.{five_hour,seven_day}` with `utilization` 0–100 and ISO `resets_at`.
+- Each `assistant` message has `message.usage`; the `result` has `num_turns`,
+  `total_cost_usd`, `modelUsage`. On a resumed session these totals are **cumulative**.
+- `resume: sessionId` continues a session with its context. Cache writes are 1 h.
+- `settingSources: []` loads no CLAUDE.md; task sessions use `['project']`.
+
+### Side effects to keep in mind
+
+- A resumed session's result totals include earlier segments: the runner stores per-segment
+  deltas (difference to the previous result of the same session).
+- The worktree needs its own dependencies: `setup` (e.g. `npm ci`) runs once after creation.
+- `events.jsonl` is committed on the spec branch; it is append-only, so `.gitattributes`
+  `merge=union` is safe for it.
+- A crash can leave a half-written last line in `events.jsonl` or a truncated gzip transcript:
+  readers must tolerate both.
+- The agent may still run `git commit` despite the protocol: the runner detects a moved HEAD.
+
+## 3. Decision log
+
+Agreed with the product owner on 2026-11-08 (see [Resolved questions](#5-resolved-questions));
+rows marked _default_ were set during refinement without a question and accepted with the
+summary. Prefix `SRD-`.
+
+| ID     | Topic           | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SRD-1  | Package         | Repo `specrun`, npm package `@lukasjecha/specrun` (`specrun` is taken on npm), bin `specrun`. Node ≥ 22, ESM, TypeScript strict, vitest, Prettier. All schemas use **zod v4** (required by the SDK's `tool()`; one validation library).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| SRD-2  | CLI             | commander subcommands: `init`, `run`, `status`, `set`, `stats`, `deviations`, `analyze`. During `run` an Ink dashboard when stdout is a TTY; a plain line reporter otherwise or with `--no-ui`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| SRD-3  | Engine          | Sessions run through `@anthropic-ai/claude-agent-sdk` `query()` with the user's subscription. The SDK sits behind the `AgentSession` interface (`src/session/`); everything above it is tested with a fake.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| SRD-4  | Process         | Foreground process. All state lives in files, so `status` / `stats` / `deviations` work from another terminal and re-running `run` continues where it stopped. One run per spec at a time: lock file `.specrun/locks/<spec>.lock` holding the pid (a stale lock — dead pid — is taken over). macOS: `caffeinate -i -w <pid>` while running when the binary exists.                                                                                                                                                                                                                                                                                                                                                                    |
+| SRD-5  | State           | `docs/<spec>/spec.json` is authored and **never written by the runner**. `docs/<spec>/events.jsonl` is an append-only log written only by the runner (and `specrun set`). Task status is derived from events (SRD-21). `docs/<spec>/PROGRESS.md` is a generated view, regenerated with every runner commit.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| SRD-6  | Git & verify    | The runner owns git. The agent only edits files and ends with `complete_task` or `block_task` (SRD-9). After `complete_task` the runner runs the verify steps; red → it resumes the **same session** with the failure summary, at most `verifyFixRounds` (default 2) times, then blocks the task (`source: verify`); green → it commits. If HEAD moved during a session (the agent committed), the runner `git reset --soft`s back to the pre-session commit, keeps the changes and records `protocol.violation`.                                                                                                                                                                                                                     |
+| SRD-7  | Workspace       | Each spec runs in a git worktree at `<main checkout>/.specrun/worktrees/<spec>`, created on the first run from `--base` (default `HEAD`) on the spec branch. The config's `setup` command runs once after creation. `.specrun/` is gitignored (`specrun init` adds it).                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| SRD-8  | Branch & phases | One branch per spec: `specrun/<spec>` unless `spec.json` sets `branch`. Phases are checkpoints: `run` stops once every task of the lowest unfinished phase is `done` or `blocked`, unless `--all-phases`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| SRD-9  | Agent tools     | specrun MCP server `specrun` with two tools. `complete_task` — `summary` (string, one sentence), `commitMessage` (Conventional Commit subject), `notes` (string[], ≤ 15, for dependent tasks), `deviations` ({ `kind`: `spec-bug` · `ambiguity` · `constraint` · `test-trap` · `scope`, `decision?` (decision ID), `what`, `why` }[]). `block_task` — `reason` (string), `kind`: `impossible` · `test` · `forbidden` · `other`. Both answer "Recorded — end your turn now."                                                                                                                                                                                                                                                           |
+| SRD-10 | Limits          | Before each task and each resume the runner reads usage: session left < `limits.sessionMinLeft` (default 15 %) → wait until the 5h reset + 60 s; weekly left < `limits.weeklyMinLeft` (default 5 %) → stop the run (exit 75). A limit hit inside a session → wait for the reset, then **resume the same session** ("The usage limit has reset — continue the task where you left off."). A session interrupted by a crash or Ctrl-C is resumed by the next run.                                                                                                                                                                                                                                                                       |
+| SRD-11 | Sizes           | Every task in `spec.json` has `size` `S` · `M` · `L`. Ranges live in the config `sizes` (defaults S `{ turns: [10, 25], usd: 0.6 }`, M `{ turns: [20, 45], usd: 1.2 }`, L `{ turns: [40, 70], usd: 2.5 }`). `specrun stats --calibrate` suggests ranges per model × size from history: turns p10–p90, usd p90, only with ≥ 3 samples.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| SRD-12 | Budget          | Overruns are only recorded: when a task is committed or blocked with total turns or cost above its size's upper bound, the runner appends `budget.exceeded`. The only hard stop is the global `maxTurns` per session (default 150).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| SRD-13 | Metrics         | Per session segment an `analytics.session` event: context curve per turn, tool and file costs (result sizes, re-reads, most expensive Bash commands), brief adherence (Read first files read / unread, extra files read, files changed) and phases (orient · implement · test · fix: turns and tokens). Phase split is a heuristic and labelled as an estimate.                                                                                                                                                                                                                                                                                                                                                                       |
+| SRD-14 | Transcripts     | Every SDK message of every session segment is written gzip-compressed to `<transcriptsDir>/<repo>/<spec>/<task>/<sessionId>-<segment>.jsonl.gz` (default `transcriptsDir` `~/.specrun/runs`, outside git). `specrun analyze --reindex [spec]` recomputes analytics from them and appends new `analytics.session` events with a higher `analyzerVersion` (readers take the latest per segment).                                                                                                                                                                                                                                                                                                                                        |
+| SRD-15 | Plugin          | The repo root is a Claude Code marketplace (`.claude-plugin/marketplace.json`) with one plugin in `plugin/` (skills `refine`, `write-spec`, `feedback`), checked by `claude plugin validate`. Project specifics (commit scopes, terminology) stay in each project's CLAUDE.md.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| SRD-16 | Feedback        | Skill `feedback` reads `specrun stats --json`, `specrun deviations --json` and `specrun analyze --json`, and proposes concrete edits (spec-specific `TASK_PROMPT.md`, the write-spec skill, project test docs, CLAUDE.md, size ranges) as a numbered review list with evidence; it applies nothing without the user's OK.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| SRD-17 | Bootstrap       | Skeleton and SDK spike were done interactively; the rest is built by the old `tools/spec-run.sh` copied into this repo (this spec uses its `PROGRESS.md` format).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| SRD-18 | Prompt          | _default_ — Session prompt = built-in runner protocol (`src/session/protocol.md`, shipped with the package; explains the tools, that the agent never touches git, how verification works) + optional `docs/<spec>/TASK_PROMPT.md` (spec-specific rules, `{TASK}` replaced) + the brief `tasks/<ID>.md` + for every dependency a section with its `notes` and `deviations` from its last `task.completed`. The character count of each part is recorded on `session.started`.                                                                                                                                                                                                                                                          |
+| SRD-19 | Config          | _default_ — `specrun.config.json` in the repo root, all keys optional except `verify`: `specsDir` (`"docs"`), `verify` (`{ name, command }[]`, ≥ 1, run with `sh -c` in the worktree), `setup` (string \| null, default null), `models` (`{ default: "sonnet", strong: "opus" }`), `maxTurns` (150), `verifyFixRounds` (2), `limits` (`{ sessionMinLeft: 15, weeklyMinLeft: 5 }`), `sizes` (SRD-11), `transcriptsDir` (`"~/.specrun/runs"`), `commitTrailers` (string[], default []). Unknown keys are an error.                                                                                                                                                                                                                      |
+| SRD-20 | spec.json       | _default_ — `{ title: string, branch?: string, tasks: { id, title, phase (int ≥ 1), needs (id[]), model ("default" \| "strong"), size ("S" \| "M" \| "L") }[] }`. Task ids match `^[A-Z][A-Z0-9]*-[0-9]+$` and are unique; `needs` reference existing ids, no cycles, a task never needs a task of a later phase; every task has `tasks/<id>.md`. The spec name is the folder name. Invalid specs fail on load with every problem listed.                                                                                                                                                                                                                                                                                             |
+| SRD-21 | Events          | _default_ — one JSON object per line: `{ v: 1, t, at (ISO), runId, … }`. Types: `run.started`, `run.finished`, `usage.snapshot`, `limit.wait`, `session.started`, `session.finished`, `task.completed`, `verify.finished`, `task.committed`, `task.blocked`, `budget.exceeded`, `protocol.violation`, `manual.status`, `analytics.session` (fields in SR-2). Status per task: the latest of `task.committed` → `done`, `task.blocked` → `blocked`, `manual.status` → its status; none → `todo`. A `session.started` after the latest status event without a matching `session.finished` outcome that ended the task → `interrupted` (resumable, `resumeSessionId`). Unknown event types are kept and ignored (forward compatibility). |
+| SRD-22 | Parking         | _default_ — When a task is blocked, the worktree's changes (tracked and untracked, not ignored) are stored as a commit object under `refs/specrun/parked/<spec>/<task>` (`git add -A`, `write-tree`, `commit-tree -p HEAD`), then the worktree is reset to HEAD and cleaned, so the next task starts clean. The ref is named in `task.blocked`.                                                                                                                                                                                                                                                                                                                                                                                       |
+| SRD-23 | Agent setup     | _default_ — Tools `Read`, `Edit`, `Write`, `Bash` plus `mcp__specrun__complete_task` / `mcp__specrun__block_task`; `permissionMode: 'dontAsk'` with exactly those in `allowedTools`; `settingSources: ['project']`; `cwd` = worktree; model from `models[task.model]`, `run --model <alias>` overrides all.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| SRD-24 | Commits         | _default_ — Subject = the agent's `commitMessage`, with ` (<TASK>)` appended when it doesn't contain the task id; body = `summary`; trailers `Specrun-Task: <id>`, `Specrun-Session: <sessionId>` and `commitTrailers`. The commit stages everything in the worktree (`git add -A`), including `events.jsonl` and the regenerated `PROGRESS.md`. Events appended after the last task commit (blocked tasks, end of run) are committed as `chore(specrun): <spec> run log`.                                                                                                                                                                                                                                                            |
+| SRD-25 | Exit codes      | _default_ — `0` spec done or checkpoint reached, `1` failure, `75` stopped on the weekly limit, `130` interrupted (Ctrl-C: the current session is aborted, `session.finished` outcome `interrupted`, lock released).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+
+---
+
+## 4. Tasks
+
+| Phase | Task                    | Title                                             | Needs                        | Size | Model  |
+| ----- | ----------------------- | ------------------------------------------------- | ---------------------------- | ---- | ------ |
+| 1     | [SR-1](tasks/SR-1.md)   | Config and spec.json schemas + loaders            | —                            | M    | opus   |
+| 1     | [SR-2](tasks/SR-2.md)   | Event log, state reducer, PROGRESS.md view        | SR-1                         | L    | opus   |
+| 1     | [SR-3](tasks/SR-3.md)   | Git worktree, commits, parking; verify steps      | SR-1                         | L    | sonnet |
+| 1     | [SR-4](tasks/SR-4.md)   | Usage windows, pause policy, waiting              | SR-1                         | S    | sonnet |
+| 1     | [SR-5](tasks/SR-5.md)   | Runner protocol, prompt, specrun tools            | SR-2                         | M    | opus   |
+| 1     | [SR-6](tasks/SR-6.md)   | Agent session (SDK) and transcripts               | SR-4, SR-5                   | L    | opus   |
+| 1     | [SR-7](tasks/SR-7.md)   | Runner orchestration loop                         | SR-2, SR-3, SR-4, SR-5, SR-6 | L    | opus   |
+| 1     | [SR-8](tasks/SR-8.md)   | Session analytics                                 | SR-2, SR-6, SR-7             | M    | sonnet |
+| 1     | [SR-9](tasks/SR-9.md)   | CLI: init, run (line reporter), status, set       | SR-7                         | M    | sonnet |
+| 1     | [SR-10](tasks/SR-10.md) | CLI: stats, calibrate, deviations, analyze        | SR-8, SR-9                   | M    | sonnet |
+| 1     | [SR-11](tasks/SR-11.md) | Ink dashboard                                     | SR-9                         | M    | sonnet |
+| 1     | [SR-12](tasks/SR-12.md) | Plugin: marketplace, refine and write-spec skills | SR-9                         | M    | opus   |
+| 1     | [SR-13](tasks/SR-13.md) | Feedback skill                                    | SR-10, SR-12                 | S    | sonnet |
+
+Cut by layer: pure data (SR-1, SR-2) → side-effect modules behind small interfaces (SR-3 git +
+verify share the "spawn a process in the worktree" seam, SR-4 limits, SR-6 SDK) → orchestration
+(SR-7, tested only with fakes) → analytics → CLI surfaces → UI → plugin. The agent-facing
+prompt and tools (SR-5) are split from the SDK wrapper (SR-6) because their read sets differ
+(event state vs. SDK types). One phase: nothing is usable before the CLI exists. Sizes are the
+S/M/L of SRD-11, kept here so the first `specrun stats --calibrate` has the bootstrap as data.
+
+---
+
+## 5. Resolved questions
+
+Answered by the product owner on 2026-11-08.
+
+| #   | Question                               | Answer                                                                                                   |
+| --- | -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Q1  | Only for rebel-industry or general?    | **Separate repo / npm package right away** (SRD-1)                                                       |
+| Q2  | What kind of interactivity?            | **Subcommands + live dashboard** (SRD-2)                                                                 |
+| Q3  | What runs the sessions?                | **Agent SDK, verified by a spike first** — spike passed (SRD-3)                                          |
+| Q4  | Process model                          | **Foreground, state readable from elsewhere** (SRD-4)                                                    |
+| Q5  | Source of truth for spec state         | **JSON**, continuity not important, robustness first (SRD-5, SRD-20)                                     |
+| Q6  | Who owns git and verify?               | **The runner** (SRD-6)                                                                                   |
+| Q7  | Where does a run work?                 | **Its own git worktree** (SRD-7)                                                                         |
+| Q8  | How are state and run data stored?     | **Append-only event log** (SRD-5, SRD-21)                                                                |
+| Q9  | How are notes and deviations reported? | **Structured via `complete_task`** (SRD-9)                                                               |
+| Q10 | How to build the tool?                 | **Skeleton + spike together, the rest by spec-run** (SRD-17)                                             |
+| Q11 | Branches and phases                    | **One branch per spec**, phases as checkpoints (SRD-8)                                                   |
+| Q12 | Skill distribution                     | **Claude Code plugin from the tool repo** (SRD-15)                                                       |
+| Q13 | Improvements for v1                    | **Session resume after a limit, size estimates, more analytics to save tokens** (SRD-10, SRD-11, SRD-13) |
+| Q14 | Which metrics?                         | **All four: context curve, tool/file costs, brief adherence, phases** (SRD-13)                           |
+| Q15 | Keep raw transcripts?                  | **Locally, outside git** (SRD-14)                                                                        |
+| Q16 | How do S/M/L estimates work?           | **Size from write-spec + calibration from history** (SRD-11)                                             |
+| Q17 | What happens on a budget overrun?      | **Only record it** (SRD-12)                                                                              |
+| Q18 | Name                                   | **specrun** (SRD-1)                                                                                      |
+| Q19 | Feedback scope                         | **Include a basic feedback skill** (SRD-16)                                                              |
+
+## 6. Out of scope
+
+- Notifications (macOS / push), a `specrun validate` command (schema validation on load stays),
+  parallel tasks, a daemon / launchd scheduling, adapters for other agents, hard budgets.
+- Migrating old-format specs (`PROGRESS.md` tables) — backward compatibility is not a goal.
+- ESLint: not set up in v1; strict `tsc` + Prettier + tests are the gate (`tools/spec-verify.sh`).
