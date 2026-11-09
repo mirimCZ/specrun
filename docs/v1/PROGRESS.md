@@ -14,6 +14,7 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 - 2026-11-09 — SR-5 done.
 - 2026-11-09 — SR-6 done.
 - 2026-11-09 — SR-7 done.
+- 2026-11-09 — SR-8 done.
 
 ## Tasks
 
@@ -26,7 +27,7 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 | 1     | SR-5  | Runner protocol, prompt, specrun tools            | done   |        | protocol.md, specrun MCP tools, buildPrompt     |
 | 1     | SR-6  | Agent session (SDK) and transcripts               | done   |        | sdkSession, transcripts, probeUsage, fakeQuery  |
 | 1     | SR-7  | Runner orchestration loop                         | done   |        | runSpec, reporter, lock, fakeSession            |
-| 1     | SR-8  | Session analytics                                 | todo   |        |                                                 |
+| 1     | SR-8  | Session analytics                                 | done   |        | analyzeSession, recordAnalytics, latestMetrics  |
 | 1     | SR-9  | CLI: init, run (line reporter), status, set       | todo   |        |                                                 |
 | 1     | SR-10 | CLI: stats, calibrate, deviations, analyze        | todo   |        |                                                 |
 | 1     | SR-11 | Ink dashboard                                     | todo   |        |                                                 |

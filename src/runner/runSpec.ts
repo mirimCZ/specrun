@@ -18,6 +18,7 @@ import {
   type SpecState,
 } from '../events/taskState.js';
 import { buildCommitMessage } from '../git/commitMessage.js';
+import { recordAnalytics } from '../analytics/recordAnalytics.js';
 import { createGit } from '../git/git.js';
 import { ensureWorktree } from '../git/worktree.js';
 import { waitUntil, type Clock } from '../limits/clock.js';
@@ -395,6 +396,14 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         };
         const head = await git.head();
         const thisSegment = segment;
+        const transcriptFile = (id: string): string =>
+          join(
+            config.transcriptsDir,
+            basename(repoRoot),
+            options.spec,
+            task.id,
+            `${id}-${thisSegment}.jsonl.gz`,
+          );
         const result = await deps.session.run(
           {
             prompt,
@@ -403,14 +412,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
             maxTurns: config.maxTurns,
             resumeSessionId: sessionId,
             previous,
-            transcriptFile: (id) =>
-              join(
-                config.transcriptsDir,
-                basename(repoRoot),
-                options.spec,
-                task.id,
-                `${id}-${thisSegment}.jsonl.gz`,
-              ),
+            transcriptFile,
             signal,
           },
           observer,
@@ -424,6 +426,23 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
           ...(result.error === null ? {} : { error: result.error }),
           ...result.stats,
         });
+        const finishedId = result.sessionId ?? sessionId;
+        if (finishedId !== null) {
+          // Analytics are a by-product: a missing or broken transcript must not stop the run.
+          try {
+            recordAnalytics({
+              store,
+              transcriptFile: transcriptFile(finishedId),
+              task: task.id,
+              sessionId: finishedId,
+              segment: thisSegment,
+              reason,
+              briefPath: loaded.briefPath(task.id),
+            });
+          } catch (error) {
+            reporter.log('warn', `analytics for ${task.id} failed: ${errorMessage(error)}`);
+          }
+        }
         if (seen.snapshot !== null) {
           latest = seen.snapshot;
           append(snapshotEvent(seen.snapshot));

@@ -11,6 +11,8 @@ import type {
   SegmentStats,
 } from '../../src/session/agentSession.js';
 import type { ToolCall } from '../../src/session/specrunTools.js';
+import { createTranscriptWriter } from '../../src/session/transcript.js';
+import { assistantMessage, initMessage } from '../fixtures/sdkMessages.js';
 
 /** What one `run()` call does, in script order. */
 export type FakeSegment = {
@@ -32,6 +34,8 @@ export type FakeSegment = {
   tools?: { name: string; input: unknown }[];
   limitResetsAt?: Date | null;
   error?: string | null;
+  /** `broken` writes a file that is not a gzip transcript (analytics must only log). */
+  transcript?: 'broken';
 };
 
 export type FakeSession = AgentSession & {
@@ -85,6 +89,27 @@ function add(previous: CumulativeTotals | null, stats: SegmentStats): Cumulative
   };
 }
 
+async function writeTranscript(file: string, sessionId: string, step: FakeSegment): Promise<void> {
+  if (step.transcript === 'broken') {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, 'not a transcript');
+    return;
+  }
+  const writer = createTranscriptWriter(file);
+  writer.write(initMessage({ sessionId }));
+  for (const [i, use] of (step.tools ?? []).entries()) {
+    writer.write(
+      assistantMessage({
+        sessionId,
+        id: `msg_${i}`,
+        usage: { input: 10, output: 5 },
+        toolUses: [{ name: use.name, input: use.input, id: `toolu_${i}` }],
+      }),
+    );
+  }
+  await writer.close();
+}
+
 /**
  * Plays `script[i]` for the i-th `run()` call; calls beyond the script end with outcome `error`.
  * `gitEnv` is used for the simulated agent commit (identity without the user's config).
@@ -131,6 +156,8 @@ export function createFakeSession(
           ? step.sessionId
           : (input.resumeSessionId ?? `session-${(sessions += 1)}`);
       const stats = { ...DEFAULT_STATS, ...step.stats };
+      if (sessionId !== null)
+        await writeTranscript(input.transcriptFile(sessionId), sessionId, step);
       return {
         sessionId,
         outcome: step.outcome ?? 'completed',

@@ -10,7 +10,7 @@ import type { EventOf, EventType, SpecrunEvent } from '../events/eventSchema.js'
 import { readEvents } from '../events/eventStore.js';
 import type { UsageSnapshot } from '../limits/usage.js';
 import { runCommand } from '../process/run.js';
-import { nullReporter } from './reporter.js';
+import { nullReporter, type RunReporter } from './reporter.js';
 import { runSpec, type RunSpecOptions } from './runSpec.js';
 
 const env = {
@@ -82,6 +82,7 @@ interface Harness {
   isAlive?: (pid: number) => boolean;
   probeUsage?: () => Promise<UsageSnapshot | null>;
   controller?: AbortController;
+  reporter?: RunReporter;
 }
 
 async function start(h: Harness) {
@@ -96,7 +97,7 @@ async function start(h: Harness) {
       run: (cmd, args, opts) => runCommand(cmd, args, { ...opts, env }),
       clock,
       probeUsage: h.probeUsage ?? (() => Promise.resolve(probes.shift() ?? null)),
-      reporter: nullReporter,
+      reporter: h.reporter ?? nullReporter,
       signal: (h.controller ?? new AbortController()).signal,
       version: '0.0.0-test',
       ...(h.pid === undefined ? {} : { pid: h.pid }),
@@ -171,6 +172,32 @@ describe('runSpec', () => {
     expect(git(worktree, 'status', '--porcelain')).toBe('');
     expect(ofType('run.finished').map((e) => e.reason)).toEqual(['done']);
     expect(ofType('verify.finished').map((e) => e.ok)).toEqual([true, true]);
+  });
+
+  it('records an analytics.session event after each session.finished', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    await start({
+      segments: [{ tools: [{ name: 'Read', input: { file_path: '/x/a.ts' } }] }],
+    });
+    const types = events()
+      .map((e) => e.t)
+      .filter((t) => t === 'session.finished' || t === 'analytics.session');
+    expect(types).toEqual(['session.finished', 'analytics.session']);
+    expect(ofType('analytics.session')).toMatchObject([
+      { task: 'A-1', sessionId: 'session-1', segment: 0, analyzerVersion: 1 },
+    ]);
+  });
+
+  it('only logs when the transcript is broken', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const logs: string[] = [];
+    const { result } = await start({
+      segments: [{ transcript: 'broken' }],
+      reporter: { ...nullReporter, log: (_level, message) => void logs.push(message) },
+    });
+    expect(result.reason).toBe('done');
+    expect(ofType('analytics.session')).toHaveLength(0);
+    expect(logs.some((m) => m.includes('analytics for A-1 failed'))).toBe(true);
   });
 
   it('resumes the same session with the failure summary when verify is red, then commits', async () => {

@@ -72,4 +72,17 @@ SessionMetrics>` with the highest `analyzerVersion`.
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- New `src/analytics/`: `metricsSchema.ts` (`SessionMetricsSchema`, `SessionMetrics`, `ANALYZER_VERSION`),
+  `analyzeSession.ts` (`analyzeSession(messages, { readFirst: string[] | null, testPatterns?, fixFromTurn? })`,
+  `DEFAULT_TEST_PATTERNS`), `readFirst.ts` (`parseReadFirst`, `COMMON_FILES`), `recordAnalytics.ts`
+  (`recordAnalytics({ store, transcriptFile, task, sessionId, segment, reason, briefPath, testPatterns? })`
+  → appended event; throws on a bad transcript), `latestMetrics.ts` (`latestMetrics(events)`, `metricsKey`).
+- `runSpec.ts`: `recordAnalytics` after `session.finished` (try/catch → `reporter.log('warn', …)`); the
+  transcript path is now a local `transcriptFile` function. `fakeSession` writes a small transcript per
+  segment (`transcript: 'broken'` writes garbage); `runSpec.spec.ts` got an optional `reporter` in the harness.
+- Decisions: `fixFromTurn` is 1-based and wins over orient/test (`verify-fix` segments → `1`, all fix);
+  turns = unique main-agent API message ids (last usage wins), subagent messages are skipped; a missing
+  brief → `brief: null`. `parseReadFirst` only takes bullet lines; a token is a path when it has `/`
+  or a known file extension (so `analytics.session` is not); `:10-20` hints are stripped. `extraReads`
+  excludes `CLAUDE.md`/`docs/testing.md`; a Read-first entry ending in a directory covers files under it.
+- Not done (outside this brief): `analyze --reindex` command (SR-10) and `.gitattributes` in `init`.
