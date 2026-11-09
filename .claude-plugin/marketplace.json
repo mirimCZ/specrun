@@ -1,0 +1,13 @@
+{
+  "name": "specrun",
+  "owner": {
+    "name": "Lukas Jecha"
+  },
+  "plugins": [
+    {
+      "name": "specrun",
+      "source": "./plugin",
+      "description": "Skills to refine requests and write implementation specs that specrun runs unattended"
+    }
+  ]
+}

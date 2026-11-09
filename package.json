@@ -12,7 +12,8 @@
   },
   "files": [
     "dist",
-    "plugin"
+    "plugin",
+    ".claude-plugin"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",

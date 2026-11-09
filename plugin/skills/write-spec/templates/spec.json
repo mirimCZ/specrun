@@ -1,0 +1,21 @@
+{
+  "title": "<Spec Title>",
+  "tasks": [
+    {
+      "id": "<PX>-1",
+      "title": "<title>",
+      "phase": 1,
+      "needs": [],
+      "model": "default",
+      "size": "M"
+    },
+    {
+      "id": "<PX>-2",
+      "title": "<title>",
+      "phase": 1,
+      "needs": ["<PX>-1"],
+      "model": "strong",
+      "size": "S"
+    }
+  ]
+}
