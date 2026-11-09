@@ -8,6 +8,7 @@ import { SpecrunError } from '../../errors.js';
 import { listSpecs, loadSpec } from '../../spec/loadSpec.js';
 import type { Config } from '../../config/configSchema.js';
 import { activeSpecFiles, type CliDeps } from '../cliDeps.js';
+import { table } from '../table.js';
 
 interface Overview {
   name: string;
@@ -39,18 +40,6 @@ function overview(repoRoot: string, config: Config, name: string): Overview {
     blocked: statuses.filter((s) => s === 'blocked').length,
     runningPid: runningPid(repoRoot, name),
   };
-}
-
-function table(rows: string[][]): string {
-  const widths = rows[0]?.map((_, col) => Math.max(...rows.map((row) => (row[col] ?? '').length)));
-  return rows
-    .map((row) =>
-      row
-        .map((cell, col) => cell.padEnd(widths?.[col] ?? 0))
-        .join('  ')
-        .trimEnd(),
-    )
-    .join('\n');
 }
 
 export function register(program: Command, deps: CliDeps): void {

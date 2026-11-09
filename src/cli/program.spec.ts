@@ -15,8 +15,10 @@ describe('createProgram', () => {
     expect(output.join('').trim()).toBe(version);
   });
 
-  it('lists the init, run, status and set commands', () => {
+  it('lists all commands', () => {
     const names = createProgram().commands.map((command) => command.name());
-    expect(names).toEqual(expect.arrayContaining(['init', 'run', 'status', 'set']));
+    expect(names).toEqual(
+      expect.arrayContaining(['init', 'run', 'status', 'set', 'stats', 'deviations', 'analyze']),
+    );
   });
 });
