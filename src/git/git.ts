@@ -21,6 +21,8 @@ export interface Git {
   branchExists(name: string): Promise<boolean>;
   addAll(): Promise<void>;
   commit(message: CommitMessageParts): Promise<string>;
+  /** Commits only `paths` (other staged or unstaged changes stay); null when they're unchanged. */
+  commitPaths(message: CommitMessageParts, paths: readonly string[]): Promise<string | null>;
   resetSoft(sha: string): Promise<void>;
   resetHardClean(): Promise<void>;
   diffStat(from: string, to: string): Promise<DiffStat>;
@@ -66,6 +68,15 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
     async commit({ subject, body, trailers }) {
       const sections = [subject, body, trailers.join('\n')].filter((s) => s !== '');
       await git(['commit', '-q', '--allow-empty', '-F', '-'], `${sections.join('\n\n')}\n`);
+      return api.head();
+    },
+
+    async commitPaths({ subject, body, trailers }, paths) {
+      if ((await git(['status', '--porcelain', '--', ...paths])).trim() === '') return null;
+      // `add` first: `commit -- <path>` rejects files git doesn't know yet.
+      await git(['add', '--', ...paths]);
+      const sections = [subject, body, trailers.join('\n')].filter((s) => s !== '');
+      await git(['commit', '-q', '-F', '-', '--', ...paths], `${sections.join('\n\n')}\n`);
       return api.head();
     },
 

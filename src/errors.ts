@@ -7,7 +7,8 @@ export type SpecrunErrorCode =
   | 'events-invalid'
   | 'git-failed'
   | 'setup-failed'
-  | 'branch-protected';
+  | 'branch-protected'
+  | 'locked';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */
 export class SpecrunError extends Error {

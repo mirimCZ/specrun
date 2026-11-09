@@ -89,4 +89,20 @@ and verify (`sh -c` steps that pass or fail per round via a counter file):
 
 ## Implementation notes
 
-<!-- Filled in by the implementing agent: files, exported names, deviations. -->
+- `src/runner/runSpec.ts`: `runSpec(options: RunSpecOptions, deps: RunSpecDeps)` → `RunResult` `{ exitCode,
+reason, message? }`; deps as briefed + optional `pid`/`isAlive`; `probeUsage: () => Promise<UsageSnapshot | null>`.
+  `session.finished` is appended right after `deps.session.run` in `runTask` (SR-8 hooks in there).
+- `src/runner/reporter.ts`: `RunReporter`, `nullReporter`, `ActivityUpdate`, `TurnUpdate` (`costUsd` = the
+  task's finished segments; the SDK reports cost only at a segment end), `WaitingUpdate`, `ReporterLevel`.
+- `src/runner/lock.ts`: `acquireLock`, `lockFile(repoRoot, spec)`, `readLockPid`, `isProcessAlive`; new
+  `SpecrunError` code `locked`. `test/fakes/fakeSession.ts`: `createFakeSession(segments, { gitEnv })` →
+  `AgentSession & { inputs }`, ids `session-<n>`, `DEFAULT_PAYLOAD`; unscripted calls → outcome `error`.
+- Paths: spec, events, PROGRESS.md from the **worktree** (`spec.branch` from the checkout's copy); verify logs
+  `<repoRoot>/.specrun/logs/<spec>/<task>-verify-<round>.log`.
+- Added `Git.commitPaths(message, paths)`: run-log commits stage only events + PROGRESS.md (never agent work).
+- Decision: `task.committed` can't be in its own commit → lands in the next one; the task commit's PROGRESS.md
+  previews the task `done`. Every run ends with a `run log` commit (also on 130). Block: `task.blocked` →
+  run-log commit → park (parking resets the worktree, which would drop uncommitted events).
+- Decision: setup failures (lock, spec, worktree) throw — no log yet. Follow-up segments record prompt parts
+  as 0. Pause check before every segment. `taskFilter` ignores phases (not runnable → `failed`); phase stuck
+  on blocked deps → `done` + message; a task blocked in this run isn't retried in the same run.

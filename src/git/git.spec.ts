@@ -92,6 +92,18 @@ describe('createGit', () => {
     expect(sh(dir, 'rev-parse', `${ref}^`).trim()).toBe(base);
   });
 
+  it('commits only the given paths and leaves other changes in place', async () => {
+    writeFileSync(join(dir, 'a.txt'), 'changed\n');
+    sh(dir, 'add', 'a.txt');
+    writeFileSync(join(dir, 'log.txt'), 'new\n');
+    const message = { subject: 'chore: log', body: '', trailers: [] };
+    const sha = await git.commitPaths(message, ['log.txt']);
+    expect(sha).toBe(await git.head());
+    expect(sh(dir, 'show', '--name-only', '--format=', 'HEAD').trim()).toBe('log.txt');
+    expect(sh(dir, 'status', '--porcelain').trim()).toBe('M  a.txt');
+    expect(await git.commitPaths(message, ['log.txt'])).toBeNull();
+  });
+
   it('parkChanges returns null when clean', async () => {
     expect(await git.parkChanges('refs/specrun/parked/demo/SR-3', 'm')).toBeNull();
   });
