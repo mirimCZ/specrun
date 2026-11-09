@@ -78,3 +78,4 @@ restarts; stats of interrupted attempts are only in the log dir's `stats.tsv`).
 | SR-10 | 2026-11-09 | sonnet | done    | 1       | 35    | 77k          | 1.1M       | 71k         | 35k    | $0.75 |
 | SR-11 | 2026-11-09 | sonnet | blocked | 1       | 14    | 23k          | 0.2M       | 20k         | 2k     | $0.13 |
 | SR-12 | 2026-11-09 | opus   | done    | 1       | 46    | 62k          | 1.3M       | 59k         | 25k    | $1.23 |
+| SR-13 | 2026-11-09 | sonnet | done    | 1       | 6     | 22k          | 0.1M       | 17k         | 4k     | $0.11 |
