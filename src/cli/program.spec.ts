@@ -14,4 +14,9 @@ describe('createProgram', () => {
     await expect(program.parseAsync(['node', 'specrun', '--version'])).rejects.toThrow();
     expect(output.join('').trim()).toBe(version);
   });
+
+  it('lists the init, run, status and set commands', () => {
+    const names = createProgram().commands.map((command) => command.name());
+    expect(names).toEqual(expect.arrayContaining(['init', 'run', 'status', 'set']));
+  });
 });

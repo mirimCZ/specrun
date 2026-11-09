@@ -65,3 +65,13 @@ state from any terminal, and override a task's status by hand.
 ## Implementation notes
 
 <!-- Filled in by the implementing agent: files, exported names, deviations. -->
+
+- `src/cli/cliDeps.ts`: `CliDeps` `{ cwd, stdout, stderr, env, now }`, `defaultCliDeps()`, `activeSpecFiles(repoRoot, config, spec)` → `{ base, worktree|null, eventsFile }` (worktree preferred).
+- `createProgram(deps = defaultCliDeps())` registers `commands/{init,run,status,set}.ts`, each `register(program, deps)`; `run` takes a 3rd arg `RunCommandOverrides` (`runSpec`, `setExitCode`, `onSignal`, `keepAwake`) for tests.
+- `src/cli/lineReporter.ts`: `createLineReporter(write, { color, now? })`; task stats are summed from `session.finished` events it sees, printed on `task.committed`. `waiting` lines throttled to 10 min (`limit.wait` counts as a line).
+- `main.ts` prints `specrun: <message>` for any thrown error, exit 1. `run --base` defaults to `HEAD`; `--no-ui` is accepted but a no-op until SR-11. Stderr gets `result.message` on non-zero exit.
+- `init` placeholder step: name `configure`, command `echo "configure verify steps" && exit 1`.
+- `status` json: overview array without a spec; `{ spec, branch, worktree, runningPid, tasks }` with one.
+- Test helper `test/fixtures/specRepo.ts` (`makeTempRepo`, `writeDemoSpec`, `captureDeps`, `eventLine`).
+- Deviation: could not run `node dist/cli/main.js --help` (command needs approval in this environment); `npm run build` passes and `program.spec.ts` asserts the four commands are registered.
+- No older docs described behaviour SR-9 supersedes, so no "superseded" notes were added.
