@@ -32,7 +32,7 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 | 1     | SR-8  | Session analytics                                 | done   |        | analyzeSession, recordAnalytics, latestMetrics  |
 | 1     | SR-9  | CLI: init, run (line reporter), status, set       | done   |        | init/run/status/set, lineReporter, cliDeps      |
 | 1     | SR-10 | CLI: stats, calibrate, deviations, analyze        | done   |        | stats/deviations/analyze, json-output.md        |
-| 1     | SR-11 | Ink dashboard                                     | todo   |        |                                                 |
+| 1     | SR-11 | Ink dashboard                                     | blocked |        | `npm install` of ink, react, @types/react, ink-testing-library needs approval and was denied unattended; packages absent from node_modules |
 | 1     | SR-12 | Plugin: marketplace, refine and write-spec skills | todo   |        |                                                 |
 | 1     | SR-13 | Feedback skill                                    | todo   |        |                                                 |
 
