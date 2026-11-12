@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import { findRepoRoot, loadConfig } from '../../config/loadConfig.js';
 import { SpecrunError } from '../../errors.js';
 import { DEVIATION_KINDS, type Deviation } from '../../events/eventSchema.js';
+import { formatQuestion } from '../../events/formatQuestion.js';
 import { DeviationsJsonSchema, type DeviationsJson } from '../../stats/jsonOutput.js';
 import type { CliDeps } from '../cliDeps.js';
 import { loadSpecInputs } from '../specInputs.js';
@@ -55,6 +56,7 @@ export function register(program: Command, deps: CliDeps): void {
               decision: d.decision ?? null,
               what: d.what,
               why: d.why,
+              question: d.question ?? null,
             });
           }
         }
@@ -82,7 +84,8 @@ export function register(program: Command, deps: CliDeps): void {
           .filter((e) => e.kind === kind)
           .map((e) => {
             const decision = e.decision === null ? '' : `${inline(e.decision)}: `;
-            return `  ${e.spec}/${e.task} [${e.kind}] ${decision}${inline(e.what)} — ${inline(e.why)}`;
+            const line = `  ${e.spec}/${e.task} [${e.kind}] ${decision}${inline(e.what)} — ${inline(e.why)}`;
+            return e.question === null ? line : `${line}\n    ${formatQuestion(e.question)}`;
           });
         return `${kind} (${counts[kind]})\n${lines.join('\n')}`;
       });

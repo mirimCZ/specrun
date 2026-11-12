@@ -34,9 +34,27 @@ const COMPLETE_TASK_SHAPE = {
     'At most 15 implementation notes for dependent tasks: files, exported names, signatures',
   ),
   deviations: deviations.describe(
-    'Every deviation from the brief; kind: spec-bug · ambiguity · constraint · test-trap · scope',
+    'Every deviation from the brief; kind: spec-bug · ambiguity · constraint · test-trap · scope. ' +
+      'question: the question you would have asked, the options you weighed and the one you ' +
+      'chose — required for ambiguity',
   ),
 };
+
+/**
+ * Tool input is stricter than the recorded payload: an `ambiguity` needs its question, while
+ * events written before questions existed still parse.
+ */
+const CompleteTaskInputSchema = CompleteTaskPayloadSchema.superRefine((payload, ctx) => {
+  for (const [index, deviation] of payload.deviations.entries()) {
+    if (deviation.kind === 'ambiguity' && deviation.question === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['deviations', index, 'question'],
+        message: 'an ambiguity needs the question you would have asked, its options and your pick',
+      });
+    }
+  }
+});
 
 type ToolResult = { content: { type: 'text'; text: string }[]; isError?: boolean };
 
@@ -76,7 +94,7 @@ export function createSpecrunTools(onCall: (call: ToolCall) => void): SpecrunToo
     description:
       'Call once when the task is implemented and your checks pass. The runner verifies and commits.',
     handler: async (args) => {
-      const parsed = CompleteTaskPayloadSchema.safeParse(args);
+      const parsed = CompleteTaskInputSchema.safeParse(args);
       if (!parsed.success) return invalid(parsed.error);
       onCall({ tool: 'complete_task', payload: parsed.data });
       return reply(RECORDED_REPLY);

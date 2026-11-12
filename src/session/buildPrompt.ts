@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { CompleteTaskPayload, Deviation } from '../events/eventSchema.js';
+import { formatQuestion } from '../events/formatQuestion.js';
 import type { SpecState } from '../events/taskState.js';
 import type { LoadedSpec } from '../spec/loadSpec.js';
 import type { SpecTask } from '../spec/specSchema.js';
@@ -35,9 +36,10 @@ export interface BuildPromptInput {
   protocol: string;
 }
 
-function formatDeviation({ kind, decision, what, why }: Deviation): string {
+function formatDeviation({ kind, decision, what, why, question }: Deviation): string {
   const head = decision === undefined ? '' : `${decision}: `;
-  return `- [${kind}] ${head}${what} — ${why}`;
+  const line = `- [${kind}] ${head}${what} — ${why}`;
+  return question === undefined ? line : `${line}\n  - ${formatQuestion(question)}`;
 }
 
 function dependencySection(id: string, completed: CompleteTaskPayload | null): string {

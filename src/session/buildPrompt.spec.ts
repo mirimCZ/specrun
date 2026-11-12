@@ -74,7 +74,13 @@ describe('buildPrompt', () => {
         commitMessage: 'feat: a2',
         notes: ['a2 first', 'a2 second'],
         deviations: [
-          { kind: 'ambiguity', decision: 'used X', what: 'chose X over Y', why: 'simpler' },
+          {
+            kind: 'ambiguity',
+            decision: 'used X',
+            what: 'chose X over Y',
+            why: 'simpler',
+            question: { text: 'X or Y?', options: ['X', 'Y', 'Z'], chosen: 'X' },
+          },
           { kind: 'test-trap', what: 'timer leak', why: 'fake clock' },
         ],
       },
@@ -92,6 +98,7 @@ describe('buildPrompt', () => {
       'Deviations:',
       '',
       '- [ambiguity] used X: chose X over Y — simpler',
+      '  - Q: X or Y? → X (over Y · Z)',
       '- [test-trap] timer leak — fake clock',
       '',
       '## Implementation notes of A-1 (dependency)',

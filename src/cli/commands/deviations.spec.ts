@@ -31,6 +31,12 @@ beforeEach(() => {
       completed('D-1', [
         { kind: 'spec-bug', decision: 'use X', what: 'brief wrong', why: 'code differs' },
         { kind: 'scope', what: 'extra file', why: 'needed' },
+        {
+          kind: 'ambiguity',
+          what: 'kept the alias',
+          why: 'simplest',
+          question: { text: 'Keep the alias?', options: ['keep', 'drop'], chosen: 'keep' },
+        },
       ]),
     ) +
       completed('D-2', [{ kind: 'test-trap', what: 'flaky', why: 'timing' }]) +
@@ -51,6 +57,9 @@ describe('specrun deviations', () => {
     expect(output).toContain('spec-bug (1)');
     expect(output).toContain('demo/D-1 [spec-bug] use X: brief wrong — code differs');
     expect(output).toContain('demo/D-2 [test-trap] flaky — timing');
+    expect(output).toContain(
+      'demo/D-1 [ambiguity] kept the alias — simplest\n    Q: Keep the alias? → keep (over drop)',
+    );
   });
 
   it('filters by kind', async () => {
@@ -62,7 +71,13 @@ describe('specrun deviations', () => {
 
   it('validates its --json output against the schema', async () => {
     const json = DeviationsJsonSchema.parse(JSON.parse(await deviations('--json')));
-    expect(json.deviations).toHaveLength(3);
-    expect(json.counts).toEqual({ 'spec-bug': 1, scope: 1, 'test-trap': 1 });
+    expect(json.deviations).toHaveLength(4);
+    expect(json.counts).toEqual({ 'spec-bug': 1, scope: 1, ambiguity: 1, 'test-trap': 1 });
+    expect(json.deviations.find((d) => d.kind === 'ambiguity')?.question).toEqual({
+      text: 'Keep the alias?',
+      options: ['keep', 'drop'],
+      chosen: 'keep',
+    });
+    expect(json.deviations.find((d) => d.kind === 'scope')?.question).toBeNull();
   });
 });

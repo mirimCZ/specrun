@@ -39,6 +39,7 @@ Compare each task against its size group's p50/p90 (`stats` groups) before calli
 | Large Bash results from test / verify commands in `topFiles` / transcripts                        | Quieter commands, or a verify summary script, in the test docs / `TASK_PROMPT.md`                           |
 | phases `test` + `fix` > 40 % of tokens, or `verifyRounds` ≥ 3                                     | Test docs: turn recurring `test-trap` deviations into recipes                                               |
 | Deviations by kind: `spec-bug` / `ambiguity` ≥ 2 in a spec                                        | write-spec analysis rules (check code claims, quote decisions, name signatures)                             |
+| `ambiguity` deviations — each has the agent's `question`, `options` and `chosen`                  | The user confirms each pick (section 3); a question that recurs → decide it up front in write-spec          |
 | `scope` deviations                                                                                | write-spec cutting rules                                                                                    |
 | `constraint` deviations (permissions, missing tools)                                              | The project's CLAUDE.md / config                                                                            |
 | Task turns outside its size range, `budgetExceeded`, or a `calibration` entry with a `suggestion` | Config `sizes` and write-spec's sizing guidance (S/M/L definitions)                                         |
@@ -54,6 +55,11 @@ A numbered list, most token-saving first (estimate from tokens/cost of the affec
 ```
 N. <target file> — <proposed change, concrete wording or setting> — evidence: <spec/task, numbers>
 ```
+
+Before the list, the **questions agents answered themselves** (`ambiguity` and any other
+deviation with a `question`), one per line: `<spec>/<task> — <text> → <chosen> (over <others>)`.
+Ask the user to confirm or overturn each pick; an overturned pick becomes a follow-up (a fix
+task or a decision in the spec's README §3), never a silent edit.
 
 Target files are real paths (`docs/<spec>/TASK_PROMPT.md`, `plugin/skills/write-spec/SKILL.md`,
 the project's test docs, `CLAUDE.md`, `specrun.config.json`). Merge proposals that touch the

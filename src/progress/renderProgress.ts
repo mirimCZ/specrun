@@ -1,4 +1,5 @@
 import type { TaskState, SpecState, TaskStatus } from '../events/taskState.js';
+import { formatQuestion } from '../events/formatQuestion.js';
 import type { Spec } from '../spec/specSchema.js';
 import { topologicalOrder } from '../spec/taskOrder.js';
 
@@ -33,7 +34,8 @@ export function renderProgress(spec: Spec, state: SpecState): string {
   const deviations = order.flatMap((task) =>
     (state.tasks.get(task.id)?.lastCompleted?.deviations ?? []).map((d) => {
       const decision = d.decision === undefined ? '' : `${inline(d.decision)}: `;
-      return `- **${task.id}** [${d.kind}] ${decision}${inline(d.what)} — ${inline(d.why)}`;
+      const line = `- **${task.id}** [${d.kind}] ${decision}${inline(d.what)} — ${inline(d.why)}`;
+      return d.question === undefined ? line : `${line}\n  - ${formatQuestion(d.question)}`;
     }),
   );
 

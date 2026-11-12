@@ -56,7 +56,9 @@ One sample per task that reached `done` (totals over all its segments). `by` def
 
 ## `specrun deviations [spec...] [--kind <kind>] --json`
 
-Deviations from the `task.completed` payload of done tasks and of blocked tasks.
+Deviations from the `task.completed` payload of done tasks and of blocked tasks. `question` is
+the question the agent would have asked a human, the options it weighed and the one it
+implemented (`null` when the deviation has none; agents must give one for `ambiguity`).
 
 ```json
 {
@@ -69,10 +71,20 @@ Deviations from the `task.completed` payload of done tasks and of blocked tasks.
       "kind": "spec-bug",
       "decision": "use X",
       "what": "brief wrong",
-      "why": "code differs"
+      "why": "code differs",
+      "question": null
+    },
+    {
+      "spec": "demo",
+      "task": "D-2",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "kept the alias",
+      "why": "simplest",
+      "question": { "text": "Keep the alias?", "options": ["keep", "drop"], "chosen": "keep" }
     }
   ],
-  "counts": { "spec-bug": 1 }
+  "counts": { "spec-bug": 1, "ambiguity": 1 }
 }
 ```
 

@@ -22,11 +22,25 @@ export const DEVIATION_KINDS = [
   'scope',
 ] as const;
 
+/** The question the agent would have asked a human, the options it weighed and its pick. */
+export const DeviationQuestionSchema = z
+  .object({
+    text: z.string().min(1),
+    options: z.array(z.string().min(1)).min(2),
+    chosen: z.string().min(1),
+  })
+  .refine((question) => question.options.includes(question.chosen), {
+    message: 'chosen must be one of options',
+    path: ['chosen'],
+  });
+export type DeviationQuestion = z.infer<typeof DeviationQuestionSchema>;
+
 export const DeviationSchema = z.object({
   kind: z.enum(DEVIATION_KINDS),
   decision: z.string().optional(),
   what: z.string(),
   why: z.string(),
+  question: DeviationQuestionSchema.optional(),
 });
 export type Deviation = z.infer<typeof DeviationSchema>;
 

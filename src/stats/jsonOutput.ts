@@ -62,6 +62,9 @@ export const DeviationsJsonSchema = z.object({
       decision: z.string().nullable(),
       what: z.string(),
       why: z.string(),
+      question: z
+        .object({ text: z.string(), options: z.array(z.string()), chosen: z.string() })
+        .nullable(),
     }),
   ),
   counts: z.record(z.string(), z.number()),

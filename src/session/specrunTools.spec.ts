@@ -26,8 +26,18 @@ const PAYLOAD: CompleteTaskPayload = {
   summary: 'Did it.',
   commitMessage: 'feat(session): tools (SR-5)',
   notes: ['src/session/specrunTools.ts'],
-  deviations: [{ kind: 'ambiguity', decision: 'X', what: 'chose X', why: 'simpler' }],
+  deviations: [
+    {
+      kind: 'ambiguity',
+      decision: 'X',
+      what: 'chose X',
+      why: 'simpler',
+      question: { text: 'X or Y?', options: ['X', 'Y'], chosen: 'X' },
+    },
+  ],
 };
+
+const AMBIGUITY = { kind: 'ambiguity', what: 'chose X', why: 'simpler' };
 
 const recorded = { content: [{ type: 'text', text: RECORDED_REPLY }] };
 
@@ -67,6 +77,30 @@ describe('createSpecrunTools', () => {
       tool: 'complete_task',
       args: { ...PAYLOAD, deviations: [{ kind: 'oops', what: 'w', why: 'y' }] },
       path: 'deviations.0.kind',
+    },
+    {
+      name: 'an ambiguity without its question',
+      tool: 'complete_task',
+      args: { ...PAYLOAD, deviations: [AMBIGUITY] },
+      path: 'deviations.0.question',
+    },
+    {
+      name: 'a question whose choice is not an option',
+      tool: 'complete_task',
+      args: {
+        ...PAYLOAD,
+        deviations: [{ ...AMBIGUITY, question: { text: 'X?', options: ['X', 'Y'], chosen: 'Z' } }],
+      },
+      path: 'deviations.0.question.chosen',
+    },
+    {
+      name: 'a question with one option',
+      tool: 'complete_task',
+      args: {
+        ...PAYLOAD,
+        deviations: [{ ...AMBIGUITY, question: { text: 'X?', options: ['X'], chosen: 'X' } }],
+      },
+      path: 'deviations.0.question.options',
     },
     {
       name: 'a missing commit message',

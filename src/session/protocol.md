@@ -26,10 +26,12 @@ implementation notes of its dependencies follow this protocol; the dependencies 
 
 ## Ambiguity and spec bugs
 
-- Ambiguity: choose the simplest option consistent with the brief's decisions, continue, and
-  record it as a deviation of kind `ambiguity` (with your `decision`).
+- Never ask questions — nobody answers. Where you would ask one, choose the simplest option
+  consistent with the brief's decisions, continue, and record a deviation of kind `ambiguity`
+  with a `question` (a human reviews them): `text` as you would have asked it, `options` you
+  weighed (≥ 2), `chosen` — the one you implemented, exactly as in `options`.
 - The brief is wrong or contradicts the code: implement the sensible fix and record a
-  deviation of kind `spec-bug`.
+  deviation of kind `spec-bug` (with a `question` when you picked between several fixes).
 
 ## When you are done: `complete_task`
 

@@ -63,7 +63,17 @@ function mixedStates(): SpecrunEvent[] {
         commitMessage: 'feat(config): schemas',
         notes: ['note'],
         deviations: [
-          { kind: 'ambiguity', decision: 'SRD-3', what: 'Kept the alias', why: 'simplest' },
+          {
+            kind: 'ambiguity',
+            decision: 'SRD-3',
+            what: 'Kept the alias',
+            why: 'simplest',
+            question: {
+              text: 'Keep the old alias\nor drop it?',
+              options: ['keep', 'drop'],
+              chosen: 'keep',
+            },
+          },
           { kind: 'test-trap', what: 'Temp dir\nleaked', why: 'missing afterEach' },
         ],
       },
@@ -107,6 +117,7 @@ describe('renderProgress', () => {
       ## Deviations
 
       - **D-1** [ambiguity] SRD-3: Kept the alias — simplest
+        - Q: Keep the old alias or drop it? → keep (over drop)
       - **D-1** [test-trap] Temp dir leaked — missing afterEach
 
       ## Totals
