@@ -22,7 +22,7 @@ describe('topologicalOrder', () => {
     expect(ids).toEqual(['A-3', 'A-1', 'A-2']);
   });
 
-  it('keeps spec.json order for independent tasks', () => {
+  it('keeps tasks.yaml order for independent tasks', () => {
     const ids = order(task('B-2', 1), task('A-1', 1), task('C-3', 1, ['B-2']), task('A-9', 1));
     expect(ids).toEqual(['B-2', 'A-1', 'C-3', 'A-9']);
   });

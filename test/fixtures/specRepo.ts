@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stringify } from 'yaml';
 import type { CliDeps } from '../../src/cli/cliDeps.js';
 
 export function makeTempRepo(): string {
@@ -20,8 +21,8 @@ export function writeDemoSpec(root: string, specsRoot: string = root): string {
   const dir = join(specsRoot, 'docs', 'demo');
   mkdirSync(join(dir, 'tasks'), { recursive: true });
   writeFileSync(
-    join(dir, 'spec.json'),
-    JSON.stringify({
+    join(dir, 'tasks.yaml'),
+    stringify({
       title: 'Demo',
       tasks: [
         { id: 'D-1', title: 'First', phase: 1, needs: [], model: 'default', size: 'S' },

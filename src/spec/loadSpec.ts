@@ -1,11 +1,12 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parse } from 'yaml';
 import type { Config } from '../config/configSchema.js';
-import { formatIssues, readJsonFile } from '../config/loadConfig.js';
+import { formatIssues } from '../config/loadConfig.js';
 import { SpecrunError } from '../errors.js';
 import { SpecSchema, type Spec, type SpecTask } from './specSchema.js';
 
-export const SPEC_FILE = 'spec.json';
+export const SPEC_FILE = 'tasks.yaml';
 export const TASK_PROMPT_FILE = 'TASK_PROMPT.md';
 
 export interface LoadedSpec {
@@ -25,21 +26,29 @@ function briefPathIn(dir: string, id: string): string {
   return join(dir, 'tasks', `${id}.md`);
 }
 
+function readYamlFile(path: string): { ok: true; value: unknown } | { ok: false; error: string } {
+  try {
+    return { ok: true, value: parse(readFileSync(path, 'utf8')) as unknown };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 export function loadSpec(repoRoot: string, config: Config, name: string): LoadedSpec {
   const dir = specDir(repoRoot, config, name);
   const path = join(dir, SPEC_FILE);
   if (!existsSync(path)) {
     throw new SpecrunError('spec-missing', `Spec "${name}" not found: ${path} does not exist`);
   }
-  const json = readJsonFile(path);
-  if (!json.ok) {
-    throw new SpecrunError('spec-invalid', `${path} is not valid JSON`, [json.error]);
+  const yaml = readYamlFile(path);
+  if (!yaml.ok) {
+    throw new SpecrunError('spec-invalid', `${path} is not valid YAML`, [yaml.error]);
   }
-  const parsed = SpecSchema.safeParse(json.value);
+  const parsed = SpecSchema.safeParse(yaml.value);
   if (!parsed.success) {
     throw new SpecrunError('spec-invalid', `${path} is invalid`, formatIssues(parsed.error));
   }
-  const spec = parsed.data;
+  const spec: Spec = { ...parsed.data, title: parsed.data.title ?? name };
   const problems = validateSpec(spec, (id) => existsSync(briefPathIn(dir, id)));
   if (problems.length > 0) {
     throw new SpecrunError('spec-invalid', `${path} is invalid`, problems);
@@ -108,7 +117,7 @@ function findCycle(byId: ReadonlyMap<string, SpecTask>): string[] | null {
   return null;
 }
 
-/** Spec names: folders under `specsDir` that contain a `spec.json`, sorted. */
+/** Spec names: folders under `specsDir` that contain a `tasks.yaml`, sorted. */
 export function listSpecs(repoRoot: string, config: Config): string[] {
   const root = join(repoRoot, config.specsDir);
   if (!existsSync(root)) return [];

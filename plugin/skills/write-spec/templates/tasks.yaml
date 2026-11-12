@@ -1,0 +1,20 @@
+# <Spec Title> — tasks read by specrun (authored; specrun never writes this file, task status
+# lives in events.jsonl). Task ids <PX>-n, in dependency order.
+# needs: tasks that must be done first (their notes go into the prompt); `all` = every other task.
+# model: strong for tasks that need the stronger model, default otherwise (may be omitted).
+# size: S · M · L — the expected turns and cost (config `sizes`).
+# Strong tasks: <why these tasks need the stronger model, e.g. data model, shared refactors>.
+
+title: <Spec Title>
+tasks:
+  - id: <PX>-1
+    phase: 1
+    title: <title>
+    needs: []
+    model: strong
+    size: M
+  - id: <PX>-2
+    phase: 1
+    title: <title>
+    needs: [<PX>-1]
+    size: S

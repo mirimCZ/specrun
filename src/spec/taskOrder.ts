@@ -2,7 +2,7 @@ import { SpecrunError } from '../errors.js';
 import type { Spec, SpecTask } from './specSchema.js';
 
 /**
- * Execution order: phase first, then dependencies, ties by position in `spec.json`.
+ * Execution order: phase first, then dependencies, ties by position in `tasks.yaml`.
  * Repeatedly takes the earliest (phase, position) task whose needs are all placed; valid specs
  * never need a later phase, so this never pulls a task ahead of its phase.
  */

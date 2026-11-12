@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import { z } from 'zod';
 import { SpecSchema } from '../spec/specSchema.js';
 
@@ -25,11 +26,11 @@ function frontmatter(markdown: string): Map<string, string> {
 }
 
 describe('write-spec templates', () => {
-  it('spec.json parses with SpecSchema once its placeholders are filled in', () => {
-    const template = readFileSync(join(SKILLS_DIR, 'write-spec/templates/spec.json'), 'utf8');
+  it('tasks.yaml parses with SpecSchema once its placeholders are filled in', () => {
+    const template = readFileSync(join(SKILLS_DIR, 'write-spec/templates/tasks.yaml'), 'utf8');
     const filled = template.replaceAll('<PX>', 'EX').replaceAll(/<[^>]+>/g, 'Sample');
 
-    const spec = SpecSchema.parse(JSON.parse(filled));
+    const spec = SpecSchema.parse(parse(filled));
 
     expect(spec.tasks.map((task) => task.id)).toEqual(['EX-1', 'EX-2']);
     expect(spec.tasks[1]?.needs).toEqual(['EX-1']);

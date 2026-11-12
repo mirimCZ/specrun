@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { stringify } from 'yaml';
 import { ConfigSchema, type Config } from '../config/configSchema.js';
 import { SpecrunError } from '../errors.js';
 import { listSpecs, loadSpec } from './loadSpec.js';
@@ -31,13 +32,20 @@ function task(id: string, overrides: Partial<SpecTask> = {}): SpecTask {
   };
 }
 
-/** Writes `docs/<name>/spec.json` and a brief for every task unless listed in `withoutBrief`. */
+/** Writes `docs/<name>/tasks.yaml` and a brief for every task unless listed in `withoutBrief`. */
 function writeSpec(name: string, tasks: SpecTask[], withoutBrief: string[] = []): string {
+  return writeSpecFile(name, stringify({ title: 'Demo', tasks }), withoutBrief);
+}
+
+/** Writes `yaml` as `docs/<name>/tasks.yaml` with briefs for every `- id:` it lists. */
+function writeSpecFile(name: string, yaml: string, withoutBrief: string[] = []): string {
   const dir = join(repo, 'docs', name);
   mkdirSync(join(dir, 'tasks'), { recursive: true });
-  writeFileSync(join(dir, 'spec.json'), JSON.stringify({ title: 'Demo', tasks }));
-  for (const { id } of tasks) {
-    if (!withoutBrief.includes(id)) writeFileSync(join(dir, 'tasks', `${id}.md`), `# ${id}\n`);
+  writeFileSync(join(dir, 'tasks.yaml'), yaml);
+  for (const [, id] of yaml.matchAll(/^\s*- id: (\S+)$/gm)) {
+    if (id !== undefined && !withoutBrief.includes(id)) {
+      writeFileSync(join(dir, 'tasks', `${id}.md`), `# ${id}\n`);
+    }
   }
   return dir;
 }
@@ -69,12 +77,68 @@ describe('loadSpec', () => {
     expect(loadSpec(repo, config, 'v1').taskPromptPath).toBe(join(dir, 'TASK_PROMPT.md'));
   });
 
-  it('fails with spec-missing without spec.json', () => {
+  it('fails with spec-missing without tasks.yaml', () => {
     expect(loadError('nope').code).toBe('spec-missing');
   });
 
+  it('loads a tools/spec-run.sh tasks.yaml: no title or sizes, opus / sonnet, task state', () => {
+    writeSpecFile(
+      'room',
+      [
+        '# Room — task state, read by tools/spec-run.sh.',
+        'tasks:',
+        '  - id: RM-1',
+        '    phase: 0',
+        '    title: Rules data',
+        '    status: done',
+        '    model: opus',
+        '    needs: []',
+        "    note: '`parse-modules` → generated data'",
+        '  - id: RM-2',
+        '    phase: 1',
+        '    title: Module types',
+        '    status: todo',
+        '    model: sonnet',
+        '    needs: [RM-1]',
+        '  - id: RM-3',
+        '    phase: 1',
+        '    title: Integration',
+        '    status: blocked',
+        '    commit: abc1234',
+        '    needs: all',
+        '',
+      ].join('\n'),
+    );
+    const { spec } = loadSpec(repo, config, 'room');
+    expect(spec.title).toBe('room');
+    expect(spec.tasks).toEqual([
+      { id: 'RM-1', title: 'Rules data', phase: 0, needs: [], model: 'strong', size: 'M' },
+      { id: 'RM-2', title: 'Module types', phase: 1, needs: ['RM-1'], model: 'default', size: 'M' },
+      {
+        id: 'RM-3',
+        title: 'Integration',
+        phase: 1,
+        needs: ['RM-1', 'RM-2'],
+        model: 'default',
+        size: 'M',
+      },
+    ]);
+  });
+
+  it('fails with spec-invalid on broken YAML', () => {
+    writeSpecFile('v1', 'tasks:\n  - id: A-1\n    id: A-2\n');
+    const error = loadError('v1');
+    expect(error.code).toBe('spec-invalid');
+    expect(error.summary).toMatch(/is not valid YAML$/);
+  });
+
+  it('rejects an unknown task status', () => {
+    writeSpecFile('v1', 'tasks:\n  - { id: A-1, title: A, phase: 1, status: started }\n');
+    expect(loadError('v1').details).toEqual([expect.stringMatching(/^tasks\.0\.status: /)]);
+  });
+
   it('reports schema issues with their path', () => {
-    writeSpec('v1', [task('a-1'), task('A-2', { phase: 0 })]);
+    writeSpec('v1', [task('a-1'), task('A-2', { phase: -1 })]);
     const error = loadError('v1');
     expect(error.code).toBe('spec-invalid');
     expect(error.details).toEqual([
@@ -146,7 +210,7 @@ describe('loadSpec', () => {
 });
 
 describe('listSpecs', () => {
-  it('lists folders with a spec.json, ignoring the others', () => {
+  it('lists folders with a tasks.yaml, ignoring the others', () => {
     writeSpec('v2', [task('A-1')]);
     writeSpec('v1', [task('A-1')]);
     mkdirSync(join(repo, 'docs', 'notes'));

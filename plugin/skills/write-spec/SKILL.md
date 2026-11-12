@@ -1,6 +1,6 @@
 ---
 name: write-spec
-description: Write an implementation spec that specrun runs unattended — docs/<spec>/ with spec.json (tasks with phase, needs, model and size), README.md (request, analysis, decision log, task overview), a spec-specific TASK_PROMPT.md and one self-contained brief per task in tasks/. Use when the user asks to write something up as a spec, plan or task list for implementation — e.g. "write this up as a spec", "turn this into a spec for specrun", "new spec in docs", "sepiš to jako spec", "zapiš to do docs".
+description: Write an implementation spec that specrun runs unattended — docs/<spec>/ with tasks.yaml (tasks with phase, needs, model and size), README.md (request, analysis, decision log, task overview), a spec-specific TASK_PROMPT.md and one self-contained brief per task in tasks/. Use when the user asks to write something up as a spec, plan or task list for implementation — e.g. "write this up as a spec", "turn this into a spec for specrun", "new spec in docs", "sepiš to jako spec", "zapiš to do docs".
 ---
 
 # Write spec
@@ -89,7 +89,7 @@ In §4 of the README, add one line on how the work was cut when it isn't obvious
 - Two prefixes: tasks `<PX>-n` and decisions `<PD>-n` (e.g. `ED-1` / `EDD-1`; task ids must
   match `^[A-Z][A-Z0-9]*-[0-9]+$`). Check they are unused:
   `grep -rnE '\b<PX>-[0-9]+' <specsDir>/` must return nothing.
-- The runner works on branch `specrun/<spec>`; set `branch` in `spec.json` only when the
+- The runner works on branch `specrun/<spec>`; set `branch` in `tasks.yaml` only when the
   project needs another name.
 
 ## 5. Write the files
@@ -98,9 +98,11 @@ Copy `templates/*` into the spec folder (`task.md` once per task as `tasks/<PX>-
 every `<placeholder>`; delete optional comment blocks you don't use. Don't author `PROGRESS.md`
 — specrun generates it from its run events.
 
-**spec.json** — the machine-readable plan: `title`, optional `branch`, and one entry per task
-`{ id, title, phase, needs, model: "default" | "strong", size: "S" | "M" | "L" }` in dependency
-order. `needs` lists task ids of this spec; no cycles.
+**tasks.yaml** — the machine-readable plan: `title`, optional `branch`, and one entry per task
+`{ id, title, phase, needs, model: default | strong, size: S | M | L }` in dependency order.
+`needs` lists task ids of this spec (`[]` when none, `all` = every other task); no cycles.
+`model` may be omitted for `default`; the header comment says why the strong tasks were picked
+(see **Model** above). No task status — specrun keeps it in `events.jsonl`.
 
 **README.md** — for the humans and as the source of truth:
 
@@ -108,7 +110,7 @@ order. `needs` lists task ids of this spec; no cycles.
 - §2 Analysis: facts from the code with paths; "Side effects to keep in mind".
 - §3 Decision log: one row per decision, precise enough to implement without guessing (names,
   formats, keys, signatures). Date + "agreed with the product owner".
-- §4 Tasks: the overview table only (link, Needs, size, model — the same as `spec.json`);
+- §4 Tasks: the overview table only (link, Needs, size, model — the same as `tasks.yaml`);
   details live in the briefs.
 - §5 Resolved questions (`Q1…`, answer in bold, decision ID). §6 Out of scope.
 
@@ -142,15 +144,15 @@ nothing is left.
 ## 6. Check and commit
 
 1. Format the markdown with the project's formatter (e.g.
-   `npx prettier --write <spec dir>/*.md <spec dir>/tasks/*.md <spec dir>/spec.json`) — then
+   `npx prettier --write <spec dir>/*.md <spec dir>/tasks/*.md <spec dir>/tasks.yaml`) — then
    re-read lines with inline code containing backticks or `${…}`: prettier can glue them to
    neighbouring words. Rephrase so no inline code contains a backtick. Also check numbered
    lists: a continuation line starting with inline code that contains `<…>` can lose its
    indentation.
-2. Consistency: every task in `spec.json` has a brief and a row in the README overview with the
+2. Consistency: every task in `tasks.yaml` has a brief and a row in the README overview with the
    same phase, needs, size and model; the brief's header line has the same phase and needs;
    every decision ID a brief cites is quoted in it and exists in §3.
-3. `specrun status <spec>` loads without errors — it validates `spec.json`, ids, needs, cycles
+3. `specrun status <spec>` loads without errors — it validates `tasks.yaml`, ids, needs, cycles
    and that every task has its brief — and lists every task as `todo`. Brief lengths should be
    roughly even for tasks of the same size (an outlier brief is a sizing smell).
 4. Commit only the spec folder (`git add <spec dir>`): `docs(<scope>): add <name> spec` with

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { stringify } from 'yaml';
 import { createFakeClock, type FakeClock } from '../../test/fakes/fakeClock.js';
 import { createFakeSession, type FakeSegment } from '../../test/fakes/fakeSession.js';
 import { ConfigSchema, type Config } from '../config/configSchema.js';
@@ -48,7 +49,7 @@ function setupRepo(tasks: TaskDef[]): void {
       size: t.size ?? 'M',
     })),
   };
-  writeFileSync(join(specDir, 'spec.json'), JSON.stringify(spec, null, 2));
+  writeFileSync(join(specDir, 'tasks.yaml'), stringify(spec));
   for (const t of tasks) writeFileSync(join(specDir, 'tasks', `${t.id}.md`), `# ${t.id} brief\n`);
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'init');

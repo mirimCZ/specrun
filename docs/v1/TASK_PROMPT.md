@@ -57,6 +57,6 @@ of the tasks it depends on (dependencies are already `done`; the runner checked)
 - **Never:** `git push`, rewrite git history, publish to npm, run the real Agent SDK / `claude`
   except where the brief explicitly allows it (SR-6 probe, SR-12/13 `claude plugin`), modify `tools/` or `spikes/`, add
   dependencies the brief doesn't name, modify code unrelated to {TASK}, disable or skip tests
-  to get green, write `spec.json` or rewrite `events.jsonl` from runner code (SRD-5).
+  to get green, write `tasks.yaml` or rewrite `events.jsonl` from runner code (SRD-5).
 - Finish with a clean working tree for tracked files (`git status --untracked-files=no` shows
   nothing).

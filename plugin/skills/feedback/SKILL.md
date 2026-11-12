@@ -10,7 +10,7 @@ cheaper and less error-prone. Every proposal carries its evidence; **nothing is 
 the user's OK**. This is a first version — thresholds are starting points, say so when a signal
 is borderline.
 
-Never edit `events.jsonl` or `spec.json`, and never rerun tasks.
+Never edit `events.jsonl` or `tasks.yaml`, and never rerun tasks.
 
 ## 1. Scope and data
 
