@@ -64,6 +64,39 @@ describe('summarizeFailure', () => {
     expect(summary).not.toContain('noise');
   });
 
+  it('extracts eslint errors with their file, without warnings', () => {
+    const output = [
+      '> nx run app:lint',
+      '/repo/src/a.ts',
+      '  3:1  warning  Unused directive  eslint-comments/no-unused-disable',
+      '/repo/src/b.ts',
+      '  12:5  error  Unexpected any  @typescript-eslint/no-explicit-any',
+      '  20:1  error  Missing return type  @typescript-eslint/explicit-function-return-type',
+      '✖ 3 problems (2 errors, 1 warning)',
+    ].join('\n');
+    const summary = summarizeFailure('lint', output);
+    expect(summary).toBe(
+      [
+        'Step "lint" failed:',
+        '/repo/src/b.ts',
+        '  12:5  error  Unexpected any  @typescript-eslint/no-explicit-any',
+        '  20:1  error  Missing return type  @typescript-eslint/explicit-function-return-type',
+      ].join('\n'),
+    );
+  });
+
+  it('keeps eslint errors next to test failures', () => {
+    const output = [
+      '/repo/src/b.ts',
+      '  12:5  error  Unexpected any  @typescript-eslint/no-explicit-any',
+      ' FAIL  src/a.spec.ts > thing works',
+    ].join('\n');
+    const summary = summarizeFailure('check', output);
+    expect(summary).toContain('/repo/src/b.ts');
+    expect(summary).toContain('12:5  error');
+    expect(summary).toContain('FAIL  src/a.spec.ts');
+  });
+
   it('falls back to the last 40 lines', () => {
     const output = Array.from({ length: 100 }, (_, i) => `line ${i + 1}`).join('\n');
     const summary = summarizeFailure('lint', output);
