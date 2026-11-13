@@ -4,6 +4,7 @@ import type { Config } from '../config/configSchema.js';
 import { EVENTS_FILE } from '../events/eventStore.js';
 import { worktreePath } from '../git/worktree.js';
 import { specDir } from '../spec/loadSpec.js';
+import { createTerminalPrompter, type Prompter } from './prompter.js';
 
 /** What every command needs from its surroundings; tests pass temp dirs and capturing writers. */
 export interface CliDeps {
@@ -12,6 +13,9 @@ export interface CliDeps {
   stderr: (text: string) => void;
   env: NodeJS.ProcessEnv;
   now: () => Date;
+  /** Both stdin and stdout are terminals, so questions can be asked. */
+  interactive: boolean;
+  prompter: () => Prompter;
 }
 
 export function defaultCliDeps(): CliDeps {
@@ -21,6 +25,8 @@ export function defaultCliDeps(): CliDeps {
     stderr: (text) => void process.stderr.write(text),
     env: process.env,
     now: () => new Date(),
+    interactive: process.stdin.isTTY === true && process.stdout.isTTY === true,
+    prompter: () => createTerminalPrompter(),
   };
 }
 

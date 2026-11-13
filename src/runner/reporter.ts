@@ -29,6 +29,8 @@ export interface WaitingUpdate {
 export type RunPhase =
   | { kind: 'worktree'; path: string }
   | { kind: 'setup'; command: string }
+  /** `worktree: false`: switching the main checkout to the spec branch. */
+  | { kind: 'checkout'; branch: string }
   | { kind: 'usage' }
   | { kind: 'agent'; task: string }
   | { kind: 'verify'; task: string }

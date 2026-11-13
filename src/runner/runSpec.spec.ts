@@ -309,6 +309,32 @@ describe('runSpec', () => {
     expect(session.inputs[1]?.resumeSessionId).toBe('session-1');
   });
 
+  it('runs in the main checkout on the spec branch with "worktree": false', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const { result, session } = await start({
+      config: makeConfig({ worktree: false, setup: 'touch setup-ran' }),
+      segments: [{ edits: { 'one.txt': '1\n' }, payload: { commitMessage: 'feat: one' } }],
+    });
+
+    expect(result).toEqual({ exitCode: 0, reason: 'done' });
+    expect(session.inputs[0]?.cwd).toBe(repo);
+    expect(existsSync(worktree)).toBe(false);
+    expect(existsSync(join(repo, 'setup-ran'))).toBe(false);
+    expect(git(repo, 'branch', '--show-current').trim()).toBe('specrun/demo');
+    expect(subjects()).toEqual(['feat: one (A-1)', 'chore(specrun): demo run log']);
+    expect(git(repo, 'status', '--porcelain')).toBe('');
+    expect(existsSync(join(repo, '.specrun', 'locks', '.checkout.lock'))).toBe(false);
+  });
+
+  it('refuses to switch a dirty main checkout', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    writeFileSync(join(repo, 'mine.txt'), 'uncommitted\n');
+    await expect(
+      start({ config: makeConfig({ worktree: false }), segments: [] }),
+    ).rejects.toMatchObject({ code: 'checkout-dirty' });
+    expect(git(repo, 'branch', '--show-current').trim()).toBe('main');
+  });
+
   it('finishes the running task on a stop request and starts no other', async () => {
     setupRepo([{ id: 'A-1' }, { id: 'A-2' }]);
     const stop = createStopRequest();

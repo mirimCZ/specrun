@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runCommand, type ProcessRunner } from '../process/run.js';
-import { ensureWorktree } from './worktree.js';
+import { ensureCheckout, ensureWorktree } from './worktree.js';
 
 const env = {
   ...process.env,
@@ -33,11 +33,10 @@ const input = (over: Partial<Parameters<typeof ensureWorktree>[0]> = {}) => ({
   ...over,
 });
 
+const git = (...args: string[]): string => execFileSync('git', args, { cwd: repo, env }).toString();
+
 beforeEach(() => {
   repo = realpathSync(mkdtempSync(join(tmpdir(), 'specrun-')));
-  const git = (...args: string[]): void => {
-    execFileSync('git', args, { cwd: repo, env });
-  };
   git('init', '-q', '-b', 'main');
   writeFileSync(join(repo, 'a.txt'), 'one\n');
   git('add', '-A');
@@ -49,13 +48,17 @@ afterEach(() => rmSync(repo, { recursive: true, force: true }));
 describe('ensureWorktree', () => {
   it('creates the branch and worktree from base, then reuses it', async () => {
     const first = await ensureWorktree(input());
-    expect(first).toEqual({ path: join(repo, '.specrun', 'worktrees', 'demo'), created: true });
+    expect(first).toEqual({
+      path: join(repo, '.specrun', 'worktrees', 'demo'),
+      created: true,
+      copied: [],
+    });
     expect(readFileSync(join(first.path, 'a.txt'), 'utf8')).toBe('one\n');
     const branch = execFileSync('git', ['branch', '--show-current'], { cwd: first.path, env });
     expect(branch.toString().trim()).toBe('specrun/demo');
 
     const second = await ensureWorktree(input());
-    expect(second).toEqual({ path: first.path, created: false });
+    expect(second).toEqual({ path: first.path, created: false, copied: [] });
   });
 
   it('uses an existing branch without a base', async () => {
@@ -85,5 +88,45 @@ describe('ensureWorktree', () => {
     await expect(ensureWorktree(input({ branch: 'master' }))).rejects.toMatchObject({
       code: 'branch-protected',
     });
+  });
+
+  it('copies ignored files into a new worktree before setup and skips missing ones', async () => {
+    writeFileSync(join(repo, '.env'), 'KEY=1\n');
+    const { path, copied } = await ensureWorktree(
+      input({ copyFiles: ['.env', 'apps/x/.env.local'], setup: 'cat .env > seen.txt' }),
+    );
+    expect(copied).toEqual(['.env']);
+    expect(readFileSync(join(path, 'seen.txt'), 'utf8')).toBe('KEY=1\n');
+  });
+
+  it('refuses when the main checkout itself is on the spec branch', async () => {
+    git('switch', '-q', '-c', 'specrun/demo');
+    await expect(ensureWorktree(input())).rejects.toMatchObject({ code: 'worktree-exists' });
+  });
+});
+
+describe('ensureCheckout', () => {
+  const current = (): string => git('branch', '--show-current').trim();
+
+  it('switches a clean checkout to the spec branch, creating it from base', async () => {
+    const result = await ensureCheckout(input());
+    expect(result).toEqual({ path: repo, created: false, copied: [] });
+    expect(current()).toBe('specrun/demo');
+  });
+
+  it('refuses to switch a dirty checkout but resumes on the spec branch with changes', async () => {
+    writeFileSync(join(repo, 'b.txt'), 'mine\n');
+    await expect(ensureCheckout(input())).rejects.toMatchObject({ code: 'checkout-dirty' });
+    expect(current()).toBe('main');
+
+    git('stash', '-q', '--include-untracked');
+    await ensureCheckout(input());
+    writeFileSync(join(repo, 'a.txt'), 'agent work\n');
+    await expect(ensureCheckout(input())).resolves.toMatchObject({ path: repo });
+  });
+
+  it('refuses while the spec has a worktree', async () => {
+    await ensureWorktree(input());
+    await expect(ensureCheckout(input())).rejects.toMatchObject({ code: 'worktree-exists' });
   });
 });

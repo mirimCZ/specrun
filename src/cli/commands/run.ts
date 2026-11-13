@@ -1,7 +1,10 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import type { Command } from 'commander';
-import { loadConfig, findRepoRoot } from '../../config/loadConfig.js';
+import { CONFIG_FILE, loadConfig, findRepoRoot } from '../../config/loadConfig.js';
+import { SpecrunError } from '../../errors.js';
 import { keepAwake } from '../../limits/keepAwake.js';
 import { systemClock } from '../../limits/clock.js';
 import { runCommand } from '../../process/run.js';
@@ -18,6 +21,7 @@ import { createInkReporter, type InkReporter } from '../../ui/createInkReporter.
 import type { CliDeps } from '../cliDeps.js';
 import { createLineReporter } from '../lineReporter.js';
 import { createRunControls, type RunControls } from '../runControls.js';
+import { setupConfig } from './init.js';
 
 // Same relative path from src/cli/commands (tsx, vitest) and dist/cli/commands (build).
 const { version } = createRequire(import.meta.url)('../../../package.json') as {
@@ -51,6 +55,24 @@ interface RunFlags {
   model?: string;
   // commander turns `--no-ui` into `ui: false`.
   ui: boolean;
+}
+
+/** First run in a repo: offer the init wizard instead of failing on the missing config. */
+async function ensureConfig(repoRoot: string, deps: CliDeps): Promise<void> {
+  if (!deps.interactive || existsSync(join(repoRoot, CONFIG_FILE))) return;
+  const prompter = deps.prompter();
+  let yes: boolean;
+  try {
+    yes = await prompter.confirm(`No ${CONFIG_FILE} in ${repoRoot} — set it up now?`, true);
+  } finally {
+    prompter.close();
+  }
+  if (!yes) {
+    throw new SpecrunError('config-missing', `${CONFIG_FILE} not found in ${repoRoot}`, [
+      'run specrun init to create it',
+    ]);
+  }
+  await setupConfig(repoRoot, deps, { interactive: true });
 }
 
 function processSignals({ interrupt, terminate }: SignalHandlers): () => void {
@@ -90,6 +112,7 @@ export function register(
     .option('--no-ui', 'plain log lines instead of the dashboard')
     .action(async (spec: string, flags: RunFlags) => {
       const repoRoot = findRepoRoot(deps.cwd);
+      await ensureConfig(repoRoot, deps);
       const config = loadConfig(repoRoot);
       const controller = new AbortController();
       // Bound late: the dashboard needs the controls, the controls log through the reporter.

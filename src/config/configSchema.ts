@@ -43,6 +43,10 @@ export const ConfigSchema = z.strictObject({
   specsDir: z.string().min(1).default('docs'),
   verify: z.array(VerifyStepSchema).min(1),
   setup: z.string().min(1).nullable().default(null),
+  /** false: run in the main checkout on the spec branch (needs a clean tree, no setup). */
+  worktree: z.boolean().default(true),
+  /** Ignored files (e.g. `.env`) copied from the main checkout into a new worktree. */
+  worktreeFiles: z.array(z.string().min(1)).default([]),
   models: ModelsSchema.prefault({}),
   maxTurns: z.number().int().positive().default(150),
   verifyFixRounds: z.number().int().nonnegative().default(2),

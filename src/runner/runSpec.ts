@@ -20,7 +20,7 @@ import {
 import { buildCommitMessage } from '../git/commitMessage.js';
 import { recordAnalytics } from '../analytics/recordAnalytics.js';
 import { createGit } from '../git/git.js';
-import { ensureWorktree } from '../git/worktree.js';
+import { ensureCheckout, ensureWorktree, type WorktreeStep } from '../git/worktree.js';
 import { waitUntil, type Clock } from '../limits/clock.js';
 import { decide, limitHitTarget, waitTarget } from '../limits/policy.js';
 import type { UsageSnapshot } from '../limits/usage.js';
@@ -37,8 +37,8 @@ import {
 import { loadSpec } from '../spec/loadSpec.js';
 import type { SpecTask } from '../spec/specSchema.js';
 import { runVerify } from '../verify/verify.js';
-import { acquireLock, isProcessAlive, lockFile } from './lock.js';
-import type { RunReporter, WaitingUpdate } from './reporter.js';
+import { acquireLock, isProcessAlive, lockFile, type Lock } from './lock.js';
+import type { RunPhase, RunReporter, WaitingUpdate } from './reporter.js';
 import { NO_STOP, type StopRequest } from './stopRequest.js';
 
 export interface RunSpecOptions {
@@ -117,6 +117,20 @@ function toolDetail(input: unknown): string {
   return detail.split('\n')[0] ?? '';
 }
 
+/** Every spec run in place shares the main checkout, so only one of them may run at a time. */
+export const CHECKOUT_LOCK = '.checkout';
+
+function workspacePhase(repoRoot: string, step: WorktreeStep): RunPhase {
+  switch (step.step) {
+    case 'add':
+      return { kind: 'worktree', path: relative(repoRoot, step.path) };
+    case 'setup':
+      return { kind: 'setup', command: step.command };
+    case 'switch':
+      return { kind: 'checkout', branch: step.branch };
+  }
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -176,28 +190,29 @@ function previewDone(state: SpecState, task: string, payload: CompleteTaskPayloa
 export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promise<RunResult> {
   const { repoRoot, config, clock, reporter, signal } = deps;
   const stop = deps.stop ?? NO_STOP;
-  const lock = acquireLock(
-    lockFile(repoRoot, options.spec),
-    deps.pid ?? process.pid,
-    deps.isAlive ?? isProcessAlive,
-  );
+  const take = (name: string): Lock =>
+    acquireLock(lockFile(repoRoot, name), deps.pid ?? process.pid, deps.isAlive ?? isProcessAlive);
+  const locks = [take(options.spec)];
   try {
+    if (!config.worktree) locks.push(take(CHECKOUT_LOCK));
     const branch =
       loadSpec(repoRoot, config, options.spec).spec.branch ?? `specrun/${options.spec}`;
-    const { path: worktree } = await ensureWorktree({
+    const workspace = {
       repoRoot,
       spec: options.spec,
       branch,
       base: options.base,
-      setup: config.setup,
       run: deps.run,
-      onProgress: (step) =>
-        reporter.phase(
-          step.step === 'add'
-            ? { kind: 'worktree', path: relative(repoRoot, step.path) }
-            : { kind: 'setup', command: step.command },
-        ),
-    });
+      onProgress: (step: WorktreeStep) => reporter.phase(workspacePhase(repoRoot, step)),
+    };
+    const { path: worktree, copied } = config.worktree
+      ? await ensureWorktree({
+          ...workspace,
+          setup: config.setup,
+          copyFiles: config.worktreeFiles,
+        })
+      : await ensureCheckout(workspace);
+    if (copied.length > 0) reporter.log('info', `copied into the worktree: ${copied.join(', ')}`);
     // The worktree's copy is what the agent sees and what the log describes.
     const loaded = loadSpec(worktree, config, options.spec);
     const { spec } = loaded;
@@ -371,13 +386,13 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       });
     };
 
-    /** One task through all its segments; null when it ended in a commit or a block. */
     /** A task that already ran a session stays `interrupted` and resumes next run. */
     const stoppedWhileWaiting = (task: string): RunEnd => ({
       reason: 'stopped',
       message: `stopped while waiting for limits; ${task} continues on the next run`,
     });
 
+    /** One task through all its segments; null when it ended in a commit or a block. */
     const runTask = async (task: SpecTask, state: SpecState): Promise<RunEnd | null> => {
       const initial = state.tasks.get(task.id);
       if (initial === undefined) throw new Error(`unknown task ${task.id}`);
@@ -682,6 +697,6 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       ...(end.message === undefined ? {} : { message: end.message }),
     };
   } finally {
-    lock.release();
+    for (const lock of locks.reverse()) lock.release();
   }
 }

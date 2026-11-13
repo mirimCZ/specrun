@@ -9,6 +9,8 @@ describe('ConfigSchema', () => {
       specsDir: 'docs',
       verify,
       setup: null,
+      worktree: true,
+      worktreeFiles: [],
       models: { default: 'sonnet', strong: 'opus' },
       maxTurns: 150,
       verifyFixRounds: 2,

@@ -20,6 +20,10 @@ export interface Git {
   /** Tracked and untracked changes; limited to `paths` when given. */
   isClean(paths?: readonly string[]): Promise<boolean>;
   branchExists(name: string): Promise<boolean>;
+  /** Short name of the checked-out branch; null when detached. */
+  currentBranch(): Promise<string | null>;
+  /** `git switch`, creating the branch from `base` when it doesn't exist. */
+  switchBranch(name: string, base: string): Promise<void>;
   /** Whether `ref` is reachable from `of` (merged into it). */
   isAncestor(ref: string, of: string): Promise<boolean>;
   addAll(): Promise<void>;
@@ -60,6 +64,19 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
     async isClean(paths) {
       const pathArgs = paths === undefined ? [] : ['--', ...paths];
       return (await git(['status', '--porcelain', ...pathArgs])).trim() === '';
+    },
+
+    async currentBranch() {
+      const result = await run('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd });
+      return result.code === 0 ? result.stdout.trim() : null;
+    },
+
+    async switchBranch(name, base) {
+      await git(
+        (await api.branchExists(name))
+          ? ['switch', '--quiet', name]
+          : ['switch', '--quiet', '-c', name, base],
+      );
     },
 
     async branchExists(name) {

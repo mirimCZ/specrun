@@ -49,6 +49,10 @@ export function captureDeps(cwd: string): CapturedDeps {
     stderr: (text) => void err.push(text),
     env: {},
     now: () => new Date('2026-01-01T10:00:00.000Z'),
+    interactive: false,
+    prompter: () => {
+      throw new Error('captureDeps is not interactive');
+    },
     out,
     err,
   };

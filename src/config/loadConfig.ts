@@ -45,7 +45,9 @@ export function readJsonFile(
 export function loadConfig(repoRoot: string, deps: LoadConfigDeps = { homedir }): Config {
   const path = join(repoRoot, CONFIG_FILE);
   if (!existsSync(path)) {
-    throw new SpecrunError('config-missing', `${CONFIG_FILE} not found in ${repoRoot}`);
+    throw new SpecrunError('config-missing', `${CONFIG_FILE} not found in ${repoRoot}`, [
+      'run specrun init to create it',
+    ]);
   }
   const json = readJsonFile(path);
   if (!json.ok) {

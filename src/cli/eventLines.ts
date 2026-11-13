@@ -63,6 +63,8 @@ export function createEventFormatter(): EventFormatter {
           return one(`creating worktree ${phase.path}`);
         case 'setup':
           return one(`setup: ${phase.command}`);
+        case 'checkout':
+          return one(`switching the checkout to ${phase.branch}`);
         default:
           return null;
       }

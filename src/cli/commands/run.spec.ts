@@ -1,6 +1,8 @@
-import { rmSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createScriptedPrompter } from '../../../test/fakes/fakePrompter.js';
 import { captureDeps, makeTempRepo, writeDemoSpec } from '../../../test/fixtures/specRepo.js';
 import { nullReporter } from '../../runner/reporter.js';
 import type { RunResult, RunSpecDeps, RunSpecOptions } from '../../runner/runSpec.js';
@@ -154,5 +156,35 @@ describe('specrun run', () => {
       'interrupt: stop=true aborted=true',
       'terminate: stop=false aborted=true',
     ]);
+  });
+
+  describe('without specrun.config.json', () => {
+    beforeEach(() => rmSync(join(dir, 'specrun.config.json')));
+
+    it('fails with a hint outside a terminal', async () => {
+      await expect(runCli(['demo'], { exitCode: 0, reason: 'done' })).rejects.toThrow(
+        /specrun init/,
+      );
+    });
+
+    it('offers the wizard in a terminal, then runs', async () => {
+      // Offer, then the wizard: no worktree, default check, default limits, no check run.
+      const scripted = createScriptedPrompter(['', 'n', '', '', '', 'n']);
+      const cliDeps = { ...captureDeps(dir), interactive: true, prompter: () => scripted.prompter };
+      const { exit } = await runCli(['demo'], { exitCode: 0, reason: 'done' }, {}, cliDeps);
+      expect(scripted.prompts[0]).toMatch(
+        /^No specrun.config.json in .* — set it up now\? \[Y\/n\] $/,
+      );
+      expect(existsSync(join(dir, 'specrun.config.json'))).toBe(true);
+      expect(exit).toEqual([0]);
+    });
+
+    it('stops when the offer is declined', async () => {
+      const scripted = createScriptedPrompter(['n']);
+      const cliDeps = { ...captureDeps(dir), interactive: true, prompter: () => scripted.prompter };
+      await expect(
+        runCli(['demo'], { exitCode: 0, reason: 'done' }, {}, cliDeps),
+      ).rejects.toMatchObject({ code: 'config-missing' });
+    });
   });
 });

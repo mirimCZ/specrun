@@ -8,6 +8,9 @@ export type SpecrunErrorCode =
   | 'git-failed'
   | 'setup-failed'
   | 'branch-protected'
+  | 'worktree-exists'
+  | 'checkout-dirty'
+  | 'cancelled'
   | 'locked';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */

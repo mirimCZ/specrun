@@ -60,6 +60,8 @@ function phaseLabel(phase: RunPhase): string {
       return 'creating worktree';
     case 'setup':
       return `setup: ${phase.command}`;
+    case 'checkout':
+      return `switching to ${phase.branch}`;
     case 'usage':
       return 'checking usage';
     case 'agent':
