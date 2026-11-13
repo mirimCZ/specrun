@@ -1,5 +1,6 @@
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   captureDeps,
@@ -9,8 +10,10 @@ import {
 } from '../../../test/fixtures/specRepo.js';
 import { writeArchivedHistory } from '../../../test/fixtures/archive.js';
 import { doneTask } from '../../../test/fixtures/taskEvents.js';
+import type { InteractiveResult } from '../../process/run.js';
 import { DeviationsJsonSchema } from '../../stats/jsonOutput.js';
 import { createProgram } from '../program.js';
+import { register } from './deviations.js';
 
 let dir: string;
 beforeEach(() => {
@@ -50,6 +53,32 @@ async function deviations(...args: string[]): Promise<string> {
   const deps = captureDeps(dir);
   await createProgram(deps).parseAsync(['node', 'specrun', 'deviations', ...args]);
   return deps.out.join('');
+}
+
+interface Launch {
+  cmd: string;
+  args: readonly string[];
+  cwd: string;
+}
+
+/** A terminal session: `launch` stands in for Claude Code. */
+async function review(
+  args: string[],
+  result: InteractiveResult = { code: 0, error: null },
+): Promise<{ launches: Launch[]; exit: number[]; out: string }> {
+  const deps = { ...captureDeps(dir), interactive: true };
+  const launches: Launch[] = [];
+  const exit: number[] = [];
+  const program = new Command('specrun');
+  register(program, deps, {
+    launch: (cmd, launchArgs, opts) => {
+      launches.push({ cmd, args: launchArgs, cwd: opts.cwd });
+      return Promise.resolve(result);
+    },
+    setExitCode: (code) => void exit.push(code),
+  });
+  await program.parseAsync(['node', 'specrun', 'deviations', ...args]);
+  return { launches, exit, out: deps.out.join('') };
 }
 
 describe('specrun deviations', () => {
@@ -97,5 +126,56 @@ describe('specrun deviations', () => {
       chosen: 'keep',
     });
     expect(json.deviations.find((d) => d.kind === 'scope')?.question).toBeNull();
+  });
+
+  describe('in a terminal', () => {
+    it('starts Claude with the review instructions and the listing', async () => {
+      writeArchivedHistory(dir, 'old', [
+        {
+          spec: 'old',
+          task: 'OLD-1',
+          kind: 'scope',
+          decision: null,
+          what: 'renamed',
+          why: 'clash',
+          question: null,
+        },
+      ]);
+      const { launches, exit, out } = await review(['--kind', 'scope'], { code: 3, error: null });
+
+      expect(out).toContain('Reviewing 2 deviation(s) with Claude');
+      expect(launches).toHaveLength(1);
+      const [launch] = launches;
+      expect(launch?.cmd).toBe('claude');
+      expect(launch?.cwd).toBe(dir);
+      expect(launch?.args[0]).toBe('--append-system-prompt');
+      expect(launch?.args[1]).toContain('# Deviation review');
+      const message = launch?.args[2] ?? '';
+      expect(message).toContain('(`specrun deviations --kind scope`)');
+      expect(message).toContain('demo/D-1 [scope] extra file — needed');
+      expect(message).not.toContain('brief wrong');
+      expect(message).toContain('- demo: docs/demo — branch specrun/demo, no worktree');
+      expect(message).toMatch(
+        /- old: archived in docs\/archive\/old — full spec at commit \w+ \(docs\/old\)/,
+      );
+      // Claude's exit code becomes ours.
+      expect(exit).toEqual([3]);
+    });
+
+    it('only prints with --print, and when there is nothing to review', async () => {
+      const printed = await review(['--print']);
+      expect(printed.launches).toEqual([]);
+      expect(printed.out).toContain('spec-bug (1)');
+
+      const empty = await review(['--kind', 'constraint']);
+      expect(empty.launches).toEqual([]);
+      expect(empty.out).toBe('No deviations reported.\n');
+    });
+
+    it('explains a missing claude binary', async () => {
+      await expect(review([], { code: -1, error: 'spawn claude ENOENT' })).rejects.toThrow(
+        'Could not start claude',
+      );
+    });
   });
 });

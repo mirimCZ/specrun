@@ -21,6 +21,7 @@ src/
   runner/     orchestration loop
   analytics/  per-session metrics from transcripts
   archive/    archiving finished specs (README + run history)
+  review/     instructions + first message for the interactive deviation review
   ui/         Ink dashboard
 plugin/       Claude Code plugin: skills refine, write-spec, feedback (.claude/skills links to them)
 spikes/       throwaway experiments — don't import from src/

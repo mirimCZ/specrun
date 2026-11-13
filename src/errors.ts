@@ -11,6 +11,7 @@ export type SpecrunErrorCode =
   | 'worktree-exists'
   | 'checkout-dirty'
   | 'cancelled'
+  | 'claude-missing'
   | 'locked';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */

@@ -55,6 +55,40 @@ export const runCommand: ProcessRunner = (cmd, args, opts) =>
     child.stdin.end(opts.input ?? '');
   });
 
+export interface InteractiveResult {
+  code: number;
+  /** Set when the process could not be started (e.g. not on PATH). */
+  error: string | null;
+}
+
+export type InteractiveRunner = (
+  cmd: string,
+  args: readonly string[],
+  opts: Pick<RunOptions, 'cwd' | 'env'>,
+) => Promise<InteractiveResult>;
+
+/** Hands this terminal to `cmd` (inherited stdio) until it exits. */
+export const runInteractive: InteractiveRunner = (cmd, args, opts) =>
+  new Promise((resolve) => {
+    // Ctrl+C goes to the whole foreground group; the child handles it, we must not die of it.
+    const ignore = (): void => undefined;
+    process.on('SIGINT', ignore);
+    let settled = false;
+    const finish = (result: InteractiveResult): void => {
+      if (settled) return;
+      settled = true;
+      process.off('SIGINT', ignore);
+      resolve(result);
+    };
+    const child = spawn(cmd, [...args], {
+      cwd: opts.cwd,
+      env: opts.env ?? process.env,
+      stdio: 'inherit',
+    });
+    child.on('error', (error) => finish({ code: -1, error: error.message }));
+    child.on('close', (code) => finish({ code: code ?? 1, error: null }));
+  });
+
 /** Runs `command` through `sh -c`. */
 export function runShell(
   command: string,

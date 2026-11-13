@@ -2,7 +2,7 @@
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const ASSETS = ['session/protocol.md'];
+const ASSETS = ['session/protocol.md', 'review/reviewPrompt.md'];
 
 const root = join(import.meta.dirname, '..');
 for (const asset of ASSETS) {
