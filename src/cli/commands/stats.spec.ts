@@ -7,6 +7,7 @@ import {
   makeTempRepo,
   writeDemoSpec,
 } from '../../../test/fixtures/specRepo.js';
+import { writeArchivedHistory } from '../../../test/fixtures/archive.js';
 import { doneTask } from '../../../test/fixtures/taskEvents.js';
 import { StatsJsonSchema } from '../../stats/jsonOutput.js';
 import { createProgram } from '../program.js';
@@ -24,6 +25,21 @@ async function stats(...args: string[]): Promise<string> {
 }
 
 describe('specrun stats', () => {
+  it('includes archived specs: all by default, by name when named', async () => {
+    const specDir = writeDemoSpec(dir);
+    writeFileSync(join(specDir, 'events.jsonl'), doneTask('D-1', 12, 0.4));
+    writeArchivedHistory(dir, 'old');
+
+    const all = StatsJsonSchema.parse(JSON.parse(await stats('--json')));
+    expect(all.specs).toEqual(['demo', 'old']);
+    expect(all.samples.map((s) => s.task)).toEqual(['D-1', 'OLD-1']);
+
+    const old = StatsJsonSchema.parse(JSON.parse(await stats('old', '--json')));
+    expect(old.samples.map((s) => s.task)).toEqual(['OLD-1']);
+    const demo = StatsJsonSchema.parse(JSON.parse(await stats('demo', '--json')));
+    expect(demo.specs).toEqual(['demo']);
+  });
+
   it('prints a table grouped by the chosen dimension', async () => {
     const specDir = writeDemoSpec(dir);
     writeFileSync(

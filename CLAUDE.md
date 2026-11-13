@@ -20,6 +20,7 @@ src/
   session/    Agent SDK session (AgentSession), specrun MCP tools, prompt, transcripts
   runner/     orchestration loop
   analytics/  per-session metrics from transcripts
+  archive/    archiving finished specs (README + run history)
   ui/         Ink dashboard
 plugin/       Claude Code plugin: skills refine, write-spec, feedback
 tools/        bootstrap runner (spec-run.sh) that builds specrun itself — don't modify

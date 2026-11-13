@@ -11,7 +11,7 @@ import {
 } from '../../stats/aggregate.js';
 import { StatsJsonSchema, type StatsJson } from '../../stats/jsonOutput.js';
 import type { CliDeps } from '../cliDeps.js';
-import { loadSpecInputs } from '../specInputs.js';
+import { loadRunHistory } from '../specInputs.js';
 import { table } from '../table.js';
 
 const DIMENSIONS: readonly GroupDimension[] = ['task', 'model', 'size', 'spec'];
@@ -60,8 +60,12 @@ export function register(program: Command, deps: CliDeps): void {
         }
         const repoRoot = findRepoRoot(deps.cwd);
         const config = loadConfig(repoRoot);
-        const inputs = loadSpecInputs(repoRoot, config, flags.all === true ? [] : names);
-        const samples = taskSamples(inputs);
+        const { inputs, archived } = loadRunHistory(
+          repoRoot,
+          config,
+          flags.all === true ? [] : names,
+        );
+        const samples = [...taskSamples(inputs), ...archived.flatMap((h) => h.samples)];
         const groups = groupStats(samples, flags.by);
         const calibration = flags.calibrate === true ? calibrate(samples, config.sizes) : null;
 
@@ -69,7 +73,7 @@ export function register(program: Command, deps: CliDeps): void {
           const output: StatsJson = StatsJsonSchema.parse({
             version: 1,
             generatedAt: deps.now().toISOString(),
-            specs: inputs.map((i) => i.name),
+            specs: [...inputs.map((i) => i.name), ...archived.map((h) => h.spec)],
             by: flags.by,
             samples,
             groups,

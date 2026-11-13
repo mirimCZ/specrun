@@ -68,3 +68,7 @@ same place. Leave out signals that did not fire; end with one line on what looke
 Then ask which to apply — `AskUserQuestion` multi-select when available (one option per item),
 otherwise ask in text. Apply only the chosen ones, keep edits minimal, then list the files
 changed. Commit only if the user asks.
+
+When a spec is done and merged and its questions are settled, offer to archive it: first move
+behaviour that still holds from its README into the project's living docs, then
+`specrun archive <spec>` (keeps the README and run history, so later feedback still sees it).

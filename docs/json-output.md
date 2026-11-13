@@ -8,7 +8,8 @@ feedback skill, so their shapes are a contract. The zod schemas live in
 
 ## `specrun stats [spec...] [--by task|model|size|spec] [--calibrate] --json`
 
-One sample per task that reached `done` (totals over all its segments). `by` defaults to `model`;
+One sample per task that reached `done` (totals over all its segments), archived specs included
+(their `history.json`, see `specrun archive`). `by` defaults to `model`;
 `calibration` is `null` without `--calibrate`, and `suggestion` is `null` below 3 samples.
 
 ```json
@@ -56,7 +57,8 @@ One sample per task that reached `done` (totals over all its segments). `by` def
 
 ## `specrun deviations [spec...] [--kind <kind>] --json`
 
-Deviations from the `task.completed` payload of done tasks and of blocked tasks. `question` is
+Deviations from the `task.completed` payload of done tasks and of blocked tasks, archived specs
+included. `question` is
 the question the agent would have asked a human, the options it weighed and the one it
 implemented (`null` when the deviation has none; agents must give one for `ambiguity`).
 

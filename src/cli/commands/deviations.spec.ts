@@ -7,6 +7,7 @@ import {
   makeTempRepo,
   writeDemoSpec,
 } from '../../../test/fixtures/specRepo.js';
+import { writeArchivedHistory } from '../../../test/fixtures/archive.js';
 import { doneTask } from '../../../test/fixtures/taskEvents.js';
 import { DeviationsJsonSchema } from '../../stats/jsonOutput.js';
 import { createProgram } from '../program.js';
@@ -60,6 +61,23 @@ describe('specrun deviations', () => {
     expect(output).toContain(
       'demo/D-1 [ambiguity] kept the alias — simplest\n    Q: Keep the alias? → keep (over drop)',
     );
+  });
+
+  it('includes deviations kept by archived specs', async () => {
+    writeArchivedHistory(dir, 'old', [
+      {
+        spec: 'old',
+        task: 'OLD-1',
+        kind: 'test-trap',
+        decision: null,
+        what: 'fake timers',
+        why: 'leaked',
+        question: null,
+      },
+    ]);
+    const output = await deviations('--kind', 'test-trap');
+    expect(output).toContain('test-trap (2)');
+    expect(output).toContain('old/OLD-1 [test-trap] fake timers — leaked');
   });
 
   it('filters by kind', async () => {

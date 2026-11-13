@@ -8,25 +8,38 @@ const Distribution = z.object({ sum: z.number(), p50: z.number(), p90: z.number(
 const Range = z.object({ turns: z.tuple([z.number(), z.number()]), usd: z.number() });
 const Phase = z.object({ turns: z.number(), tokens: z.number() });
 
+/** Also the shape `specrun archive` keeps in `history.json`. */
+export const TaskSampleSchema = z.object({
+  spec: z.string(),
+  task: z.string(),
+  model: z.string(),
+  size: z.string(),
+  turns: z.number(),
+  costUsd: z.number(),
+  peakContext: z.number(),
+  sessions: z.number(),
+  verifyRounds: z.number(),
+  deviations: z.number(),
+  budgetExceeded: z.boolean(),
+});
+
+export const DeviationEntrySchema = z.object({
+  spec: z.string(),
+  task: z.string(),
+  kind: z.enum(DEVIATION_KINDS),
+  decision: z.string().nullable(),
+  what: z.string(),
+  why: z.string(),
+  question: z
+    .object({ text: z.string(), options: z.array(z.string()), chosen: z.string() })
+    .nullable(),
+});
+
 export const StatsJsonSchema = z.object({
   ...Generated,
   specs: z.array(z.string()),
   by: z.enum(['task', 'model', 'size', 'spec']),
-  samples: z.array(
-    z.object({
-      spec: z.string(),
-      task: z.string(),
-      model: z.string(),
-      size: z.string(),
-      turns: z.number(),
-      costUsd: z.number(),
-      peakContext: z.number(),
-      sessions: z.number(),
-      verifyRounds: z.number(),
-      deviations: z.number(),
-      budgetExceeded: z.boolean(),
-    }),
-  ),
+  samples: z.array(TaskSampleSchema),
   groups: z.array(
     z.object({
       key: z.string(),
@@ -54,19 +67,7 @@ export type StatsJson = z.infer<typeof StatsJsonSchema>;
 
 export const DeviationsJsonSchema = z.object({
   ...Generated,
-  deviations: z.array(
-    z.object({
-      spec: z.string(),
-      task: z.string(),
-      kind: z.enum(DEVIATION_KINDS),
-      decision: z.string().nullable(),
-      what: z.string(),
-      why: z.string(),
-      question: z
-        .object({ text: z.string(), options: z.array(z.string()), chosen: z.string() })
-        .nullable(),
-    }),
-  ),
+  deviations: z.array(DeviationEntrySchema),
   counts: z.record(z.string(), z.number()),
 });
 export type DeviationsJson = z.infer<typeof DeviationsJsonSchema>;

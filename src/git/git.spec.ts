@@ -52,6 +52,34 @@ describe('createGit', () => {
     expect(await git.isClean()).toBe(false);
   });
 
+  it('limits cleanliness to paths', async () => {
+    mkdirSync(join(dir, 'docs'));
+    writeFileSync(join(dir, 'docs', 'new.md'), 'x');
+    expect(await git.isClean(['a.txt'])).toBe(true);
+    expect(await git.isClean(['docs'])).toBe(false);
+  });
+
+  it('tells whether a branch is merged', async () => {
+    sh(dir, 'branch', 'merged');
+    sh(dir, 'checkout', '-q', '-b', 'ahead');
+    writeFileSync(join(dir, 'b.txt'), 'two\n');
+    sh(dir, 'add', '-A');
+    sh(dir, 'commit', '-q', '-m', 'ahead');
+    sh(dir, 'checkout', '-q', 'main');
+    expect(await git.isAncestor('merged', 'HEAD')).toBe(true);
+    expect(await git.isAncestor('ahead', 'HEAD')).toBe(false);
+    await expect(git.isAncestor('nope', 'HEAD')).rejects.toMatchObject({ code: 'git-failed' });
+  });
+
+  it('removes a clean worktree and its merged branch', async () => {
+    const path = join(dir, 'wt');
+    sh(dir, 'worktree', 'add', '-q', '-b', 'spec', path);
+    await git.removeWorktree(path);
+    await git.deleteBranch('spec');
+    expect(await git.worktreeList()).toHaveLength(1);
+    expect(await git.branchExists('spec')).toBe(false);
+  });
+
   it('knows existing branches', async () => {
     expect(await git.branchExists('main')).toBe(true);
     expect(await git.branchExists('nope')).toBe(false);

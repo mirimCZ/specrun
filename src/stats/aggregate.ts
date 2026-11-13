@@ -1,5 +1,5 @@
 import type { Size, SizeName } from '../config/configSchema.js';
-import type { SpecrunEvent } from '../events/eventSchema.js';
+import type { Deviation, SpecrunEvent } from '../events/eventSchema.js';
 import type { SpecState } from '../events/taskState.js';
 import type { Spec } from '../spec/specSchema.js';
 
@@ -49,6 +49,43 @@ export function taskSamples(specs: readonly SpecInput[]): TaskSample[] {
           budgetExceeded: s.budgetExceeded,
         },
       ];
+    }),
+  );
+}
+
+export interface DeviationEntry {
+  spec: string;
+  task: string;
+  kind: Deviation['kind'];
+  decision: string | null;
+  what: string;
+  why: string;
+  question: { text: string; options: string[]; chosen: string } | null;
+}
+
+/** Deviations of done tasks and of blocked ones (their latest `task.completed`), in spec order. */
+export function deviationEntries(specs: readonly SpecInput[]): DeviationEntry[] {
+  return specs.flatMap(({ name, spec, state, events }) =>
+    spec.tasks.flatMap((task) => {
+      const s = state.tasks.get(task.id);
+      // Done tasks keep their payload in state; for blocked ones it is the latest task.completed.
+      let deviations: Deviation[] = [];
+      if (s?.status === 'done') {
+        deviations = s.lastCompleted?.deviations ?? [];
+      } else if (s?.status === 'blocked') {
+        for (const e of events) {
+          if (e.t === 'task.completed' && e.task === task.id) deviations = e.payload.deviations;
+        }
+      }
+      return deviations.map((d) => ({
+        spec: name,
+        task: task.id,
+        kind: d.kind,
+        decision: d.decision ?? null,
+        what: d.what,
+        why: d.why,
+        question: d.question ?? null,
+      }));
     }),
   );
 }

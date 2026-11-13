@@ -17,8 +17,11 @@ export interface WorktreeEntry {
 
 export interface Git {
   head(): Promise<string>;
-  isClean(): Promise<boolean>;
+  /** Tracked and untracked changes; limited to `paths` when given. */
+  isClean(paths?: readonly string[]): Promise<boolean>;
   branchExists(name: string): Promise<boolean>;
+  /** Whether `ref` is reachable from `of` (merged into it). */
+  isAncestor(ref: string, of: string): Promise<boolean>;
   addAll(): Promise<void>;
   commit(message: CommitMessageParts): Promise<string>;
   /** Commits only `paths` (other staged or unstaged changes stay); null when they're unchanged. */
@@ -30,6 +33,10 @@ export interface Git {
   parkChanges(ref: string, message: string): Promise<string | null>;
   updateRef(ref: string, sha: string): Promise<void>;
   worktreeList(): Promise<WorktreeEntry[]>;
+  /** Fails when the worktree has changes. */
+  removeWorktree(path: string): Promise<void>;
+  /** Fails when the branch is not merged. */
+  deleteBranch(name: string): Promise<void>;
 }
 
 export function createGit(cwd: string, run: ProcessRunner): Git {
@@ -50,14 +57,25 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
       return (await git(['rev-parse', 'HEAD'])).trim();
     },
 
-    async isClean() {
-      return (await git(['status', '--porcelain'])).trim() === '';
+    async isClean(paths) {
+      const pathArgs = paths === undefined ? [] : ['--', ...paths];
+      return (await git(['status', '--porcelain', ...pathArgs])).trim() === '';
     },
 
     async branchExists(name) {
       const result = await run('git', ['show-ref', '--verify', '--quiet', `refs/heads/${name}`], {
         cwd,
       });
+      return result.code === 0;
+    },
+
+    async isAncestor(ref, of) {
+      const result = await run('git', ['merge-base', '--is-ancestor', ref, of], { cwd });
+      if (result.code > 1) {
+        throw new SpecrunError('git-failed', `git merge-base --is-ancestor ${ref} ${of} failed`, [
+          result.stderr.trim() || `exit code ${result.code}`,
+        ]);
+      }
       return result.code === 0;
     },
 
@@ -138,6 +156,14 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
         }
       }
       return entries;
+    },
+
+    async removeWorktree(path) {
+      await git(['worktree', 'remove', path]);
+    },
+
+    async deleteBranch(name) {
+      await git(['branch', '-q', '-d', name]);
     },
   };
   return api;

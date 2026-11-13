@@ -1,8 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Command } from 'commander';
 import { CONFIG_FILE, findRepoRoot, readJsonFile } from '../../config/loadConfig.js';
 import { SpecrunError } from '../../errors.js';
+import { ensureLine } from '../../git/ensureLine.js';
 import type { CliDeps } from '../cliDeps.js';
 
 const GUESSED_SCRIPTS = ['typecheck', 'lint', 'test'] as const;
@@ -27,14 +28,6 @@ function guessVerify(repoRoot: string): { steps: VerifyStep[]; guessed: boolean 
     }
   }
   return steps.length > 0 ? { steps, guessed: true } : { steps: [PLACEHOLDER], guessed: false };
-}
-
-/** Appends `line` unless the file already has it. */
-function ensureLine(file: string, line: string): void {
-  const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
-  if (current.split('\n').some((existing) => existing.trim() === line)) return;
-  const separator = current === '' || current.endsWith('\n') ? '' : '\n';
-  writeFileSync(file, `${current}${separator}${line}\n`);
 }
 
 export function register(program: Command, deps: CliDeps): void {

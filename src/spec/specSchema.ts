@@ -15,7 +15,8 @@ const ModelSchema = z
   .default('default')
   .transform((model) => (model === 'opus' ? 'strong' : model === 'sonnet' ? 'default' : model));
 
-/** Task state written by tools/spec-run.sh runs: accepted so those specs load, never read. */
+/** Task state written by tools/spec-run.sh runs: accepted so those specs load; the runner
+ * ignores it, `specrun archive` counts `status: done`. */
 const IgnoredStateFields = {
   status: z.enum(['todo', 'in progress', 'done', 'blocked']).optional(),
   note: z.string().optional(),
@@ -33,23 +34,24 @@ export const TaskSchema = z.strictObject({
   ...IgnoredStateFields,
 });
 
-export const SpecSchema = z
-  .strictObject({
-    title: z.string().min(1).optional(),
-    branch: z.string().min(1).optional(),
-    tasks: z.array(TaskSchema).min(1),
-  })
-  .transform(({ tasks, ...spec }) => ({
-    ...spec,
-    tasks: tasks.map(({ id, title, phase, needs, model, size }) => ({
-      id,
-      title,
-      phase,
-      needs: needs === 'all' ? tasks.map((t) => t.id).filter((other) => other !== id) : needs,
-      model,
-      size,
-    })),
-  }));
+/** The file as authored, task state fields included (`specrun archive` reads `status`). */
+export const SpecFileSchema = z.strictObject({
+  title: z.string().min(1).optional(),
+  branch: z.string().min(1).optional(),
+  tasks: z.array(TaskSchema).min(1),
+});
+
+export const SpecSchema = SpecFileSchema.transform(({ tasks, ...spec }) => ({
+  ...spec,
+  tasks: tasks.map(({ id, title, phase, needs, model, size }) => ({
+    id,
+    title,
+    phase,
+    needs: needs === 'all' ? tasks.map((t) => t.id).filter((other) => other !== id) : needs,
+    model,
+    size,
+  })),
+}));
 /** A loaded spec; `loadSpec` falls back to the spec name for the title. */
 export type Spec = Omit<z.output<typeof SpecSchema>, 'title'> & { title: string };
 export type SpecTask = Spec['tasks'][number];

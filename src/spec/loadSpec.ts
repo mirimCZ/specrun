@@ -26,7 +26,9 @@ function briefPathIn(dir: string, id: string): string {
   return join(dir, 'tasks', `${id}.md`);
 }
 
-function readYamlFile(path: string): { ok: true; value: unknown } | { ok: false; error: string } {
+export function readYamlFile(
+  path: string,
+): { ok: true; value: unknown } | { ok: false; error: string } {
   try {
     return { ok: true, value: parse(readFileSync(path, 'utf8')) as unknown };
   } catch (error) {

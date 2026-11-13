@@ -1,11 +1,12 @@
 import type { Command } from 'commander';
 import { findRepoRoot, loadConfig } from '../../config/loadConfig.js';
 import { SpecrunError } from '../../errors.js';
-import { DEVIATION_KINDS, type Deviation } from '../../events/eventSchema.js';
+import { DEVIATION_KINDS } from '../../events/eventSchema.js';
 import { formatQuestion } from '../../events/formatQuestion.js';
+import { deviationEntries } from '../../stats/aggregate.js';
 import { DeviationsJsonSchema, type DeviationsJson } from '../../stats/jsonOutput.js';
 import type { CliDeps } from '../cliDeps.js';
-import { loadSpecInputs } from '../specInputs.js';
+import { loadRunHistory } from '../specInputs.js';
 
 type Entry = DeviationsJson['deviations'][number];
 
@@ -32,35 +33,11 @@ export function register(program: Command, deps: CliDeps): void {
       }
       const repoRoot = findRepoRoot(deps.cwd);
       const config = loadConfig(repoRoot);
-      const inputs = loadSpecInputs(repoRoot, config, names);
-
-      const entries: Entry[] = [];
-      for (const { name, spec, events, state } of inputs) {
-        for (const task of spec.tasks) {
-          const s = state.tasks.get(task.id);
-          // Done tasks keep their payload in state; for blocked ones it is the latest task.completed.
-          let deviations: Deviation[] = [];
-          if (s?.status === 'done') {
-            deviations = s.lastCompleted?.deviations ?? [];
-          } else if (s?.status === 'blocked') {
-            for (const e of events) {
-              if (e.t === 'task.completed' && e.task === task.id) deviations = e.payload.deviations;
-            }
-          }
-          for (const d of deviations) {
-            if (flags.kind !== undefined && d.kind !== flags.kind) continue;
-            entries.push({
-              spec: name,
-              task: task.id,
-              kind: d.kind,
-              decision: d.decision ?? null,
-              what: d.what,
-              why: d.why,
-              question: d.question ?? null,
-            });
-          }
-        }
-      }
+      const { inputs, archived } = loadRunHistory(repoRoot, config, names);
+      const entries = [
+        ...deviationEntries(inputs),
+        ...archived.flatMap((h) => h.deviations),
+      ].filter((e) => flags.kind === undefined || e.kind === flags.kind);
 
       const counts: Record<string, number> = {};
       for (const e of entries) counts[e.kind] = (counts[e.kind] ?? 0) + 1;
