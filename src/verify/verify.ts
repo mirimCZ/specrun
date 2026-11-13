@@ -28,7 +28,6 @@ export interface RunVerifyInput {
 
 const MAX_SUMMARY_LINES = 80;
 const TAIL_LINES = 40;
-// Same line classes as tools/spec-verify.sh report_failure.
 const ERROR_LINE =
   /error TS\d+|^\s*(FAIL|×) |AssertionError|TestingLibraryElementError|Unable to find|^\s*(Error|TypeError|ReferenceError|SyntaxError):|^\s*[-+] (Expected|Received)|^\s*(Expected|Received)\b|❯ .*:\d+:\d+/;
 // ESLint's stylish format: an absolute file path line, then indented `line:col  error  …` lines.

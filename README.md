@@ -192,7 +192,7 @@ npm install
 npm run typecheck
 npm test
 npm run build      # → dist/, bin `specrun` = dist/cli/main.js
-tools/spec-verify.sh  # typecheck + test + format check, short summary
+npm run check      # verify:typecheck → verify:test → verify:format, compact output
 ```
 
 Node ≥ 22, TypeScript strict, ESM, vitest, zod, Ink, Prettier (100 columns). Conventions are in

@@ -7,7 +7,7 @@ const TaskIdSchema = z.string().regex(TASK_ID_PATTERN, {
 });
 
 /**
- * `opus` / `sonnet` are the names tools/spec-run.sh specs use (rebel-industry tasks.yaml); they
+ * `opus` / `sonnet` are the names specs of the old bash runner use (spec-run.sh, rebel-industry); they
  * stand for the strong and the default model, so the config's `models` still decides.
  */
 const ModelSchema = z
@@ -15,7 +15,7 @@ const ModelSchema = z
   .default('default')
   .transform((model) => (model === 'opus' ? 'strong' : model === 'sonnet' ? 'default' : model));
 
-/** Task state written by tools/spec-run.sh runs: accepted so those specs load; the runner
+/** Task state written by spec-run.sh runs: accepted so those specs load; the runner
  * ignores it, `specrun archive` counts `status: done`. */
 const IgnoredStateFields = {
   status: z.enum(['todo', 'in progress', 'done', 'blocked']).optional(),

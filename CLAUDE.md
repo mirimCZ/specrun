@@ -22,8 +22,7 @@ src/
   analytics/  per-session metrics from transcripts
   archive/    archiving finished specs (README + run history)
   ui/         Ink dashboard
-plugin/       Claude Code plugin: skills refine, write-spec, feedback
-tools/        bootstrap runner (spec-run.sh) that builds specrun itself — don't modify
+plugin/       Claude Code plugin: skills refine, write-spec, feedback (.claude/skills links to them)
 spikes/       throwaway experiments — don't import from src/
 ```
 
@@ -44,7 +43,8 @@ spikes/       throwaway experiments — don't import from src/
 ## Commands
 
 `npm run typecheck` · `npm test` (vitest) · `npx vitest run <path>` · `npm run format` ·
-`tools/spec-verify.sh` (typecheck + test + format check, short summary).
+`npm run check` (`verify:typecheck` → `verify:test` → `verify:format`, compact output; the gate
+before every commit).
 Prettier (`.prettierrc`, 100 columns) is the source of truth for formatting.
 
 ## Never

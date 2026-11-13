@@ -81,11 +81,11 @@ describe('loadSpec', () => {
     expect(loadError('nope').code).toBe('spec-missing');
   });
 
-  it('loads a tools/spec-run.sh tasks.yaml: no title or sizes, opus / sonnet, task state', () => {
+  it('loads a spec-run.sh tasks.yaml: no title or sizes, opus / sonnet, task state', () => {
     writeSpecFile(
       'room',
       [
-        '# Room — task state, read by tools/spec-run.sh.',
+        '# Room — task state, read by spec-run.sh.',
         'tasks:',
         '  - id: RM-1',
         '    phase: 0',

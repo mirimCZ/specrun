@@ -47,7 +47,7 @@ export interface ArchiveResult {
 
 interface SpecRead {
   spec: Spec;
-  /** `status: done` in the file — tools/spec-run.sh specs keep their state there. */
+  /** `status: done` in the file — specs of the old bash runner (spec-run.sh) keep their state there. */
   doneInFile: Set<string>;
 }
 

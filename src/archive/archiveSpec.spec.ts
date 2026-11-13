@@ -143,7 +143,7 @@ describe('archiveSpec', () => {
     ]);
   });
 
-  it('counts status: done of a tools/spec-run.sh spec and keeps no empty history', async () => {
+  it('counts status: done of a spec-run.sh spec and keeps no empty history', async () => {
     rmSync(join(specDir, 'tasks'), { recursive: true });
     writeFileSync(
       join(specDir, 'tasks.yaml'),

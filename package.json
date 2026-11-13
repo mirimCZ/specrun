@@ -21,6 +21,10 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "verify:typecheck": "tsc --noEmit --pretty false",
+    "verify:test": "vitest run --reporter=dot",
+    "verify:format": "prettier --check --log-level warn .",
+    "check": "npm run -s verify:typecheck && npm run -s verify:test && npm run -s verify:format",
     "spike": "tsx spikes/sdk-spike.ts",
     "do": "npm run build && npm link"
   },
