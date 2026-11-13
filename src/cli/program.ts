@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { defaultCliDeps, type CliDeps } from './cliDeps.js';
 import { register as registerAnalyze } from './commands/analyze.js';
 import { register as registerArchive } from './commands/archive.js';
+import { register as registerClose } from './commands/close.js';
 import { register as registerDeviations } from './commands/deviations.js';
 import { register as registerInit } from './commands/init.js';
 import { register as registerReview } from './commands/review.js';
@@ -28,5 +29,6 @@ export function createProgram(deps: CliDeps = defaultCliDeps()): Command {
   registerReview(program, deps);
   registerAnalyze(program, deps);
   registerArchive(program, deps);
+  registerClose(program, deps);
   return program;
 }

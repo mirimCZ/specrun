@@ -45,10 +45,11 @@ In the repository you want to work on:
 5. **Review the deviations** — `specrun review <spec>` walks through what the agents decided on
    their own with you in Claude Code and adds fix tasks for the picks you overturn (see
    [Other commands](#other-commands)); run the spec again for those.
-6. **Review and merge** the spec branch `specrun/<spec>` (one commit per task).
-7. **Archive** — `specrun archive <spec>` replaces the finished spec by its README and run
-   history, and removes its worktree and branch.
-8. **Improve** — `/feedback` in Claude Code turns the run's stats and the agents' reported
+6. **Review the code and close** — look through the spec branch `specrun/<spec>` (one commit per
+   task), then `specrun close <spec>` merges it into your current branch and archives the spec:
+   its README and run history stay, its worktree and branch go (see
+   [Other commands](#other-commands)).
+7. **Improve** — `/feedback` in Claude Code turns the run's stats and the agents' reported
    deviations into proposals for your CLAUDE.md, specs and sizes.
 
 ## Specs
@@ -185,9 +186,18 @@ existing file).
 | `specrun review [spec...] [--kind <kind>] [--print]`                   | Review those deviations with Claude Code on this terminal (below)                              |
 | `specrun analyze [spec] [--task <id>] [--reindex]`                     | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
 | `specrun archive <spec> [--force]`                                     | Archive a finished spec, remove its merged worktree and branch                                 |
+| `specrun close <spec> [--into <branch>] [--force]`                     | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
 
 `status`, `stats`, `deviations` and `analyze` work from another terminal during a run, and all
 of them take `--json` (format in [`docs/json-output.md`](docs/json-output.md)).
+
+**Closing a spec** — `specrun close <spec>` checks first that every task is done, nothing runs,
+and both the main checkout and the worktree are clean. It merges the spec branch into the
+checked-out branch (`--into` for another one; a checkout left on the spec branch by
+`"worktree": false` goes back to main / master): a fast-forward when possible, else a merge
+commit followed by the configured check — a red check keeps the merge but stops before archiving.
+A conflict aborts the merge. Then it runs `specrun archive` and deletes the spec branch. It never
+pushes.
 
 **Reviewing deviations** — `specrun review <spec>` starts Claude Code on the same terminal. specrun
 first gathers what the review needs — the config, each task's brief, its commit (message, changed

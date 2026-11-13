@@ -41,6 +41,13 @@ export interface Git {
   removeWorktree(path: string): Promise<void>;
   /** Fails when the branch is not merged. */
   deleteBranch(name: string): Promise<void>;
+  /** Merges `branch` into the checked-out one; on failure aborts it and returns git's message. */
+  merge(
+    branch: string,
+    mode: 'ff-only' | 'merge',
+  ): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Commits reachable from `to` but not from `from`. */
+  countCommits(from: string, to: string): Promise<number>;
 }
 
 export function createGit(cwd: string, run: ProcessRunner): Git {
@@ -181,6 +188,22 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
 
     async deleteBranch(name) {
       await git(['branch', '-q', '-d', name]);
+    },
+
+    async merge(branch, mode) {
+      const args = mode === 'ff-only' ? ['--ff-only'] : ['--no-edit'];
+      const result = await run('git', ['merge', '-q', ...args, branch], { cwd });
+      if (result.code === 0) return { ok: true };
+      // A conflicted merge would leave the checkout half-merged; put it back as it was.
+      await run('git', ['merge', '--abort'], { cwd });
+      return {
+        ok: false,
+        error: (result.stdout + result.stderr).trim() || `exit code ${result.code}`,
+      };
+    },
+
+    async countCommits(from, to) {
+      return Number((await git(['rev-list', '--count', `${from}..${to}`])).trim());
     },
   };
   return api;
