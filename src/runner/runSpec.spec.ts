@@ -201,6 +201,36 @@ describe('runSpec', () => {
     expect(logs.some((m) => m.includes('analytics for A-1 failed'))).toBe(true);
   });
 
+  it('reports the phases and the plan, and warns once while the usage probe fails', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2', needs: ['A-1'] }]);
+    const seen: string[] = [];
+    const { result } = await start({
+      segments: [{ edits: { 'one.txt': '1' } }, { edits: { 'two.txt': '2' } }],
+      reporter: {
+        ...nullReporter,
+        plan: ({ spec }) => void seen.push(`plan ${spec.tasks.map((t) => t.id).join(',')}`),
+        phase: (phase) =>
+          void seen.push('task' in phase ? `${phase.kind} ${phase.task}` : phase.kind),
+        log: (level, message) => void seen.push(`${level}: ${message}`),
+      },
+    });
+
+    expect(result.reason).toBe('done');
+    expect(seen).toEqual([
+      'worktree',
+      'plan A-1,A-2',
+      'usage',
+      'warn: usage probe failed — running without limit data',
+      'agent A-1',
+      'verify A-1',
+      'commit A-1',
+      'usage',
+      'agent A-2',
+      'verify A-2',
+      'commit A-2',
+    ]);
+  });
+
   it('resumes the same session with the failure summary when verify is red, then commits', async () => {
     setupRepo([{ id: 'A-1' }]);
     const counter = join(dir, 'count');

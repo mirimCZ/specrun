@@ -186,6 +186,12 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       base: options.base,
       setup: config.setup,
       run: deps.run,
+      onProgress: (step) =>
+        reporter.phase(
+          step.step === 'add'
+            ? { kind: 'worktree', path: relative(repoRoot, step.path) }
+            : { kind: 'setup', command: step.command },
+        ),
     });
     // The worktree's copy is what the agent sees and what the log describes.
     const loaded = loadSpec(worktree, config, options.spec);
@@ -204,6 +210,9 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
     const git = createGit(worktree, deps.run);
     const protocol = loadProtocol();
     let latest: UsageSnapshot | null = null;
+    // Warn once per failure streak: a dead probe would otherwise warn before every segment.
+    let probeFailing = false;
+    reporter.plan({ spec, events: store.read().events });
 
     const append = (event: NewEvent): SpecrunEvent => {
       const saved = store.append(event);
@@ -241,10 +250,15 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         const stale =
           latest === null || clock.now().getTime() - latest.at.getTime() > SNAPSHOT_MAX_AGE_MS;
         if (stale) {
+          reporter.phase({ kind: 'usage' });
           const probed = await deps.probeUsage();
           if (probed !== null) {
             latest = probed;
+            probeFailing = false;
             append(snapshotEvent(probed));
+          } else if (!probeFailing) {
+            probeFailing = true;
+            reporter.log('warn', 'usage probe failed — running without limit data');
           }
         }
         const decision = decide(latest, config.limits, clock.now());
@@ -277,6 +291,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       payload: CompleteTaskPayload,
       sessionId: string | null,
     ): Promise<void> => {
+      reporter.phase({ kind: 'commit', task: task.id });
       budgetCheck(task);
       writeProgress(previewDone(currentState(), task.id, payload));
       await git.addAll();
@@ -364,6 +379,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
           segment = 0;
           previous = null;
         }
+        reporter.phase({ kind: 'agent', task: task.id });
         append({
           t: 'session.started',
           task: task.id,
@@ -502,6 +518,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         const { payload } = result.toolCall;
         append({ t: 'task.completed', task: task.id, sessionId, payload });
         const logFile = join(logDir, `${task.id}-verify-${verifyRound}.log`);
+        reporter.phase({ kind: 'verify', task: task.id });
         const verify = await runVerify({
           steps: config.verify,
           cwd: worktree,

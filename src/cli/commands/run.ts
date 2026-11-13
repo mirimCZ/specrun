@@ -13,6 +13,7 @@ import {
 } from '../../runner/runSpec.js';
 import { probeUsage } from '../../session/probeUsage.js';
 import { createSdkSession } from '../../session/sdkSession.js';
+import { createInkReporter, type InkReporter } from '../../ui/createInkReporter.js';
 import type { CliDeps } from '../cliDeps.js';
 import { createLineReporter } from '../lineReporter.js';
 
@@ -28,6 +29,9 @@ export interface RunCommandOverrides {
   /** Registers an abort handler for SIGINT/SIGTERM; returns the unregister function. */
   onSignal?: (handler: () => void) => () => void;
   keepAwake?: boolean;
+  /** Defaults to `process.stdout.isTTY`. */
+  isTTY?: boolean;
+  createInkReporter?: () => InkReporter;
 }
 
 interface RunFlags {
@@ -36,7 +40,7 @@ interface RunFlags {
   allPhases?: boolean;
   base: string;
   model?: string;
-  // commander turns `--no-ui` into `ui: false`; until the Ink dashboard (SR-11) it changes nothing.
+  // commander turns `--no-ui` into `ui: false`.
   ui: boolean;
 }
 
@@ -84,7 +88,13 @@ export function register(
         overrides.keepAwake === false
           ? { stop: (): void => undefined }
           : keepAwake({ pid: process.pid, platform: process.platform, spawn });
-      const color = deps.env['NO_COLOR'] === undefined && process.stdout.isTTY === true;
+      const isTTY = overrides.isTTY ?? process.stdout.isTTY === true;
+      const color = deps.env['NO_COLOR'] === undefined && isTTY;
+      // SRD-2: the dashboard on a terminal; log lines for pipes, files and `--no-ui`.
+      const ink =
+        flags.ui && isTTY
+          ? (overrides.createInkReporter ?? (() => createInkReporter({ stdout: process.stdout })))()
+          : null;
       try {
         const result = await (overrides.runSpec ?? runSpec)(buildRunOptions(spec, flags), {
           repoRoot,
@@ -93,15 +103,18 @@ export function register(
           run: runCommand,
           clock: systemClock,
           probeUsage: () => probeUsage({ cwd: repoRoot }),
-          reporter: createLineReporter(deps.stdout, { color, now: deps.now }),
+          reporter: ink?.reporter ?? createLineReporter(deps.stdout, { color, now: deps.now }),
           signal: controller.signal,
           version,
         });
+        await ink?.unmount();
         if (result.message !== undefined && result.exitCode !== 0) {
           deps.stderr(`specrun: ${result.message}\n`);
         }
         (overrides.setExitCode ?? ((code) => void (process.exitCode = code)))(result.exitCode);
       } finally {
+        // Also on a throw, so main.ts prints its error below the last frame, not into it.
+        await ink?.unmount();
         unregister();
         awake.stop();
       }

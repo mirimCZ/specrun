@@ -2,8 +2,9 @@ import { rmSync } from 'node:fs';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { captureDeps, makeTempRepo, writeDemoSpec } from '../../../test/fixtures/specRepo.js';
+import { nullReporter } from '../../runner/reporter.js';
 import type { RunResult, RunSpecDeps, RunSpecOptions } from '../../runner/runSpec.js';
-import { register } from './run.js';
+import { register, type RunCommandOverrides } from './run.js';
 
 let dir: string;
 beforeEach(() => {
@@ -15,11 +16,15 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 async function runCli(
   args: string[],
   result: RunResult,
-): Promise<{ options: RunSpecOptions; deps: RunSpecDeps; exit: number[] }> {
+  extra: RunCommandOverrides = {},
+  cliDeps = captureDeps(dir),
+): Promise<{ options: RunSpecOptions; deps: RunSpecDeps; exit: number[]; err: string[] }> {
   const captured: { options?: RunSpecOptions; deps?: RunSpecDeps } = {};
   const exit: number[] = [];
   const program = new Command('specrun');
-  register(program, captureDeps(dir), {
+  register(program, cliDeps, {
+    isTTY: false,
+    ...extra,
     runSpec: (options, deps) => {
       captured.options = options;
       captured.deps = deps;
@@ -31,7 +36,23 @@ async function runCli(
   });
   await program.parseAsync(['node', 'specrun', 'run', ...args]);
   if (captured.options === undefined || captured.deps === undefined) throw new Error('not called');
-  return { options: captured.options, deps: captured.deps, exit };
+  return { options: captured.options, deps: captured.deps, exit, err: cliDeps.err };
+}
+
+function fakeInk(
+  calls: string[],
+  err: readonly string[] = [],
+): NonNullable<RunCommandOverrides['createInkReporter']> {
+  return () => {
+    calls.push('mount');
+    return {
+      reporter: nullReporter,
+      unmount: () => {
+        calls.push(`unmount (${err.length} errors printed)`);
+        return Promise.resolve();
+      },
+    };
+  };
 }
 
 describe('specrun run', () => {
@@ -72,5 +93,36 @@ describe('specrun run', () => {
       allPhases: false,
     });
     expect(exit).toEqual([0]);
+  });
+
+  it('shows the dashboard on a TTY and unmounts it before the final message', async () => {
+    const calls: string[] = [];
+    const cliDeps = captureDeps(dir);
+    const { deps, err } = await runCli(
+      ['demo'],
+      { exitCode: 1, reason: 'failed', message: 'boom' },
+      { isTTY: true, createInkReporter: fakeInk(calls, cliDeps.err) },
+      cliDeps,
+    );
+    expect(deps.reporter).toBe(nullReporter);
+    // unmount runs again in `finally`; the real reporter makes the second call a no-op.
+    expect(calls.slice(0, 2)).toEqual(['mount', 'unmount (0 errors printed)']);
+    expect(err).toEqual(['specrun: boom\n']);
+  });
+
+  it('prints log lines with --no-ui or without a TTY', async () => {
+    for (const [args, isTTY] of [
+      [['demo', '--no-ui'], true],
+      [['demo'], false],
+    ] as const) {
+      const calls: string[] = [];
+      const { deps } = await runCli(
+        [...args],
+        { exitCode: 0, reason: 'done' },
+        { isTTY, createInkReporter: fakeInk(calls) },
+      );
+      expect(calls).toEqual([]);
+      expect(deps.reporter).not.toBe(nullReporter);
+    }
   });
 });

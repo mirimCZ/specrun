@@ -1,4 +1,5 @@
 import type { SpecrunEvent } from '../events/eventSchema.js';
+import type { Spec } from '../spec/specSchema.js';
 
 export type ReporterLevel = 'info' | 'warn' | 'error';
 
@@ -24,8 +25,27 @@ export interface WaitingUpdate {
   reason: 'session-low' | 'limit-hit';
 }
 
+/** What the runner is doing between events, so a UI never looks stuck. */
+export type RunPhase =
+  | { kind: 'worktree'; path: string }
+  | { kind: 'setup'; command: string }
+  | { kind: 'usage' }
+  | { kind: 'agent'; task: string }
+  | { kind: 'verify'; task: string }
+  | { kind: 'commit'; task: string };
+
+export interface RunPlan {
+  /** The worktree's copy of the spec. */
+  spec: Spec;
+  /** The log before this run; later events arrive through `event`. */
+  events: readonly SpecrunEvent[];
+}
+
 /** Live updates for UIs; nothing here is persisted — the event log is the record. */
 export interface RunReporter {
+  /** Once per run, after the worktree exists and before the first event. */
+  plan(plan: RunPlan): void;
+  phase(phase: RunPhase): void;
   event(event: SpecrunEvent): void;
   activity(update: ActivityUpdate): void;
   turn(update: TurnUpdate): void;
@@ -34,6 +54,8 @@ export interface RunReporter {
 }
 
 export const nullReporter: RunReporter = {
+  plan: () => undefined,
+  phase: () => undefined,
   event: () => undefined,
   activity: () => undefined,
   turn: () => undefined,

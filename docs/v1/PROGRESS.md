@@ -19,24 +19,25 @@ notes are in [tasks/](tasks/). Statuses: `todo` · `in progress` · `done` · `b
 - 2026-11-09 — SR-10 done.
 - 2026-11-09 — SR-12 done.
 - 2026-11-09 — SR-13 done.
+- 2026-11-13 — SR-11 done (interactively, dependencies installed by hand).
 
 ## Tasks
 
-| Phase | Task  | Title                                             | Status  | Commit | Notes                                                                                                                                      |
-| ----- | ----- | ------------------------------------------------- | ------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | SR-1  | Config and spec.json schemas + loaders            | done    |        | Schemas, loaders, topologicalOrder                                                                                                         |
-| 1     | SR-2  | Event log, state reducer, PROGRESS.md view        | done    |        | Event schema/store, deriveState, renderProgress                                                                                            |
-| 1     | SR-3  | Git worktree, commits, parking; verify steps      | done    |        | Git API, worktree, commit message, runVerify                                                                                               |
-| 1     | SR-4  | Usage windows, pause policy, waiting              | done    |        | Usage snapshots, decide/waitTarget, waitUntil                                                                                              |
-| 1     | SR-5  | Runner protocol, prompt, specrun tools            | done    |        | protocol.md, specrun MCP tools, buildPrompt                                                                                                |
-| 1     | SR-6  | Agent session (SDK) and transcripts               | done    |        | sdkSession, transcripts, probeUsage, fakeQuery                                                                                             |
-| 1     | SR-7  | Runner orchestration loop                         | done    |        | runSpec, reporter, lock, fakeSession                                                                                                       |
-| 1     | SR-8  | Session analytics                                 | done    |        | analyzeSession, recordAnalytics, latestMetrics                                                                                             |
-| 1     | SR-9  | CLI: init, run (line reporter), status, set       | done    |        | init/run/status/set, lineReporter, cliDeps                                                                                                 |
-| 1     | SR-10 | CLI: stats, calibrate, deviations, analyze        | done    |        | stats/deviations/analyze, json-output.md                                                                                                   |
-| 1     | SR-11 | Ink dashboard                                     | blocked |        | `npm install` of ink, react, @types/react, ink-testing-library needs approval and was denied unattended; packages absent from node_modules |
-| 1     | SR-12 | Plugin: marketplace, refine and write-spec skills | done    |        | marketplace + plugin, refine/write-spec skills; `claude plugin validate` needed approval, not run                                          |
-| 1     | SR-13 | Feedback skill                                    | done    |        | feedback skill: stats/deviations/analyze signals → numbered proposals                                                                      |
+| Phase | Task  | Title                                             | Status | Commit | Notes                                                                                             |
+| ----- | ----- | ------------------------------------------------- | ------ | ------ | ------------------------------------------------------------------------------------------------- |
+| 1     | SR-1  | Config and spec.json schemas + loaders            | done   |        | Schemas, loaders, topologicalOrder                                                                |
+| 1     | SR-2  | Event log, state reducer, PROGRESS.md view        | done   |        | Event schema/store, deriveState, renderProgress                                                   |
+| 1     | SR-3  | Git worktree, commits, parking; verify steps      | done   |        | Git API, worktree, commit message, runVerify                                                      |
+| 1     | SR-4  | Usage windows, pause policy, waiting              | done   |        | Usage snapshots, decide/waitTarget, waitUntil                                                     |
+| 1     | SR-5  | Runner protocol, prompt, specrun tools            | done   |        | protocol.md, specrun MCP tools, buildPrompt                                                       |
+| 1     | SR-6  | Agent session (SDK) and transcripts               | done   |        | sdkSession, transcripts, probeUsage, fakeQuery                                                    |
+| 1     | SR-7  | Runner orchestration loop                         | done   |        | runSpec, reporter, lock, fakeSession                                                              |
+| 1     | SR-8  | Session analytics                                 | done   |        | analyzeSession, recordAnalytics, latestMetrics                                                    |
+| 1     | SR-9  | CLI: init, run (line reporter), status, set       | done   |        | init/run/status/set, lineReporter, cliDeps                                                        |
+| 1     | SR-10 | CLI: stats, calibrate, deviations, analyze        | done   |        | stats/deviations/analyze, json-output.md                                                          |
+| 1     | SR-11 | Ink dashboard                                     | done   |        | Milestone log + live box, startup phases, usage line; usage probe fixed for SDK 0.3.x             |
+| 1     | SR-12 | Plugin: marketplace, refine and write-spec skills | done   |        | marketplace + plugin, refine/write-spec skills; `claude plugin validate` needed approval, not run |
+| 1     | SR-13 | Feedback skill                                    | done   |        | feedback skill: stats/deviations/analyze signals → numbered proposals                             |
 
 ### Dependencies
 

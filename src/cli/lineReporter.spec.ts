@@ -83,16 +83,59 @@ describe('createLineReporter', () => {
     expect(text).toContain('🔧 Edit src/x.ts');
   });
 
+  it('prints task titles, usage snapshots and the slow startup phases', () => {
+    const { lines, reporter } = setup();
+    reporter.plan({
+      spec: {
+        title: 'Demo',
+        tasks: [{ id: 'SR-1', title: 'Schema', phase: 1, needs: [], model: 'default', size: 'S' }],
+      },
+      events: [],
+    });
+    reporter.phase({ kind: 'worktree', path: '.specrun/worktrees/demo' });
+    reporter.phase({ kind: 'setup', command: 'npm ci' });
+    reporter.phase({ kind: 'usage' });
+    reporter.phase({ kind: 'agent', task: 'SR-1' });
+    reporter.event(
+      asEvent({
+        t: 'usage.snapshot',
+        sessionLeft: 90,
+        sessionResetsAt: '2026-01-01T06:30:00.000Z',
+        weeklyLeft: 63.4,
+        weeklyResetsAt: null,
+        source: 'probe',
+      }),
+    );
+    reporter.event(
+      asEvent({
+        t: 'session.started',
+        task: 'SR-1',
+        sessionId: null,
+        segment: 0,
+        attempt: 1,
+        model: 'opus',
+        reason: 'start',
+        prompt: { protocol: 1, spec: 1, brief: 1, deps: 0 },
+      }),
+    );
+    const reset = new Date('2026-01-01T06:30:00.000Z');
+    const hhmm = `${String(reset.getHours()).padStart(2, '0')}:${String(reset.getMinutes()).padStart(2, '0')}`;
+    expect(lines.map((line) => line.slice(9))).toEqual([
+      'creating worktree .specrun/worktrees/demo\n',
+      'setup: npm ci\n',
+      `usage: session 90 % left · resets ${hhmm} · weekly 63 % left\n`,
+      '▶ SR-1 Schema (start, opus)\n',
+    ]);
+  });
+
   it('ignores events without a line and throttles waiting to every 10 minutes', () => {
     const { lines, reporter, advance } = setup();
     reporter.event(
       asEvent({
-        t: 'usage.snapshot',
-        sessionLeft: 1,
-        sessionResetsAt: null,
-        weeklyLeft: null,
-        weeklyResetsAt: null,
-        source: 'probe',
+        t: 'manual.status',
+        task: 'SR-1',
+        status: 'done',
+        reason: 'by hand',
       }),
     );
     expect(lines).toEqual([]);
