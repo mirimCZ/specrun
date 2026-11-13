@@ -39,6 +39,7 @@ import type { SpecTask } from '../spec/specSchema.js';
 import { runVerify } from '../verify/verify.js';
 import { acquireLock, isProcessAlive, lockFile } from './lock.js';
 import type { RunReporter, WaitingUpdate } from './reporter.js';
+import { NO_STOP, type StopRequest } from './stopRequest.js';
 
 export interface RunSpecOptions {
   spec: string;
@@ -63,6 +64,8 @@ export interface RunSpecDeps {
   reporter: RunReporter;
   /** Ctrl-C: aborts the current session or wait. */
   signal: AbortSignal;
+  /** Finish the running task, start no other; also ends a limit wait. Default: never. */
+  stop?: StopRequest;
   version: string;
   /** Defaults: `process.pid` and a `kill(pid, 0)` probe. */
   pid?: number;
@@ -87,6 +90,7 @@ const EXIT_CODES: Readonly<Record<RunReason, RunResult['exitCode']>> = {
   'paused-weekly': 75,
   failed: 1,
   interrupted: 130,
+  stopped: 0,
 };
 
 /** A probe snapshot older than this is refreshed before the next pause check (SRD-10). */
@@ -171,6 +175,7 @@ function previewDone(state: SpecState, task: string, payload: CompleteTaskPayloa
  */
 export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promise<RunResult> {
   const { repoRoot, config, clock, reporter, signal } = deps;
+  const stop = deps.stop ?? NO_STOP;
   const lock = acquireLock(
     lockFile(repoRoot, options.spec),
     deps.pid ?? process.pid,
@@ -238,14 +243,35 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       task: string,
       reason: WaitingUpdate['reason'],
       until: Date,
-    ): Promise<void> => {
+    ): Promise<'waited' | 'stopped'> => {
+      // Nothing runs while waiting, so a stop request ends the wait instead of outlasting it.
+      if (stop.requested) return 'stopped';
       append({ t: 'limit.wait', task, reason, until: until.toISOString() });
       reporter.waiting({ until, reason });
-      await waitUntil(until, { clock, signal, onTick: () => reporter.waiting({ until, reason }) });
+      const waitAbort = new AbortController();
+      const forward = (): void => waitAbort.abort();
+      signal.addEventListener('abort', forward, { once: true });
+      const unsubscribe = stop.onRequest(forward);
+      // Either may have happened before the listeners were added (e.g. during `reporter.waiting`).
+      if (signal.aborted || stop.requested) forward();
+      try {
+        await waitUntil(until, {
+          clock,
+          signal: waitAbort.signal,
+          onTick: () => reporter.waiting({ until, reason }),
+        });
+        return 'waited';
+      } catch (error) {
+        if (signal.aborted || !stop.requested) throw error;
+        return 'stopped';
+      } finally {
+        signal.removeEventListener('abort', forward);
+        unsubscribe();
+      }
     };
 
     /** SRD-10: before each segment. Waits out a low session window; 'stop' on a low week. */
-    const pauseCheck = async (task: string): Promise<'go' | 'stop'> => {
+    const pauseCheck = async (task: string): Promise<'go' | 'stop' | 'stopped'> => {
       for (;;) {
         const stale =
           latest === null || clock.now().getTime() - latest.at.getTime() > SNAPSHOT_MAX_AGE_MS;
@@ -264,7 +290,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         const decision = decide(latest, config.limits, clock.now());
         if (decision.action === 'go') return 'go';
         if (decision.action === 'stop') return 'stop';
-        await wait(task, decision.reason, decision.until);
+        if ((await wait(task, decision.reason, decision.until)) === 'stopped') return 'stopped';
         latest = null;
       }
     };
@@ -346,6 +372,12 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
     };
 
     /** One task through all its segments; null when it ended in a commit or a block. */
+    /** A task that already ran a session stays `interrupted` and resumes next run. */
+    const stoppedWhileWaiting = (task: string): RunEnd => ({
+      reason: 'stopped',
+      message: `stopped while waiting for limits; ${task} continues on the next run`,
+    });
+
     const runTask = async (task: SpecTask, state: SpecState): Promise<RunEnd | null> => {
       const initial = state.tasks.get(task.id);
       if (initial === undefined) throw new Error(`unknown task ${task.id}`);
@@ -363,9 +395,11 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       let verifyRound = 0;
 
       for (;;) {
-        if ((await pauseCheck(task.id)) === 'stop') {
+        const pause = await pauseCheck(task.id);
+        if (pause === 'stop') {
           return { reason: 'paused-weekly', message: 'weekly usage left below the minimum' };
         }
+        if (pause === 'stopped') return stoppedWhileWaiting(task.id);
         const current = currentState();
         let reason = next.reason;
         let prompt = next.prompt;
@@ -477,7 +511,9 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
               result.limitResetsAt === null
                 ? limitHitTarget(latest, now)
                 : waitTarget(result.limitResetsAt, now);
-            await wait(task.id, 'limit-hit', until);
+            if ((await wait(task.id, 'limit-hit', until)) === 'stopped') {
+              return stoppedWhileWaiting(task.id);
+            }
             latest = null;
             next = { reason: 'limit-resume', prompt: limitResumePrompt() };
             continue;
@@ -573,6 +609,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       const attempted = new Set<string>();
       for (;;) {
         if (signal.aborted) return { reason: 'interrupted' };
+        if (stop.requested) return { reason: 'stopped' };
         const state = currentState();
         const phase = lowestOpenPhase(spec, state);
         if (phase === null) return { reason: 'done' };

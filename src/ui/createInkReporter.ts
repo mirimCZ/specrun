@@ -1,5 +1,6 @@
-import { render } from 'ink';
+import { render, useInput, useStdin } from 'ink';
 import { createElement, useEffect, useState, type ReactElement } from 'react';
+import type { RunControls } from '../cli/runControls.js';
 import type { RunReporter } from '../runner/reporter.js';
 import { Dashboard } from './Dashboard.js';
 import { createDashboardStore, type DashboardStore } from './dashboardStore.js';
@@ -15,38 +16,57 @@ export interface InkReporter {
 
 export interface InkReporterOptions {
   stdout: NodeJS.WriteStream;
+  controls: RunControls;
   now?: () => Date;
 }
 
 interface LiveProps {
   store: DashboardStore;
+  controls: RunControls;
   now: () => Date;
   stdout: NodeJS.WriteStream;
   /** Changing it forces a render outside the tick (the final frame). */
   revision: number;
 }
 
-function LiveDashboard({ store, now, stdout }: LiveProps): ReactElement {
+function LiveDashboard({ store, controls, now, stdout }: LiveProps): ReactElement {
   const [frame, setFrame] = useState(0);
+  const { isRawModeSupported } = useStdin();
   useEffect(() => {
     const timer = setInterval(() => setFrame((n) => n + 1), TICK_MS);
     return () => clearInterval(timer);
   }, []);
+  // Raw mode turns Ctrl+C into a key instead of SIGINT, so it is handled here too.
+  useInput(
+    (input, key) => {
+      if (key.ctrl && input === 'c') controls.interrupt();
+      else if (input === 's') controls.requestStop();
+      else if (input === 'c') controls.cancelStop();
+    },
+    { isActive: isRawModeSupported },
+  );
   return createElement(Dashboard, {
     view: store.snapshot(),
+    control: { keys: isRawModeSupported, stopRequested: controls.stop.requested },
     now: now(),
     frame,
-    // Read each frame, so a resized terminal is picked up; unknown when not a real TTY.
-    width: stdout.columns ?? 80,
+    // Read each frame, so a resized terminal is picked up; 0 or unknown when the TTY reports no size.
+    width: stdout.columns || 80,
   });
 }
 
-/** SRD-2: the dashboard on a TTY. Ctrl+C stays with specrun's own signal handler (graceful abort). */
+/** SRD-2: the dashboard on a TTY. Ink never exits on its own: Ctrl+C goes to `controls`. */
 export function createInkReporter(options: InkReporterOptions): InkReporter {
   const now = options.now ?? ((): Date => new Date());
   const store = createDashboardStore({ now });
   const element = (revision: number): ReactElement =>
-    createElement(LiveDashboard, { store, now, stdout: options.stdout, revision });
+    createElement(LiveDashboard, {
+      store,
+      controls: options.controls,
+      now,
+      stdout: options.stdout,
+      revision,
+    });
   const instance = render(element(0), { stdout: options.stdout, exitOnCtrlC: false });
   let unmounted = false;
   return {

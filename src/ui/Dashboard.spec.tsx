@@ -4,6 +4,7 @@ import { Dashboard, formatElapsed } from './Dashboard.js';
 import type { DashboardView } from './dashboardStore.js';
 
 const NOW = new Date('2026-11-13T01:06:12Z');
+const IDLE = { keys: true, stopRequested: false };
 
 function view(over: Partial<DashboardView> = {}): DashboardView {
   return {
@@ -61,7 +62,9 @@ function view(over: Partial<DashboardView> = {}): DashboardView {
 
 describe('Dashboard', () => {
   it('shows the log, the header with the task clock, task rows, the tool and usage', () => {
-    const { lastFrame } = render(<Dashboard view={view()} now={NOW} frame={2} width={80} />);
+    const { lastFrame } = render(
+      <Dashboard view={view()} control={IDLE} now={NOW} frame={2} width={80} />,
+    );
     const frame = lastFrame() ?? '';
 
     expect(frame).toContain('▶ TR-2 Picker (start, sonnet)');
@@ -88,6 +91,7 @@ describe('Dashboard', () => {
           activity: { label: 'setup: npm ci', since: new Date('2026-11-13T01:05:30Z') },
           log: [],
         })}
+        control={IDLE}
         now={NOW}
         frame={0}
         width={80}
@@ -105,6 +109,7 @@ describe('Dashboard', () => {
           waiting: { until: new Date('2026-11-13T02:18:12Z'), reason: 'session-low' },
           tool: 'Read apps/fate-binder/app/bestiary/components/very/deep/folder/MonsterCard.tsx',
         })}
+        control={IDLE}
         now={NOW}
         frame={0}
         width={70}
@@ -114,6 +119,32 @@ describe('Dashboard', () => {
     expect(frame).toMatch(/⏳ waiting until \d\d:\d\d \(session-low\) · 1h 12m left/);
     expect(frame).toContain('MonsterCard.tsx');
     expect(frame).not.toContain('apps/fate-binder');
+  });
+});
+
+describe('Dashboard controls', () => {
+  const frameOf = (over: Partial<DashboardView>, control: typeof IDLE): string =>
+    render(
+      <Dashboard view={view(over)} control={control} now={NOW} frame={0} width={100} />,
+    ).lastFrame() ?? '';
+
+  it('hints the keys while running and drops the hint once the run finished', () => {
+    expect(frameOf({}, IDLE)).toContain(
+      's / Ctrl+C stop after this task · Ctrl+C twice interrupt now',
+    );
+    expect(frameOf({}, { keys: false, stopRequested: false })).toContain(
+      'Ctrl+C stop after this task · twice interrupt now',
+    );
+    expect(frameOf({ activity: null, running: null }, IDLE)).not.toContain('stop after');
+  });
+
+  it('shows that a stop is pending until the running task finished', () => {
+    expect(frameOf({}, { keys: true, stopRequested: true })).toContain(
+      '⏹ stopping after TR-2 finishes · c cancel · Ctrl+C interrupt now',
+    );
+    expect(frameOf({ running: null }, { keys: false, stopRequested: true })).toContain(
+      '⏹ stopping before the next task · Ctrl+C interrupt now',
+    );
   });
 });
 

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { captureDeps, makeTempRepo, writeDemoSpec } from '../../../test/fixtures/specRepo.js';
 import { nullReporter } from '../../runner/reporter.js';
 import type { RunResult, RunSpecDeps, RunSpecOptions } from '../../runner/runSpec.js';
-import { register, type RunCommandOverrides } from './run.js';
+import { register, type RunCommandOverrides, type SignalHandlers } from './run.js';
 
 let dir: string;
 beforeEach(() => {
@@ -124,5 +124,35 @@ describe('specrun run', () => {
       expect(calls).toEqual([]);
       expect(deps.reporter).not.toBe(nullReporter);
     }
+  });
+
+  it('asks to stop on the first SIGINT, aborts on the second and on SIGTERM', async () => {
+    const seen: string[] = [];
+    for (const signals of [['interrupt', 'interrupt'], ['terminate']] as const) {
+      let handlers: SignalHandlers | null = null;
+      const program = new Command('specrun');
+      register(program, captureDeps(dir), {
+        isTTY: false,
+        keepAwake: false,
+        setExitCode: () => undefined,
+        onSignal: (registered) => {
+          handlers = registered;
+          return () => undefined;
+        },
+        runSpec: (_options, deps) => {
+          for (const name of signals) {
+            handlers?.[name]();
+            seen.push(`${name}: stop=${deps.stop?.requested} aborted=${deps.signal.aborted}`);
+          }
+          return Promise.resolve({ exitCode: 0, reason: 'done' });
+        },
+      });
+      await program.parseAsync(['node', 'specrun', 'run', 'demo']);
+    }
+    expect(seen).toEqual([
+      'interrupt: stop=true aborted=false',
+      'interrupt: stop=true aborted=true',
+      'terminate: stop=false aborted=true',
+    ]);
   });
 });

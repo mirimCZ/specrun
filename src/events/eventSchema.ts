@@ -65,7 +65,8 @@ export const RunStartedSchema = z.object({
 export const RunFinishedSchema = z.object({
   ...EVENT_BASE,
   t: z.literal('run.finished'),
-  reason: z.enum(['done', 'checkpoint', 'paused-weekly', 'failed', 'interrupted']),
+  // `stopped`: the user asked to stop after the current task (first Ctrl+C or `s`).
+  reason: z.enum(['done', 'checkpoint', 'paused-weekly', 'failed', 'interrupted', 'stopped']),
   message: z.string().optional(),
 });
 

@@ -62,8 +62,37 @@ function footer(view: DashboardView, now: Date): { text: string; color?: string 
   return { text: view.usage === null ? 'usage unknown' : usageText(view.usage) };
 }
 
+export interface ControlState {
+  /** The dashboard reads keys (stdin supports raw mode); else Ctrl+C arrives as SIGINT. */
+  keys: boolean;
+  stopRequested: boolean;
+}
+
+/** Hint while running; once a stop was asked for, a prominent line that it is pending. */
+function controlLine(
+  view: DashboardView,
+  control: ControlState,
+): { text: string; pending: boolean } | null {
+  if (view.activity === null) return null;
+  if (control.stopRequested) {
+    const what =
+      view.running === null
+        ? 'stopping before the next task'
+        : `stopping after ${view.running.task} finishes`;
+    const cancel = control.keys ? ' · c cancel' : '';
+    return { text: `⏹ ${what}${cancel} · Ctrl+C interrupt now`, pending: true };
+  }
+  return {
+    text: control.keys
+      ? 's / Ctrl+C stop after this task · Ctrl+C twice interrupt now'
+      : 'Ctrl+C stop after this task · twice interrupt now',
+    pending: false,
+  };
+}
+
 export interface DashboardProps {
   view: DashboardView;
+  control: ControlState;
   now: Date;
   /** Spinner frame; advances with the render tick. */
   frame: number;
@@ -72,10 +101,11 @@ export interface DashboardProps {
 }
 
 /** Milestone log above a live box: task rows, the running task's tool call, usage or the wait. */
-export function Dashboard({ view, now, frame, width }: DashboardProps): ReactElement {
+export function Dashboard({ view, control, now, frame, width }: DashboardProps): ReactElement {
   const idWidth = Math.max(0, ...view.rows.map((row) => row.id.length));
   const boxWidth = Math.min(width, MAX_WIDTH);
   const bottom = footer(view, now);
+  const controls = controlLine(view, control);
   return (
     <Box flexDirection="column">
       <Static items={view.log}>{(line) => <LogRow key={line.id} line={line} />}</Static>
@@ -103,6 +133,15 @@ export function Dashboard({ view, now, frame, width }: DashboardProps): ReactEle
         <Text wrap="truncate-end" {...(bottom.color === undefined ? {} : { color: bottom.color })}>
           {bottom.text}
         </Text>
+        {controls === null ? null : controls.pending ? (
+          <Text bold color="yellow" wrap="truncate-end">
+            {controls.text}
+          </Text>
+        ) : (
+          <Text dimColor wrap="truncate-end">
+            {controls.text}
+          </Text>
+        )}
       </Box>
     </Box>
   );

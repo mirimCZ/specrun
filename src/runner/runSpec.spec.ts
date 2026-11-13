@@ -13,6 +13,7 @@ import type { UsageSnapshot } from '../limits/usage.js';
 import { runCommand } from '../process/run.js';
 import { nullReporter, type RunReporter } from './reporter.js';
 import { runSpec, type RunSpecOptions } from './runSpec.js';
+import { createStopRequest, type StopRequest } from './stopRequest.js';
 
 const env = {
   ...process.env,
@@ -84,6 +85,7 @@ interface Harness {
   probeUsage?: () => Promise<UsageSnapshot | null>;
   controller?: AbortController;
   reporter?: RunReporter;
+  stop?: StopRequest;
 }
 
 async function start(h: Harness) {
@@ -100,6 +102,7 @@ async function start(h: Harness) {
       probeUsage: h.probeUsage ?? (() => Promise.resolve(probes.shift() ?? null)),
       reporter: h.reporter ?? nullReporter,
       signal: (h.controller ?? new AbortController()).signal,
+      ...(h.stop === undefined ? {} : { stop: h.stop }),
       version: '0.0.0-test',
       ...(h.pid === undefined ? {} : { pid: h.pid }),
       ...(h.isAlive === undefined ? {} : { isAlive: h.isAlive }),
@@ -304,6 +307,45 @@ describe('runSpec', () => {
       ['limit-resume', 'session-1'],
     ]);
     expect(session.inputs[1]?.resumeSessionId).toBe('session-1');
+  });
+
+  it('finishes the running task on a stop request and starts no other', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2' }]);
+    const stop = createStopRequest();
+    const { result, session } = await start({
+      segments: [{ edits: { 'one.txt': '1' } }, {}],
+      stop,
+      reporter: {
+        ...nullReporter,
+        event: (event) => {
+          if (event.t === 'session.started') stop.request();
+        },
+      },
+    });
+
+    expect(result).toEqual({ exitCode: 0, reason: 'stopped' });
+    expect(session.inputs).toHaveLength(1);
+    expect(ofType('task.committed').map((e) => e.task)).toEqual(['A-1']);
+    expect(ofType('run.finished').map((e) => e.reason)).toEqual(['stopped']);
+  });
+
+  it('ends a limit wait at once on a stop request', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const stop = createStopRequest();
+    const { result, session } = await start({
+      probes: [snapshot(10, 80, HOUR)],
+      segments: [{}],
+      stop,
+      reporter: { ...nullReporter, waiting: () => stop.request() },
+    });
+
+    expect(result).toEqual({
+      exitCode: 0,
+      reason: 'stopped',
+      message: 'stopped while waiting for limits; A-1 continues on the next run',
+    });
+    expect(session.inputs).toHaveLength(0);
+    expect(clock.now().getTime()).toBeLessThan(START.getTime() + HOUR);
   });
 
   it('waits before a task while the session window is low', async () => {

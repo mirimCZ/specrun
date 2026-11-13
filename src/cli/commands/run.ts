@@ -13,9 +13,11 @@ import {
 } from '../../runner/runSpec.js';
 import { probeUsage } from '../../session/probeUsage.js';
 import { createSdkSession } from '../../session/sdkSession.js';
+import type { RunReporter } from '../../runner/reporter.js';
 import { createInkReporter, type InkReporter } from '../../ui/createInkReporter.js';
 import type { CliDeps } from '../cliDeps.js';
 import { createLineReporter } from '../lineReporter.js';
+import { createRunControls, type RunControls } from '../runControls.js';
 
 // Same relative path from src/cli/commands (tsx, vitest) and dist/cli/commands (build).
 const { version } = createRequire(import.meta.url)('../../../package.json') as {
@@ -26,12 +28,19 @@ const { version } = createRequire(import.meta.url)('../../../package.json') as {
 export interface RunCommandOverrides {
   runSpec?: (options: RunSpecOptions, deps: RunSpecDeps) => Promise<RunResult>;
   setExitCode?: (code: number) => void;
-  /** Registers an abort handler for SIGINT/SIGTERM; returns the unregister function. */
-  onSignal?: (handler: () => void) => () => void;
+  /** Registers the SIGINT and SIGTERM handlers; returns the unregister function. */
+  onSignal?: (handlers: SignalHandlers) => () => void;
   keepAwake?: boolean;
   /** Defaults to `process.stdout.isTTY`. */
   isTTY?: boolean;
-  createInkReporter?: () => InkReporter;
+  createInkReporter?: (controls: RunControls) => InkReporter;
+}
+
+export interface SignalHandlers {
+  /** SIGINT: Ctrl+C without the dashboard (which reads keys itself), or `kill -INT`. */
+  interrupt: () => void;
+  /** SIGTERM: always aborts right away. */
+  terminate: () => void;
 }
 
 interface RunFlags {
@@ -44,12 +53,12 @@ interface RunFlags {
   ui: boolean;
 }
 
-function processSignals(handler: () => void): () => void {
-  process.on('SIGINT', handler);
-  process.on('SIGTERM', handler);
+function processSignals({ interrupt, terminate }: SignalHandlers): () => void {
+  process.on('SIGINT', interrupt);
+  process.on('SIGTERM', terminate);
   return () => {
-    process.off('SIGINT', handler);
-    process.off('SIGTERM', handler);
+    process.off('SIGINT', interrupt);
+    process.off('SIGTERM', terminate);
   };
 }
 
@@ -83,7 +92,16 @@ export function register(
       const repoRoot = findRepoRoot(deps.cwd);
       const config = loadConfig(repoRoot);
       const controller = new AbortController();
-      const unregister = (overrides.onSignal ?? processSignals)(() => controller.abort());
+      // Bound late: the dashboard needs the controls, the controls log through the reporter.
+      let reporter: RunReporter | null = null;
+      const controls = createRunControls({
+        abort: () => controller.abort(),
+        log: (message) => reporter?.log('warn', message),
+      });
+      const unregister = (overrides.onSignal ?? processSignals)({
+        interrupt: () => controls.interrupt(),
+        terminate: () => controller.abort(),
+      });
       const awake =
         overrides.keepAwake === false
           ? { stop: (): void => undefined }
@@ -93,8 +111,12 @@ export function register(
       // SRD-2: the dashboard on a terminal; log lines for pipes, files and `--no-ui`.
       const ink =
         flags.ui && isTTY
-          ? (overrides.createInkReporter ?? (() => createInkReporter({ stdout: process.stdout })))()
+          ? (
+              overrides.createInkReporter ??
+              ((c: RunControls) => createInkReporter({ stdout: process.stdout, controls: c }))
+            )(controls)
           : null;
+      reporter = ink?.reporter ?? createLineReporter(deps.stdout, { color, now: deps.now });
       try {
         const result = await (overrides.runSpec ?? runSpec)(buildRunOptions(spec, flags), {
           repoRoot,
@@ -103,8 +125,9 @@ export function register(
           run: runCommand,
           clock: systemClock,
           probeUsage: () => probeUsage({ cwd: repoRoot }),
-          reporter: ink?.reporter ?? createLineReporter(deps.stdout, { color, now: deps.now }),
+          reporter,
           signal: controller.signal,
+          stop: controls.stop,
           version,
         });
         await ink?.unmount();
