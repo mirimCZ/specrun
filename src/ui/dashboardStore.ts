@@ -1,7 +1,7 @@
 import { createEventFormatter, type Segment } from '../cli/eventLines.js';
 import type { SpecrunEvent } from '../events/eventSchema.js';
 import { deriveState, lowestOpenPhase, type SpecState } from '../events/taskState.js';
-import type { RunPhase, RunReporter, WaitingUpdate } from '../runner/reporter.js';
+import type { RunPhase, RunPlan, RunReporter, WaitingUpdate } from '../runner/reporter.js';
 import type { Spec } from '../spec/specSchema.js';
 
 export type RowStatus = 'done' | 'running' | 'todo' | 'blocked' | 'interrupted';
@@ -89,6 +89,7 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
   const { now } = options;
   const formatter = createEventFormatter();
   let spec: Spec | null = null;
+  let position: RunPlan['position'] = undefined;
   const events: SpecrunEvent[] = [];
   let state: SpecState | null = null;
   let activity: DashboardView['activity'] = { label: 'starting', since: now() };
@@ -128,7 +129,16 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
 
   return {
     plan(plan) {
+      // `run --all` plans each spec in turn: the rows start over, the log and usage carry on.
       spec = plan.spec;
+      position = plan.position;
+      events.length = 0;
+      state = null;
+      running = null;
+      tool = null;
+      waiting = null;
+      live.clear();
+      models.clear();
       formatter.plan(plan.spec);
       for (const event of plan.events) record(event);
     },
@@ -202,7 +212,10 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
       state = current;
       const rows = spec.tasks.map((task) => rowOf(task, current));
       return {
-        title: spec.title,
+        title:
+          position === undefined
+            ? spec.title
+            : `${spec.title} (spec ${position.index}/${position.total})`,
         phaseNumber: lowestOpenPhase(spec, current),
         done: rows.filter((row) => row.status === 'done').length,
         total: rows.length,

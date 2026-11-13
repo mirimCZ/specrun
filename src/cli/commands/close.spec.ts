@@ -48,7 +48,7 @@ describe('specrun close', () => {
 
     const out = deps.out.join('');
     expect(out).toContain(
-      'merging specrun/demo into main: 1 commit(s), fast-forward\narchiving …\n',
+      'merging specrun/demo into main: 1 commit(s), fast-forward\narchiving demo …\n',
     );
     expect(out).toContain('Closed demo: merged specrun/demo into main (fast-forward, 1 commit(s))');
     expect(out).toContain('Archived demo → docs/archive/demo');

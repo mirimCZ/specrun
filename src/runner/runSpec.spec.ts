@@ -92,7 +92,7 @@ async function start(h: Harness) {
   const session = createFakeSession(h.segments, { gitEnv: env });
   const probes = [...(h.probes ?? [])];
   const result = await runSpec(
-    { spec: 'demo', base: 'main', retryBlocked: false, allPhases: false, ...h.options },
+    { spec: 'demo', base: 'main', retryBlocked: false, workspace: 'own', ...h.options },
     {
       repoRoot: repo,
       config: h.config ?? makeConfig(),
@@ -456,26 +456,21 @@ describe('runSpec', () => {
     expect(filesIn(commitOf('A-1'))).toContain('half.txt');
   });
 
-  it('stops at a phase checkpoint unless allPhases', async () => {
-    setupRepo([{ id: 'A-1' }, { id: 'A-2', phase: 2 }]);
-    const first = await start({ segments: [{}] });
-    expect(first.result).toEqual({
-      exitCode: 0,
-      reason: 'checkpoint',
-      message: 'phase 1 finished',
-    });
-    expect(ofType('session.started').map((e) => e.task)).toEqual(['A-1']);
-
-    const second = await start({ segments: [{}] });
-    expect(second.result.reason).toBe('done');
-    expect(ofType('session.started').map((e) => e.task)).toEqual(['A-1', 'A-2']);
+  it('runs every phase without stopping, the lowest phase first', async () => {
+    setupRepo([{ id: 'B-1', phase: 2 }, { id: 'A-1' }]);
+    const { result } = await start({ segments: [{}, {}] });
+    expect(result).toEqual({ exitCode: 0, reason: 'done' });
+    expect(ofType('task.committed').map((e) => e.task)).toEqual(['A-1', 'B-1']);
   });
 
-  it('runs every phase with allPhases', async () => {
-    setupRepo([{ id: 'A-1' }, { id: 'A-2', phase: 2 }]);
-    const { result } = await start({ segments: [{}, {}], options: { allPhases: true } });
-    expect(result.reason).toBe('done');
-    expect(ofType('task.committed').map((e) => e.task)).toEqual(['A-1', 'A-2']);
+  it('runs a later phase while the earlier one waits for a blocked task', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2', needs: ['A-1'] }, { id: 'B-1', phase: 2 }]);
+    const { result } = await start({ segments: [{ outcome: 'blocked' }, {}] });
+    expect(result).toMatchObject({
+      reason: 'done',
+      message: 'nothing runnable: A-2 wait for blocked tasks',
+    });
+    expect(ofType('task.committed').map((e) => e.task)).toEqual(['B-1']);
   });
 
   it('records budget.exceeded when a task goes over its size', async () => {

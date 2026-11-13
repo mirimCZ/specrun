@@ -73,7 +73,8 @@ project's `specrun.config.json` under `sizes` (defaults: S 10–25, M 20–45, L
 - Quick check: if two tasks' Read-first lists overlap by more than half and together stay ≤ 8
   changed files → merge. If one Read-first list needs more than ~10 entries → split.
 - Order by dependency; a task never relies on a later one. Phases only for large specs where
-  each phase is shippable on its own (the run stops at the end of a phase).
+  each phase is shippable on its own (the run doesn't stop between phases — they only order the
+  work, lowest first).
 - Each task leaves the project's verify steps green.
 
 **Model:** `strong` for tasks that need the stronger model — core domain rules, security /

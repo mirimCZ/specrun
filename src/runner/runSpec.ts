@@ -20,6 +20,7 @@ import {
 import { buildCommitMessage } from '../git/commitMessage.js';
 import { recordAnalytics } from '../analytics/recordAnalytics.js';
 import { createGit } from '../git/git.js';
+import { SHARED_BRANCH, SHARED_ID } from '../git/workspace.js';
 import { ensureCheckout, ensureWorktree, type WorktreeStep } from '../git/worktree.js';
 import { waitUntil, type Clock } from '../limits/clock.js';
 import { decide, limitHitTarget, waitTarget } from '../limits/policy.js';
@@ -48,7 +49,8 @@ export interface RunSpecOptions {
   /** Run only this task (ignores phases). */
   taskFilter?: string;
   retryBlocked: boolean;
-  allPhases: boolean;
+  /** `shared`: the worktree and branch of `run --all` (SRD-31) instead of the spec's own. */
+  workspace: 'own' | 'shared';
   /** Model alias for every session instead of the task's `default` / `strong` mapping. */
   modelOverride?: string;
 }
@@ -86,6 +88,7 @@ type BlockSource = EventOf<'task.blocked'>['source'];
 
 const EXIT_CODES: Readonly<Record<RunReason, RunResult['exitCode']>> = {
   done: 0,
+  // Only in logs of runs before SRD-8 dropped phase checkpoints.
   checkpoint: 0,
   'paused-weekly': 75,
   failed: 1,
@@ -120,7 +123,7 @@ function toolDetail(input: unknown): string {
 /** Every spec run in place shares the main checkout, so only one of them may run at a time. */
 export const CHECKOUT_LOCK = '.checkout';
 
-function workspacePhase(repoRoot: string, step: WorktreeStep): RunPhase {
+export function workspacePhase(repoRoot: string, step: WorktreeStep): RunPhase {
   switch (step.step) {
     case 'add':
       return { kind: 'worktree', path: relative(repoRoot, step.path) };
@@ -183,8 +186,8 @@ function previewDone(state: SpecState, task: string, payload: CompleteTaskPayloa
 }
 
 /**
- * Runs the spec's tasks until it is done, a phase checkpoint is reached, the weekly limit stops
- * it or it is interrupted. Setup failures (lock, spec, worktree) throw — there is no event log to
+ * Runs the spec's tasks until it is done (or nothing is runnable), the weekly limit stops it, a
+ * stop is requested or it is interrupted. Setup failures (lock, spec, worktree) throw — there is no event log to
  * record them in yet; everything after `run.started` ends in a `run.finished`.
  */
 export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promise<RunResult> {
@@ -192,14 +195,18 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
   const stop = deps.stop ?? NO_STOP;
   const take = (name: string): Lock =>
     acquireLock(lockFile(repoRoot, name), deps.pid ?? process.pid, deps.isAlive ?? isProcessAlive);
+  const shared = options.workspace === 'shared';
   const locks = [take(options.spec)];
   try {
+    // One worktree, so one run in it at a time.
+    if (shared) locks.push(take(SHARED_ID));
     if (!config.worktree) locks.push(take(CHECKOUT_LOCK));
-    const branch =
-      loadSpec(repoRoot, config, options.spec).spec.branch ?? `specrun/${options.spec}`;
+    const branch = shared
+      ? SHARED_BRANCH
+      : (loadSpec(repoRoot, config, options.spec).spec.branch ?? `specrun/${options.spec}`);
     const workspace = {
       repoRoot,
-      spec: options.spec,
+      spec: shared ? SHARED_ID : options.spec,
       branch,
       base: options.base,
       run: deps.run,
@@ -626,15 +633,13 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
     };
 
     const loop = async (): Promise<RunEnd> => {
-      const startPhase = lowestOpenPhase(spec, currentState());
       // A task blocked in this run is not retried by `retryBlocked` in the same run.
       const attempted = new Set<string>();
       for (;;) {
         if (signal.aborted) return { reason: 'interrupted' };
         if (stop.requested) return { reason: 'stopped' };
         const state = currentState();
-        const phase = lowestOpenPhase(spec, state);
-        if (phase === null) return { reason: 'done' };
+        if (lowestOpenPhase(spec, state) === null) return { reason: 'done' };
         const runnable = runnableTasks(spec, state, options).filter((t) => !attempted.has(t.id));
         let task: SpecTask | undefined;
         if (options.taskFilter !== undefined) {
@@ -644,11 +649,11 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
             return { reason: 'failed', message: notRunnable(state, options.taskFilter) };
           }
         } else {
-          // SRD-8: a finished phase is a checkpoint.
-          if (!options.allPhases && phase !== startPhase) {
-            return { reason: 'checkpoint', message: `phase ${startPhase} finished` };
-          }
-          task = runnable.find((t) => options.allPhases || t.phase === phase);
+          // SRD-8: phases only order the work — a later phase runs when nothing earlier can.
+          task = runnable.reduce<SpecTask | undefined>(
+            (lowest, t) => (lowest === undefined || t.phase < lowest.phase ? t : lowest),
+            undefined,
+          );
           if (task === undefined) {
             const waiting = spec.tasks
               .filter((t) => state.tasks.get(t.id)?.status === 'todo')
@@ -673,7 +678,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       version: deps.version,
       options: {
         retryBlocked: options.retryBlocked,
-        allPhases: options.allPhases,
+        ...(shared ? { workspace: 'shared' } : {}),
         ...(options.taskFilter === undefined ? {} : { taskFilter: options.taskFilter }),
         ...(options.modelOverride === undefined ? {} : { modelOverride: options.modelOverride }),
       },

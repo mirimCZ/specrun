@@ -50,6 +50,8 @@ export function acquireLock(file: string, pid: number, isAlive: (pid: number) =>
       if (!isExistsError(error)) throw error;
     }
     const holder = readLockPid(file);
+    // Reentrant: `run --all` holds every spec's lock while runSpec takes each again.
+    if (holder === pid) return { release: () => undefined };
     if (holder !== null && isAlive(holder)) {
       throw new SpecrunError('locked', `Another specrun run holds ${file} (pid ${holder})`);
     }

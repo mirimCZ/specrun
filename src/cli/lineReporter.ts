@@ -30,8 +30,11 @@ export function createLineReporter(
     write(`${clockTime(at)} ${paint(segments)}\n`);
 
   return {
-    plan({ spec }) {
+    plan({ spec, position }) {
       formatter.plan(spec);
+      if (position !== undefined) {
+        line(now(), [{ text: `spec ${position.index}/${position.total}: ${spec.title}` }]);
+      }
     },
     phase(phase) {
       const segments = formatter.phase(phase);

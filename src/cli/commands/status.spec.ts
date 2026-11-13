@@ -31,7 +31,7 @@ describe('specrun status', () => {
     const output = await status();
     expect(output).toMatch(/demo\s+0\/2\s+1 blocked/);
     expect(JSON.parse(await status('--json'))).toEqual([
-      { name: 'demo', done: 0, total: 2, blocked: 1, runningPid: null },
+      { name: 'demo', done: 0, total: 2, blocked: 1, workspace: 'checkout', runningPid: null },
     ]);
   });
 

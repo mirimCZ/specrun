@@ -1,10 +1,13 @@
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createScriptedPrompter } from '../../../test/fakes/fakePrompter.js';
 import { captureDeps, makeTempRepo, writeDemoSpec } from '../../../test/fixtures/specRepo.js';
+import { doneTask } from '../../../test/fixtures/taskEvents.js';
+import { SpecrunError } from '../../errors.js';
 import { nullReporter } from '../../runner/reporter.js';
+import type { RunAllOptions } from '../../runner/runAll.js';
 import type { RunResult, RunSpecDeps, RunSpecOptions } from '../../runner/runSpec.js';
 import { register, type RunCommandOverrides, type SignalHandlers } from './run.js';
 
@@ -65,7 +68,6 @@ describe('specrun run', () => {
         '--task',
         'D-1',
         '--retry-blocked',
-        '--all-phases',
         '--base',
         'develop',
         '--model',
@@ -79,7 +81,7 @@ describe('specrun run', () => {
       base: 'develop',
       taskFilter: 'D-1',
       retryBlocked: true,
-      allPhases: true,
+      workspace: 'own',
       modelOverride: 'opus',
     });
     expect(deps.repoRoot).toBe(dir);
@@ -92,7 +94,7 @@ describe('specrun run', () => {
       spec: 'demo',
       base: 'HEAD',
       retryBlocked: false,
-      allPhases: false,
+      workspace: 'own',
     });
     expect(exit).toEqual([0]);
   });
@@ -158,6 +160,73 @@ describe('specrun run', () => {
     ]);
   });
 
+  it('runs every spec with --all and prints the summary', async () => {
+    const cliDeps = captureDeps(dir);
+    const exit: number[] = [];
+    const seen: RunAllOptions[] = [];
+    const program = new Command('specrun');
+    register(program, cliDeps, {
+      isTTY: false,
+      keepAwake: false,
+      onSignal: () => () => undefined,
+      setExitCode: (code) => void exit.push(code),
+      runAll: (options) => {
+        seen.push(options);
+        return Promise.resolve({
+          exitCode: 0,
+          merged: 0,
+          specs: [
+            {
+              spec: 'demo',
+              outcome: { kind: 'ran', result: { exitCode: 0, reason: 'done' } },
+              tasks: { done: 2, total: 2, blocked: 0, costUsd: 0.5 },
+              costUsd: 0.5,
+              durationMs: 90_000,
+            },
+          ],
+        });
+      },
+    });
+    await program.parseAsync(['node', 'specrun', 'run', '--all', '--retry-blocked', '--no-ui']);
+
+    expect(seen).toEqual([{ base: 'HEAD', retryBlocked: true }]);
+    expect(exit).toEqual([0]);
+    const out = cliDeps.out.join('');
+    expect(out).toMatch(/demo +done +2\/2 +\$0\.50 +1m 30s/);
+    expect(out).toMatch(/summary: \.specrun\/logs\/all\/summary-.*\.md/);
+  });
+
+  it('refuses a spec together with --all, --task with --all and --dry-run without it', async () => {
+    for (const args of [['demo', '--all'], ['--all', '--task', 'D-1'], ['demo', '--dry-run'], []]) {
+      const program = new Command('specrun');
+      register(program, captureDeps(dir), { isTTY: false, keepAwake: false });
+      await expect(program.parseAsync(['node', 'specrun', 'run', ...args])).rejects.toBeInstanceOf(
+        SpecrunError,
+      );
+    }
+  });
+
+  it('asks the questions only after a complete run on a terminal', async () => {
+    writeFileSync(
+      join(dir, 'docs', 'demo', 'events.jsonl'),
+      doneTask('D-1', 1, 0) + doneTask('D-2', 1, 0),
+    );
+    const asked: string[][] = [];
+    const extra: RunCommandOverrides = {
+      isTTY: true,
+      createInkReporter: fakeInk([]),
+      afterRun: (input) => {
+        asked.push([...input.specs, input.closeCommand]);
+        return Promise.resolve();
+      },
+    };
+    const terminal = { ...captureDeps(dir), interactive: true };
+    await runCli(['demo'], { exitCode: 0, reason: 'done' }, extra, terminal);
+    await runCli(['demo', '--no-ui'], { exitCode: 0, reason: 'done' }, extra, terminal);
+    await runCli(['demo'], { exitCode: 75, reason: 'paused-weekly' }, extra, terminal);
+    expect(asked).toEqual([['demo', 'specrun close demo']]);
+  });
+
   describe('without specrun.config.json', () => {
     beforeEach(() => rmSync(join(dir, 'specrun.config.json')));
 
@@ -168,8 +237,9 @@ describe('specrun run', () => {
     });
 
     it('offers the wizard in a terminal, then runs', async () => {
-      // Offer, then the wizard: no worktree, default check, default limits, no check run.
-      const scripted = createScriptedPrompter(['', 'n', '', '', '', 'n']);
+      // Offer, then the wizard: the fixture's specs folder, no worktree, default check, default
+      // limits, no check run.
+      const scripted = createScriptedPrompter(['', 'docs', 'n', '', '', '', 'n']);
       const cliDeps = { ...captureDeps(dir), interactive: true, prompter: () => scripted.prompter };
       const { exit } = await runCli(['demo'], { exitCode: 0, reason: 'done' }, {}, cliDeps);
       expect(scripted.prompts[0]).toMatch(

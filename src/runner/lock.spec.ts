@@ -27,6 +27,15 @@ describe('acquireLock', () => {
     );
   });
 
+  it('is reentrant for its own pid, and only the outer release removes the file', () => {
+    const outer = acquireLock(file, 42, () => true);
+    const inner = acquireLock(file, 42, () => true);
+    inner.release();
+    expect(existsSync(file)).toBe(true);
+    outer.release();
+    expect(existsSync(file)).toBe(false);
+  });
+
   it('takes over a stale lock', () => {
     acquireLock(file, 42, () => true);
     const lock = acquireLock(file, 43, () => false);

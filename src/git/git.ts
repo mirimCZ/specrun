@@ -17,6 +17,8 @@ export interface WorktreeEntry {
 
 export interface Git {
   head(): Promise<string>;
+  /** Commit sha of `ref`; throws when it names no commit. */
+  resolve(ref: string): Promise<string>;
   /** Tracked and untracked changes; limited to `paths` when given. */
   isClean(paths?: readonly string[]): Promise<boolean>;
   branchExists(name: string): Promise<boolean>;
@@ -32,6 +34,8 @@ export interface Git {
   commitPaths(message: CommitMessageParts, paths: readonly string[]): Promise<string | null>;
   resetSoft(sha: string): Promise<void>;
   resetHardClean(): Promise<void>;
+  /** Moves the checked-out branch to `sha`, discarding changes. */
+  resetHard(sha: string): Promise<void>;
   diffStat(from: string, to: string): Promise<DiffStat>;
   changedFiles(from: string): Promise<string[]>;
   parkChanges(ref: string, message: string): Promise<string | null>;
@@ -66,6 +70,10 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
   const api: Git = {
     async head() {
       return (await git(['rev-parse', 'HEAD'])).trim();
+    },
+
+    async resolve(ref) {
+      return (await git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`])).trim();
     },
 
     async isClean(paths) {
@@ -129,6 +137,10 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
     async resetHardClean() {
       await git(['reset', '--hard', '-q']);
       await git(['clean', '-fdq']);
+    },
+
+    async resetHard(sha) {
+      await git(['reset', '--hard', '-q', sha]);
     },
 
     async diffStat(from, to) {

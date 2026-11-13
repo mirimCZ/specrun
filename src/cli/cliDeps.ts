@@ -1,8 +1,7 @@
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Config } from '../config/configSchema.js';
 import { EVENTS_FILE } from '../events/eventStore.js';
-import { worktreePath } from '../git/worktree.js';
+import { specWorkspace, type SpecWorkspace } from '../git/workspace.js';
 import { specDir } from '../spec/loadSpec.js';
 import { createTerminalPrompter, type Prompter } from './prompter.js';
 
@@ -34,17 +33,17 @@ export interface ActiveSpecFiles {
   /** Root the spec is read from: the worktree while it exists (SRD-4), else the checkout. */
   base: string;
   worktree: string | null;
+  workspace: SpecWorkspace['kind'];
   eventsFile: string;
 }
 
 /** The worktree's copy is the live one during and after a run; the checkout's lags behind. */
 export function activeSpecFiles(repoRoot: string, config: Config, spec: string): ActiveSpecFiles {
-  const worktree = worktreePath(repoRoot, spec);
-  const hasWorktree = existsSync(worktree);
-  const base = hasWorktree ? worktree : repoRoot;
+  const workspace = specWorkspace(repoRoot, config, spec);
   return {
-    base,
-    worktree: hasWorktree ? worktree : null,
-    eventsFile: join(specDir(base, config, spec), EVENTS_FILE),
+    base: workspace.path,
+    worktree: workspace.kind === 'checkout' ? null : workspace.path,
+    workspace: workspace.kind,
+    eventsFile: join(specDir(workspace.path, config, spec), EVENTS_FILE),
   };
 }

@@ -65,6 +65,25 @@ function setup(): {
 }
 
 describe('createDashboardStore', () => {
+  it('starts the rows over for the next spec of run --all and shows its position', () => {
+    const clock = createFakeClock(new Date(at(0)));
+    const store = createDashboardStore({ now: () => clock.now() });
+    store.plan({ spec, events: [started(1, 'TR-1')], position: { index: 1, total: 2 } });
+    store.event(started(2, 'TR-1'));
+    const next: Spec = {
+      title: 'Billing',
+      tasks: [{ id: 'BI-1', title: 'Plans', phase: 1, needs: [], model: 'default', size: 'S' }],
+    };
+    store.plan({ spec: next, events: [], position: { index: 2, total: 2 } });
+
+    const view = store.snapshot();
+    expect(view.title).toBe('Billing (spec 2/2)');
+    expect(view.running).toBeNull();
+    expect(view.rows.map((row) => [row.id, row.status, row.model])).toEqual([
+      ['BI-1', 'todo', null],
+    ]);
+  });
+
   it('shows the startup phases before the spec is known', () => {
     const { store, clock } = setup();
     store.phase({ kind: 'worktree', path: '.specrun/worktrees/traits' });

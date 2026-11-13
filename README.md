@@ -74,7 +74,7 @@ branch: feat/traits # optional, defaults to specrun/<spec>
 tasks:
   - id: TR-1 # ^[A-Z][A-Z0-9]*-[0-9]+$, brief in tasks/TR-1.md
     title: Trait rules data and character model
-    phase: 1 # phases are checkpoints (see below)
+    phase: 1 # lower phases run first (see below)
     needs: [] # task ids, or `all`; never a task of a later phase
     model: strong # default | strong (opus / sonnet are accepted aliases)
     size: L # S | M | L — the expected turns and cost, see `sizes`
@@ -91,7 +91,8 @@ files: the runner owns git.
 ## Running
 
 ```sh
-specrun run <spec> [--task <id>] [--retry-blocked] [--all-phases] [--base <ref>] [--model <alias>] [--no-ui]
+specrun run <spec> [--task <id>] [--retry-blocked] [--base <ref>] [--model <alias>] [--no-ui]
+specrun run --all [--dry-run] [--retry-blocked] [--base <ref>] [--model <alias>] [--no-ui]
 ```
 
 For each runnable task (dependencies done, lowest open phase first):
@@ -110,8 +111,8 @@ A blocked task's changes are parked under `refs/specrun/parked/<spec>/<task>` (s
 `git show <ref>`) and the next task starts from a clean tree. Tasks that need a blocked one wait;
 `--retry-blocked` runs blocked tasks again.
 
-**Phases** are checkpoints: the run stops once every task of the lowest unfinished phase is done
-or blocked, so you can review before the next phase. `--all-phases` runs through.
+**Phases** only order the work: a run goes on until nothing is runnable, the lowest phase first —
+a later phase runs while an earlier one waits for a blocked task.
 
 **Resuming** — everything lives in files, so running `specrun run <spec>` again continues where
 it stopped; an interrupted session is resumed with its context.
@@ -133,14 +134,36 @@ piped it prints log lines instead.
 A stop requested while the run waits for a usage limit ends it at once. `s` and `c` exist only
 in the dashboard; without it, `Ctrl+C` works the same two-step way.
 
-| Exit code | Meaning                                                    |
-| --------- | ---------------------------------------------------------- |
-| 0         | Spec done, phase checkpoint reached, or stopped on request |
-| 1         | Failure (the message says why)                             |
-| 75        | Stopped on the weekly usage limit                          |
-| 130       | Interrupted                                                |
+| Exit code | Meaning                                                |
+| --------- | ------------------------------------------------------ |
+| 0         | Spec done (or nothing runnable), or stopped on request |
+| 1         | Failure (the message says why)                         |
+| 75        | Stopped on the weekly usage limit                      |
+| 130       | Interrupted                                            |
 
 On macOS specrun keeps the machine awake (`caffeinate`) while it runs.
+
+**After a complete run** — when every task is done and the dashboard runs on a terminal, specrun
+stays open and asks: _Run specrun review on the finished specs?_ (only with deviations), then,
+once Claude exits, _Run specrun close on the finished specs?_. Between the two it offers to
+commit what the review changed and to run the fix tasks it added. `n` or `Ctrl+C` ends it.
+
+### All specs at once
+
+`specrun run --all` runs every spec under `specsDir` (the archive aside), alphabetically, in one
+shared worktree `.specrun/worktrees/.all` on the branch `specrun/all` — each spec sees the
+commits of the ones before it. A spec that ends done goes on to the next; a weekly limit, a stop
+request, an interrupt or a failure ends the whole run with that spec's exit code. Specs with
+nothing to run are skipped. At the end it prints one row per spec (result, tasks, blocked, cost,
+time) and keeps it in `.specrun/logs/all/summary-<time>.md`.
+
+- It refuses to start while a spec has its own worktree or branch (`specrun/<spec>`, or `branch`
+  in `tasks.yaml`) — finish and close those first.
+- On later runs it first merges `--base` (default `HEAD`) into `specrun/all`, so specs committed
+  meanwhile join; a real merge runs the check, and a conflict or a red check undoes it and stops.
+- `specrun run <spec>` for a spec that ran there continues in the shared worktree.
+- `--dry-run` lists the order, each spec's state and the reasons it would refuse, changing nothing.
+- `specrun close --all` closes them together (below); `close <spec>` refuses such a spec.
 
 ## Workspace
 
@@ -167,7 +190,7 @@ existing file).
 | `setup`           | `null` (`init`: from the lockfile, e.g. `npm ci`)   | Runs once in a new worktree                                          |
 | `verify`          | required (`init`: `npm run check` or the scripts)   | `{ name, command }[]`, run in order after each task; first red stops |
 | `limits`          | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`      | % left of the 5-hour / weekly window below which a run waits / stops |
-| `specsDir`        | `"docs"`                                            | Folder with the specs                                                |
+| `specsDir`        | `"docs"` (`init`: `"spec"` for a new config)        | Folder with the specs                                                |
 | `models`          | `{ "default": "sonnet", "strong": "opus" }`         | Model per `model` value in `tasks.yaml`; `--model` overrides all     |
 | `maxTurns`        | `150`                                               | Turn limit of one session; reaching it blocks the task               |
 | `verifyFixRounds` | `2`                                                 | Fix attempts after a red check                                       |
@@ -187,6 +210,7 @@ existing file).
 | `specrun analyze [spec] [--task <id>] [--reindex]`                     | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
 | `specrun archive <spec> [--force]`                                     | Archive a finished spec, remove its merged worktree and branch                                 |
 | `specrun close <spec> [--into <branch>] [--force]`                     | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
+| `specrun close --all [--into <branch>] [--force]`                      | The same for `specrun/all`: one merge, then archive every spec that ran there                  |
 
 `status`, `stats`, `deviations` and `analyze` work from another terminal during a run, and all
 of them take `--json` (format in [`docs/json-output.md`](docs/json-output.md)).
@@ -197,7 +221,9 @@ checked-out branch (`--into` for another one; a checkout left on the spec branch
 `"worktree": false` goes back to main / master): a fast-forward when possible, else a merge
 commit followed by the configured check — a red check keeps the merge but stops before archiving.
 A conflict aborts the merge. Then it runs `specrun archive` and deletes the spec branch. It never
-pushes.
+pushes. `specrun close --all` does the same for `specrun/all`: every spec that ran there must be
+done (`--force` archives them anyway), then it archives each of them and removes the shared
+worktree and branch.
 
 **Reviewing deviations** — `specrun review <spec>` starts Claude Code on the same terminal. specrun
 first gathers what the review needs — the config, each task's brief, its commit (message, changed

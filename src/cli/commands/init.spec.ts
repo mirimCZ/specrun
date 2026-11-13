@@ -49,6 +49,7 @@ describe('specrun init --yes', () => {
     writeFileSync(join(dir, 'pnpm-lock.yaml'), '');
     await init('--yes');
     expect(config()).toEqual({
+      specsDir: 'spec',
       worktree: true,
       setup: 'pnpm install --frozen-lockfile',
       verify: [{ name: 'check', command: 'pnpm run typecheck && pnpm run test' }],
@@ -84,7 +85,8 @@ describe('specrun init --yes', () => {
     await expect(init('--yes')).rejects.toThrow(/already exists/);
     expect(read('specrun.config.json')).toBe('{"custom":true}');
     await init('--yes', '--force');
-    expect(config()).toMatchObject({ custom: true, worktree: true });
+    // An existing config without the key keeps its specs where the schema default puts them.
+    expect(config()).toMatchObject({ custom: true, specsDir: 'docs', worktree: true });
   });
 });
 
@@ -95,9 +97,19 @@ describe('specrun init in a terminal', () => {
     writeFileSync(join(dir, 'package-lock.json'), '{}');
     writeFileSync(join(dir, '.gitignore'), '.env*\n');
     writeFileSync(join(dir, '.env'), 'KEY=1\n');
-    const { prompts, deps } = await initInteractive(['', '', 'npm install', 'true', '20', '', '']);
+    const { prompts, deps } = await initInteractive([
+      'specs/',
+      '',
+      '',
+      'npm install',
+      'true',
+      '20',
+      '',
+      '',
+    ]);
 
     expect(prompts).toEqual([
+      'Folder with the specs [spec]: ',
       'Use a worktree [Y/n] ',
       'Copy ignored files into new worktrees (.env)? [Y/n] ',
       'Setup command for a new worktree (- for none) [npm ci]: ',
@@ -108,6 +120,7 @@ describe('specrun init in a terminal', () => {
     ]);
     expect(deps.out.join('')).toContain('✔ check passed');
     expect(config()).toEqual({
+      specsDir: 'specs',
       worktree: true,
       worktreeFiles: ['.env'],
       setup: 'npm install',
@@ -120,6 +133,7 @@ describe('specrun init in a terminal', () => {
     writeFileSync(
       join(dir, 'specrun.config.json'),
       JSON.stringify({
+        specsDir: 'plans',
         models: { strong: 'opus' },
         setup: 'npm ci',
         verify: [
@@ -129,9 +143,10 @@ describe('specrun init in a terminal', () => {
         limits: { sessionMinLeft: 30 },
       }),
     );
-    const { prompts, deps } = await initInteractive(['n', '', '', '', 'n']);
+    const { prompts, deps } = await initInteractive(['', 'n', '', '', '', 'n']);
 
     expect(prompts).toEqual([
+      'Folder with the specs [plans]: ',
       'Use a worktree [Y/n] ',
       'Keep the 2 verify steps (typecheck, test)? [Y/n] ',
       'Wait before a task while the 5-hour window has less than … % left [30]: ',
@@ -140,6 +155,7 @@ describe('specrun init in a terminal', () => {
     ]);
     expect(deps.out.join('')).toContain('Updated specrun.config.json');
     expect(config()).toEqual({
+      specsDir: 'plans',
       models: { strong: 'opus' },
       worktree: false,
       setup: 'npm ci',
@@ -154,6 +170,7 @@ describe('specrun init in a terminal', () => {
   it('re-asks invalid percentages and offers to fix a failing check', async () => {
     writePackage({ check: 'x' });
     const { prompts, deps } = await initInteractive([
+      '',
       'n',
       'echo broken >&2; exit 2',
       '150',

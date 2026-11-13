@@ -16,6 +16,9 @@ export const DEFAULT_SIZES: Readonly<Record<SizeName, Size>> = {
   L: { turns: [40, 70], usd: 2.5 },
 };
 
+/** The default of a config without `specsDir`; `specrun init` proposes `spec` for a new one. */
+export const DEFAULT_SPECS_DIR = 'docs';
+
 const VerifyStepSchema = z.strictObject({
   name: z.string().min(1),
   command: z.string().min(1),
@@ -40,7 +43,7 @@ const SizesSchema = z.strictObject({
 // Nested objects use `prefault({})` so a partial override (e.g. only `models.strong`) keeps the
 // remaining defaults.
 export const ConfigSchema = z.strictObject({
-  specsDir: z.string().min(1).default('docs'),
+  specsDir: z.string().min(1).default(DEFAULT_SPECS_DIR),
   verify: z.array(VerifyStepSchema).min(1),
   setup: z.string().min(1).nullable().default(null),
   /** false: run in the main checkout on the spec branch (needs a clean tree, no setup). */

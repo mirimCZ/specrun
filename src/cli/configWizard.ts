@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { z } from 'zod';
 import type { VerifyStep } from '../verify/verify.js';
+import { DEFAULT_SPECS_DIR } from '../config/configSchema.js';
 import { readJsonFile } from '../config/loadConfig.js';
 import { runShell, type ProcessRunner } from '../process/run.js';
 import type { Prompter } from './prompter.js';
@@ -10,6 +11,8 @@ const GUESSED_SCRIPTS = ['typecheck', 'lint', 'test'] as const;
 // Exits 1 on purpose: a run with unconfigured verification must not pass silently.
 export const PLACEHOLDER_CHECK = 'echo "configure the check command" && exit 1';
 const CHECK_TAIL_LINES = 15;
+/** Proposed for a new config only: an existing one without `specsDir` keeps the schema default. */
+export const NEW_SPECS_DIR = 'spec';
 
 /** Lockfile → package manager and its reproducible install, first match wins. */
 const LOCKFILES: readonly { file: string; pm: string; setup: string }[] = [
@@ -30,6 +33,7 @@ export interface ProjectDefaults {
 }
 
 export interface WizardAnswers {
+  specsDir: string;
   worktree: boolean;
   worktreeFiles: string[];
   setup: string | null;
@@ -39,6 +43,7 @@ export interface WizardAnswers {
 
 // Lenient: a hand-edited config with a wrong value still prefills everything else.
 const ExistingSchema = z.looseObject({
+  specsDir: z.string().min(1).optional().catch(undefined),
   worktree: z.boolean().optional().catch(undefined),
   worktreeFiles: z.array(z.string()).optional().catch(undefined),
   setup: z.string().nullable().optional().catch(undefined),
@@ -100,12 +105,15 @@ export async function detectDefaults(
 
 export function parseExisting(raw: unknown): Existing {
   const parsed = ExistingSchema.safeParse(raw);
-  return parsed.success ? parsed.data : {};
+  if (!parsed.success) return {};
+  // Its specs live in the schema default, so prefilling `spec` would lose them on Enter.
+  return { ...parsed.data, specsDir: parsed.data.specsDir ?? DEFAULT_SPECS_DIR };
 }
 
 /** `--yes`, and the prefill of every question. */
 export function defaultAnswers(defaults: ProjectDefaults, existing: Existing): WizardAnswers {
   return {
+    specsDir: existing.specsDir ?? NEW_SPECS_DIR,
     worktree: existing.worktree ?? true,
     worktreeFiles: existing.worktreeFiles ?? [],
     setup: existing.setup === undefined ? defaults.setup : existing.setup,
@@ -156,6 +164,14 @@ async function askPercent(prompter: Prompter, question: string, fallback: number
   }
 }
 
+async function askSpecsDir(prompter: Prompter, fallback: string): Promise<string> {
+  for (;;) {
+    // `spec/` would print as `spec//` wherever the folder is named.
+    const answer = (await prompter.text('Folder with the specs', fallback)).replace(/\/+$/, '');
+    if (answer !== '') return answer;
+  }
+}
+
 async function askCheck(prompter: Prompter, current: VerifyStep[]): Promise<VerifyStep[]> {
   if (current.length > 1) {
     const names = current.map((step) => step.name).join(', ');
@@ -172,6 +188,8 @@ async function askCheck(prompter: Prompter, current: VerifyStep[]): Promise<Veri
 export async function askConfig(input: WizardInput): Promise<WizardAnswers> {
   const { prompter, defaults, write } = input;
   const answers = defaultAnswers(defaults, input.existing);
+
+  answers.specsDir = await askSpecsDir(prompter, answers.specsDir);
 
   write('Run each spec in its own git worktree? With "no" it runs in this checkout on the\n');
   write('spec branch: the checkout must be clean and you should not edit it during a run.\n');
@@ -237,6 +255,7 @@ export function mergeConfig(
     typeof base['limits'] === 'object' && base['limits'] !== null ? base['limits'] : {};
   const merged: Record<string, unknown> = {
     ...base,
+    specsDir: answers.specsDir,
     worktree: answers.worktree,
     worktreeFiles: answers.worktreeFiles,
     setup: answers.setup,

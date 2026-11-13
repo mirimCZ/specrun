@@ -4,6 +4,7 @@ import { SpecrunError } from '../errors.js';
 import { EVENTS_FILE, readEvents } from '../events/eventStore.js';
 import { deriveState } from '../events/taskState.js';
 import { createGit } from '../git/git.js';
+import { runsShared, SHARED_BRANCH } from '../git/workspace.js';
 import { PROTECTED_BRANCHES, worktreePath } from '../git/worktree.js';
 import { lockFile, readLockPid } from '../runner/lock.js';
 import { loadSpec } from '../spec/loadSpec.js';
@@ -27,9 +28,9 @@ export type CloseStep =
   | { step: 'merge'; branch: string; into: string; commits: number; fastForward: boolean }
   | { step: 'verify'; steps: string[] }
   | { step: 'verify-step'; finished: VerifyStepResult }
-  | { step: 'archive' };
+  | { step: 'archive'; spec: string };
 
-export interface CloseResult {
+export interface MergeResult {
   branch: string;
   into: string;
   /** `already`: the branch was merged before (e.g. by hand), nothing to merge. */
@@ -37,18 +38,21 @@ export interface CloseResult {
   commits: number;
   /** Null after a fast-forward or no merge: the tree is the one the last task verified. */
   verify: VerifyResult | null;
+}
+
+export interface CloseResult extends MergeResult {
   archive: ArchiveResult;
   /** The spec branch, when close deleted it (archive only removes it with a worktree). */
   deletedBranch: string | null;
 }
 
 async function targetBranch(
-  options: CloseOptions,
+  into: string | undefined,
   current: string | null,
   branch: string,
   branchExists: (name: string) => Promise<boolean>,
 ): Promise<string> {
-  if (options.into !== undefined) return options.into;
+  if (into !== undefined) return into;
   // `"worktree": false` leaves the checkout on the spec branch; the base is main / master then.
   if (current !== null && current !== branch) return current;
   for (const name of PROTECTED_BRANCHES) if (await branchExists(name)) return name;
@@ -67,6 +71,12 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
   if (pid !== null && deps.isAlive(pid)) {
     throw new SpecrunError('locked', `A run holds the lock of "${name}" (pid ${pid})`, [
       'let it finish or stop it before closing',
+    ]);
+  }
+  // SRD-32: its branch holds the other specs' work too.
+  if (runsShared(repoRoot, config, name)) {
+    throw new SpecrunError('spec-invalid', `"${name}" runs on ${SHARED_BRANCH} with other specs`, [
+      'close them together with specrun close --all',
     ]);
   }
   // The worktree has the live copy of the spec and its log (SRD-4).
@@ -105,8 +115,33 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
     ]);
   }
 
+  const merged = await mergeInto(branch, options.into, `specrun close ${name}`, name, deps);
+
+  deps.onProgress?.({ step: 'archive', spec: name });
+  const archive = await archiveSpec({ spec: name, force: options.force }, deps);
+  let deletedBranch: string | null = null;
+  if (archive.removed === null && (await git.branchExists(branch))) {
+    await git.deleteBranch(branch);
+    deletedBranch = branch;
+  }
+  return { ...merged, archive, deletedBranch };
+}
+
+/**
+ * Merges `branch` into the target (`into`, else the main checkout's branch) and verifies a real
+ * merge; red keeps the merge and throws. `again` is the command that resumes after a fix.
+ */
+export async function mergeInto(
+  branch: string,
+  intoOption: string | undefined,
+  again: string,
+  logName: string,
+  deps: CloseDeps,
+): Promise<MergeResult> {
+  const { repoRoot, config } = deps;
+  const git = createGit(repoRoot, deps.run);
   const current = await git.currentBranch();
-  const into = await targetBranch(options, current, branch, (b) => git.branchExists(b));
+  const into = await targetBranch(intoOption, current, branch, (b) => git.branchExists(b));
   if (into === branch) {
     throw new SpecrunError('git-failed', `Cannot merge ${branch} into itself`);
   }
@@ -125,7 +160,7 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
     if (!merged.ok) {
       throw new SpecrunError('git-failed', `Merging ${branch} into ${into} failed (aborted)`, [
         ...merged.error.split('\n').slice(-10),
-        `merge it by hand (git merge ${branch}), then run specrun close ${name} again`,
+        `merge it by hand (git merge ${branch}), then run ${again} again`,
       ]);
     }
     merge = fastForward ? 'fast-forward' : 'merge-commit';
@@ -136,7 +171,7 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
       verify = await runVerify({
         steps: config.verify,
         cwd: repoRoot,
-        logFile: join(repoRoot, '.specrun', 'logs', name, 'close-verify.log'),
+        logFile: join(repoRoot, '.specrun', 'logs', logName, 'close-verify.log'),
         run: deps.run,
         onStep: (finished) => deps.onProgress?.({ step: 'verify-step', finished }),
       });
@@ -146,19 +181,12 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
           `Verify failed after merging ${branch} into ${into}`,
           [
             ...verify.summary.split('\n'),
-            `the merge is kept and nothing is archived — fix and commit, then run specrun close ${name} again`,
+            `the merge is kept and nothing is archived — fix and commit, then run ${again} again`,
           ],
         );
       }
     }
   }
 
-  deps.onProgress?.({ step: 'archive' });
-  const archive = await archiveSpec({ spec: name, force: options.force }, deps);
-  let deletedBranch: string | null = null;
-  if (archive.removed === null && (await git.branchExists(branch))) {
-    await git.deleteBranch(branch);
-    deletedBranch = branch;
-  }
-  return { branch, into, merge, commits, verify, archive, deletedBranch };
+  return { branch, into, merge, commits, verify };
 }

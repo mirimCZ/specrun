@@ -5,9 +5,10 @@ import { deriveState, type SpecState } from '../../events/taskState.js';
 import { isProcessAlive, lockFile, readLockPid } from '../../runner/lock.js';
 import { formatUsd } from '../../progress/renderProgress.js';
 import { SpecrunError } from '../../errors.js';
+import { SHARED_BRANCH } from '../../git/workspace.js';
 import { listSpecs, loadSpec } from '../../spec/loadSpec.js';
 import type { Config } from '../../config/configSchema.js';
-import { activeSpecFiles, type CliDeps } from '../cliDeps.js';
+import { activeSpecFiles, type ActiveSpecFiles, type CliDeps } from '../cliDeps.js';
 import { table } from '../table.js';
 
 interface Overview {
@@ -15,6 +16,8 @@ interface Overview {
   done: number;
   total: number;
   blocked: number;
+  /** Where the live copy is: own worktree, the shared one of `run --all`, or the checkout. */
+  workspace: ActiveSpecFiles['workspace'];
   runningPid: number | null;
 }
 
@@ -31,13 +34,14 @@ function load(repoRoot: string, config: Config, name: string) {
 }
 
 function overview(repoRoot: string, config: Config, name: string): Overview {
-  const { spec, state } = load(repoRoot, config, name);
+  const { files, spec, state } = load(repoRoot, config, name);
   const statuses = [...state.tasks.values()].map((task) => task.status);
   return {
     name,
     done: statuses.filter((s) => s === 'done').length,
     total: spec.tasks.length,
     blocked: statuses.filter((s) => s === 'blocked').length,
+    workspace: files.workspace,
     runningPid: runningPid(repoRoot, name),
   };
 }
@@ -66,6 +70,7 @@ export function register(program: Command, deps: CliDeps): void {
           s.name,
           `${s.done}/${s.total}`,
           s.blocked > 0 ? `${s.blocked} blocked` : '',
+          s.workspace === 'checkout' ? '' : s.workspace === 'shared' ? 'run --all' : 'worktree',
           s.runningPid === null ? '' : `running (pid ${s.runningPid})`,
         ]);
         deps.stdout(`${table(rows)}\n`);
@@ -80,7 +85,8 @@ export function register(program: Command, deps: CliDeps): void {
       }
       const { files, spec, state } = load(repoRoot, config, name);
       const pid = runningPid(repoRoot, name);
-      const branch = spec.branch ?? `specrun/${name}`;
+      const branch =
+        files.workspace === 'shared' ? SHARED_BRANCH : (spec.branch ?? `specrun/${name}`);
       const tasks = spec.tasks.map((task) => {
         const s = state.tasks.get(task.id);
         return {

@@ -45,6 +45,8 @@ export interface RunPlan {
   spec: Spec;
   /** The log before this run; later events arrive through `event`. */
   events: readonly SpecrunEvent[];
+  /** `run --all`: which of the specs with work this is (1-based). */
+  position?: { index: number; total: number };
 }
 
 /** Live updates for UIs; nothing here is persisted — the event log is the record. */
