@@ -5,6 +5,7 @@ import { register as registerAnalyze } from './commands/analyze.js';
 import { register as registerArchive } from './commands/archive.js';
 import { register as registerDeviations } from './commands/deviations.js';
 import { register as registerInit } from './commands/init.js';
+import { register as registerReview } from './commands/review.js';
 import { register as registerRun } from './commands/run.js';
 import { register as registerSet } from './commands/set.js';
 import { register as registerStats } from './commands/stats.js';
@@ -24,6 +25,7 @@ export function createProgram(deps: CliDeps = defaultCliDeps()): Command {
   registerSet(program, deps);
   registerStats(program, deps);
   registerDeviations(program, deps);
+  registerReview(program, deps);
   registerAnalyze(program, deps);
   registerArchive(program, deps);
   return program;

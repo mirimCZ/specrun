@@ -12,6 +12,7 @@ export type SpecrunErrorCode =
   | 'checkout-dirty'
   | 'cancelled'
   | 'claude-missing'
+  | 'terminal-required'
   | 'locked';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */

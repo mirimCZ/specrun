@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { constants } from 'node:os';
 
 export interface RunOptions {
   cwd: string;
@@ -86,7 +87,13 @@ export const runInteractive: InteractiveRunner = (cmd, args, opts) =>
       stdio: 'inherit',
     });
     child.on('error', (error) => finish({ code: -1, error: error.message }));
-    child.on('close', (code) => finish({ code: code ?? 1, error: null }));
+    // Killed by a signal: the shell convention 128 + signal number (Ctrl+C → 130).
+    child.on('close', (code, signal) =>
+      finish({
+        code: code ?? 128 + (signal === null ? 0 : constants.signals[signal]),
+        error: null,
+      }),
+    );
   });
 
 /** Runs `command` through `sh -c`. */

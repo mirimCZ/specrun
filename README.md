@@ -42,8 +42,8 @@ In the repository you want to work on:
    then `/write-spec` writes `docs/<spec>/` (see [Specs](#specs)).
 3. **Commit the spec** — the run starts from `HEAD`, so uncommitted spec files are not seen.
 4. **Run it** — `specrun run <spec>`. Leave it running; it waits out usage limits by itself.
-5. **Review the deviations** — `specrun deviations <spec>` walks through what the agents decided
-   on their own with you in Claude Code and adds fix tasks for the picks you overturn (see
+5. **Review the deviations** — `specrun review <spec>` walks through what the agents decided on
+   their own with you in Claude Code and adds fix tasks for the picks you overturn (see
    [Other commands](#other-commands)); run the spec again for those.
 6. **Review and merge** the spec branch `specrun/<spec>` (one commit per task).
 7. **Archive** — `specrun archive <spec>` replaces the finished spec by its README and run
@@ -176,25 +176,28 @@ existing file).
 
 ## Other commands
 
-| Command                                                                | What it does                                                                                                        |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `specrun status [spec] [--json]`                                       | All specs at a glance, or one spec's task table, branch, worktree and lock                                          |
-| `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`      | Override a task's status by hand (recorded in the log)                                                              |
-| `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]` | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                                           |
-| `specrun deviations [spec...] [--kind <kind>] [--print]`               | What agents reported as spec bugs, ambiguities, constraints, test traps, scope — reviewed with Claude in a terminal |
-| `specrun analyze [spec] [--task <id>] [--reindex]`                     | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls                      |
-| `specrun archive <spec> [--force]`                                     | Archive a finished spec, remove its merged worktree and branch                                                      |
+| Command                                                                | What it does                                                                                   |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `specrun status [spec] [--json]`                                       | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
+| `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`      | Override a task's status by hand (recorded in the log)                                         |
+| `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]` | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |
+| `specrun deviations [spec...] [--kind <kind>]`                         | What agents reported as spec bugs, ambiguities, constraints, test traps, scope                 |
+| `specrun review [spec...] [--kind <kind>] [--print]`                   | Review those deviations with Claude Code on this terminal (below)                              |
+| `specrun analyze [spec] [--task <id>] [--reindex]`                     | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
+| `specrun archive <spec> [--force]`                                     | Archive a finished spec, remove its merged worktree and branch                                 |
 
 `status`, `stats`, `deviations` and `analyze` work from another terminal during a run, and all
 of them take `--json` (format in [`docs/json-output.md`](docs/json-output.md)).
 
-**Reviewing deviations** — in a terminal, `specrun deviations <spec>` doesn't just list them: it
-starts Claude Code in the same terminal with the list and review instructions. Claude reads the
-briefs and the committed code, re-asks every question an agent decided on its own with a
-recommendation to confirm or overturn it, and proposes fixes for the rules that caused the rest.
-After your OK it edits those files, records the decisions in the spec's README and adds fix
-tasks (with briefs) for overturned picks, so `specrun run <spec>` can apply them. `--print` (or a
-pipe) only prints the list; `--json` is unchanged.
+**Reviewing deviations** — `specrun review <spec>` starts Claude Code on the same terminal. specrun
+first gathers what the review needs — the config, each task's brief, its commit (message, changed
+files, the diffs of files a deviation names), the decision log rows the deviations cite and the
+next free IDs — and hands it over as part of the system prompt (`.specrun/review/<spec>.md`), so
+Claude starts with its findings instead of reading files. It re-asks every question an agent
+decided on its own, with a recommendation to confirm or overturn it, and proposes fixes for the
+rules that caused the rest. After your OK it edits those files, records the decisions in the
+spec's README and adds fix tasks (with briefs) for overturned picks, so `specrun run <spec>` can
+apply them. `--print` shows what Claude would get.
 
 ## Development
 
