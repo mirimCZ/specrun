@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Skills to refine requests and write implementation specs that specrun runs unattended",
   "author": {
-    "name": "Lukas Jecha"
+    "name": "rebel-industry"
   },
   "license": "MIT"
 }
