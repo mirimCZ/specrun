@@ -1,5 +1,6 @@
 import type { SpecrunEvent } from '../events/eventSchema.js';
 import type { Spec } from '../spec/specSchema.js';
+import type { VerifyStepResult } from '../verify/verify.js';
 
 export type ReporterLevel = 'info' | 'warn' | 'error';
 
@@ -33,7 +34,10 @@ export type RunPhase =
   | { kind: 'checkout'; branch: string }
   | { kind: 'usage' }
   | { kind: 'agent'; task: string }
-  | { kind: 'verify'; task: string }
+  /** `steps`: the verify step names, in order. */
+  | { kind: 'verify'; task: string; round: number; steps: string[] }
+  /** A verify step finished; `next` runs now (null: verify is over). */
+  | { kind: 'verify-step'; task: string; finished: VerifyStepResult; next: string | null }
   | { kind: 'commit'; task: string };
 
 export interface RunPlan {

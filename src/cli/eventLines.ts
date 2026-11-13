@@ -44,6 +44,13 @@ export function usageText(usage: {
   return parts.length === 0 ? 'unknown' : parts.join(' · ');
 }
 
+/** `14s`, `2m 05s`: verify steps take seconds to minutes. */
+export function stepDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s`;
+}
+
 const one = (text: string, tone?: Tone): Segment[] => [
   tone === undefined ? { text } : { text, tone },
 ];
@@ -65,6 +72,19 @@ export function createEventFormatter(): EventFormatter {
           return one(`setup: ${phase.command}`);
         case 'checkout':
           return one(`switching the checkout to ${phase.branch}`);
+        // A check can take minutes; without this line the log sits on "reported complete".
+        case 'verify':
+          return one(`verify ${phase.task} round ${phase.round}: ${phase.steps.join(' → ')} …`);
+        case 'verify-step': {
+          const { name, ok, durationMs } = phase.finished;
+          const took = stepDuration(durationMs);
+          return [
+            { text: `verify ${phase.task} ${name}: ` },
+            ok
+              ? { text: `ok (${took})`, tone: 'green' }
+              : { text: `failed (${took})`, tone: 'red' },
+          ];
+        }
         default:
           return null;
       }

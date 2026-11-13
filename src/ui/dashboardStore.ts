@@ -67,7 +67,9 @@ function phaseLabel(phase: RunPhase): string {
     case 'agent':
       return `${phase.task} agent`;
     case 'verify':
-      return `${phase.task} verify`;
+      return `${phase.task} verify: ${phase.steps[0] ?? ''}`;
+    case 'verify-step':
+      return phase.next === null ? `${phase.task} verify` : `${phase.task} verify: ${phase.next}`;
     case 'commit':
       return `${phase.task} commit`;
   }

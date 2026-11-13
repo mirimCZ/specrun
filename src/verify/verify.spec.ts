@@ -30,6 +30,23 @@ describe('runVerify', () => {
     expect(log).toContain('===== b =====\nworld\n');
   });
 
+  it('reports each finished step with the one that runs next', async () => {
+    const seen: string[] = [];
+    await runVerify({
+      steps: [
+        { name: 'a', command: 'true' },
+        { name: 'b', command: 'true' },
+        { name: 'c', command: 'exit 1' },
+        { name: 'd', command: 'true' },
+      ],
+      cwd: dir,
+      logFile,
+      run: runCommand,
+      onStep: (finished, next) => void seen.push(`${finished.name} ${finished.ok} → ${next}`),
+    });
+    expect(seen).toEqual(['a true → b', 'b true → c', 'c false → null']);
+  });
+
   it('stops at the first red step and summarizes it', async () => {
     const result = await verify([
       { name: 'types', command: "echo 'src/x.ts(1,2): error TS2322: bad'; exit 1" },

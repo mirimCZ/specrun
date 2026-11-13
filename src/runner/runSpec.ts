@@ -569,12 +569,19 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         const { payload } = result.toolCall;
         append({ t: 'task.completed', task: task.id, sessionId, payload });
         const logFile = join(logDir, `${task.id}-verify-${verifyRound}.log`);
-        reporter.phase({ kind: 'verify', task: task.id });
+        reporter.phase({
+          kind: 'verify',
+          task: task.id,
+          round: verifyRound,
+          steps: config.verify.map((step) => step.name),
+        });
         const verify = await runVerify({
           steps: config.verify,
           cwd: worktree,
           logFile,
           run: deps.run,
+          onStep: (finished, next) =>
+            reporter.phase({ kind: 'verify-step', task: task.id, finished, next }),
         });
         append({
           t: 'verify.finished',

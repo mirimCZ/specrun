@@ -81,6 +81,19 @@ describe('createDashboardStore', () => {
     ]);
   });
 
+  it('names the verify step that runs now', () => {
+    const { store } = setup();
+    store.phase({ kind: 'verify', task: 'TR-1', round: 0, steps: ['typecheck', 'test'] });
+    expect(store.snapshot().activity?.label).toBe('TR-1 verify: typecheck');
+    const finished = { name: 'typecheck', ok: true, durationMs: 14_000 };
+    store.phase({ kind: 'verify-step', task: 'TR-1', finished, next: 'test' });
+    expect(store.snapshot().activity?.label).toBe('TR-1 verify: test');
+    expect(store.snapshot().log.at(-1)?.segments).toEqual([
+      { text: 'verify TR-1 typecheck: ' },
+      { text: 'ok (14s)', tone: 'green' },
+    ]);
+  });
+
   it('builds rows from the earlier log and the live updates of the running task', () => {
     const { store } = setup();
     store.plan({ spec, events: [started(1, 'TR-1'), finished(2, 'TR-1', 10, 0.4)] });

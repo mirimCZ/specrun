@@ -213,7 +213,13 @@ describe('runSpec', () => {
         ...nullReporter,
         plan: ({ spec }) => void seen.push(`plan ${spec.tasks.map((t) => t.id).join(',')}`),
         phase: (phase) =>
-          void seen.push('task' in phase ? `${phase.kind} ${phase.task}` : phase.kind),
+          void seen.push(
+            phase.kind === 'verify-step'
+              ? `${phase.kind} ${phase.finished.name} → ${phase.next ?? '-'}`
+              : 'task' in phase
+                ? `${phase.kind} ${phase.task}`
+                : phase.kind,
+          ),
         log: (level, message) => void seen.push(`${level}: ${message}`),
       },
     });
@@ -226,10 +232,12 @@ describe('runSpec', () => {
       'warn: usage probe failed — running without limit data',
       'agent A-1',
       'verify A-1',
+      'verify-step check → -',
       'commit A-1',
       'usage',
       'agent A-2',
       'verify A-2',
+      'verify-step check → -',
       'commit A-2',
     ]);
   });

@@ -24,6 +24,8 @@ export interface RunVerifyInput {
   cwd: string;
   logFile: string;
   run: ProcessRunner;
+  /** After each step; `next` is the step that runs now, null when this was the last one. */
+  onStep?: (finished: VerifyStepResult, next: string | null) => void;
 }
 
 const MAX_SUMMARY_LINES = 80;
@@ -73,7 +75,7 @@ export async function runVerify(input: RunVerifyInput): Promise<VerifyResult> {
   const results: VerifyStepResult[] = [];
   let summary = '';
   let total = 0;
-  for (const step of steps) {
+  for (const [index, step] of steps.entries()) {
     const result = await runShell(step.command, { cwd }, run);
     const output = result.stdout + result.stderr;
     await appendFile(
@@ -82,7 +84,9 @@ export async function runVerify(input: RunVerifyInput): Promise<VerifyResult> {
     );
     total += result.durationMs;
     const ok = result.code === 0;
-    results.push({ name: step.name, ok, durationMs: result.durationMs });
+    const finished = { name: step.name, ok, durationMs: result.durationMs };
+    results.push(finished);
+    input.onStep?.(finished, ok ? (steps[index + 1]?.name ?? null) : null);
     if (!ok) {
       summary = `${summarizeFailure(step.name, output)}\nFull log: ${logFile}`;
       break;

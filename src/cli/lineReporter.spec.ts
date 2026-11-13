@@ -83,7 +83,7 @@ describe('createLineReporter', () => {
     expect(text).toContain('🔧 Edit src/x.ts');
   });
 
-  it('prints task titles, usage snapshots and the slow startup phases', () => {
+  it('prints task titles, usage snapshots and the slow phases (startup, verify)', () => {
     const { lines, reporter } = setup();
     reporter.plan({
       spec: {
@@ -96,6 +96,20 @@ describe('createLineReporter', () => {
     reporter.phase({ kind: 'setup', command: 'npm ci' });
     reporter.phase({ kind: 'usage' });
     reporter.phase({ kind: 'agent', task: 'SR-1' });
+    reporter.phase({ kind: 'verify', task: 'SR-1', round: 1, steps: ['typecheck', 'test'] });
+    const step = (name: string, ok: boolean, durationMs: number) => ({ name, ok, durationMs });
+    reporter.phase({
+      kind: 'verify-step',
+      task: 'SR-1',
+      finished: step('typecheck', true, 14_400),
+      next: 'test',
+    });
+    reporter.phase({
+      kind: 'verify-step',
+      task: 'SR-1',
+      finished: step('test', false, 125_000),
+      next: null,
+    });
     reporter.event(
       asEvent({
         t: 'usage.snapshot',
@@ -123,6 +137,9 @@ describe('createLineReporter', () => {
     expect(lines.map((line) => line.slice(9))).toEqual([
       'creating worktree .specrun/worktrees/demo\n',
       'setup: npm ci\n',
+      'verify SR-1 round 1: typecheck → test …\n',
+      'verify SR-1 typecheck: ok (14s)\n',
+      'verify SR-1 test: failed (2m 05s)\n',
       `usage: session 90 % left · resets ${hhmm} · weekly 63 % left\n`,
       '▶ SR-1 Schema (start, opus)\n',
     ]);
