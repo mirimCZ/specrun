@@ -19,6 +19,8 @@ export type FakeStep =
 export type FakeQueryOptions = {
   /** Response of the usage probe; an `Error` makes the probe reject. */
   usage?: unknown;
+  /** `hang` keeps `initializationResult()` pending (an SDK that never finishes its handshake). */
+  init?: 'ok' | 'hang';
 };
 
 export type FakeQueryCall = {
@@ -112,6 +114,10 @@ export function createFakeQuery(scripts: FakeStep[][], opts: FakeQueryOptions = 
         close: () => {
           fake.closed += 1;
           release();
+        },
+        initializationResult: async () => {
+          if (opts.init === 'hang') await new Promise<never>(() => undefined);
+          return {};
         },
         usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET: async () => {
           fake.usageCalls += 1;

@@ -13,7 +13,9 @@ export type ProbeUsageDeps = {
 
 /**
  * Plan usage windows without spending a request: an idle streaming session asked for its usage
- * right after `system:init` (spike: $0). Experimental SDK API — any failure or a timeout → null.
+ * once the control handshake is done (spike: $0). Waits for `initializationResult()`, not the
+ * `system:init` message: since SDK 0.3.x an idle session only sends that with the first prompt.
+ * Experimental SDK API — any failure or a timeout → null.
  */
 export async function probeUsage(deps: ProbeUsageDeps): Promise<UsageSnapshot | null> {
   const query = deps.query ?? sdkQuery;
@@ -33,15 +35,11 @@ export async function probeUsage(deps: ProbeUsageDeps): Promise<UsageSnapshot | 
       options: { cwd: deps.cwd, tools: [], settingSources: [], persistSession: false },
     });
     session.q = q;
-    for await (const message of q) {
-      if (message.type === 'system' && message.subtype === 'init') {
-        const response = await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({
-          skipBehaviors: true,
-        });
-        return fromUsageProbe(response, clock.now());
-      }
-    }
-    return null;
+    await q.initializationResult();
+    const response = await q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({
+      skipBehaviors: true,
+    });
+    return fromUsageProbe(response, clock.now());
   }
 
   const timeout = clock
