@@ -45,7 +45,13 @@ Don't redo it:
 - Take the file map from the conversation. Read only what is still unknown for a brief (a
   pattern file nobody opened yet, a line range to cite).
 - Check that every path you cite exists with one batched `ls` / `grep -n` call, not by reading
-  the files again.
+  the files again. For files a task creates, match the existing layout (e.g. a lib keeping all
+  sources under `src/lib/`, a folder named `entities/` not `entity/`) instead of guessing.
+- When a brief says to extend something (a type map, a function signature, a build target, a use
+  case's input), check that it exists in the shape the brief assumes. If it doesn't, the task that
+  needs it must create it — or the brief says so explicitly.
+- When a UI task saves or reads a field through a use case, check that the use case's input or
+  output carries that field. If not, add the field in the use-case task, not in the UI task.
 - Note other specs the change supersedes (the brief tells the agent to add one-line notes there).
 
 ## 3. Cut the work into sized tasks
