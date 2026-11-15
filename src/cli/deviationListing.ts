@@ -16,12 +16,16 @@ function isKind(value: string): value is DeviationEntry['kind'] {
   return (DEVIATION_KINDS as readonly string[]).includes(value);
 }
 
-/** What `deviations` and `review` show: the named specs (default all), archived included. */
+/**
+ * What `deviations` and `review` show: the named specs (default all), archived included; those
+ * an earlier `specrun review` marked only with `includeReviewed`.
+ */
 export function selectDeviations(
   repoRoot: string,
   config: Config,
   names: readonly string[],
   kind: string | undefined,
+  includeReviewed: boolean,
 ): DeviationSelection {
   if (kind !== undefined && !isKind(kind)) {
     throw new SpecrunError('spec-invalid', `Invalid --kind "${kind}"`, [
@@ -32,7 +36,7 @@ export function selectDeviations(
   const entries = [
     ...deviationEntries(history.inputs),
     ...history.archived.flatMap((h) => h.deviations),
-  ].filter((e) => kind === undefined || e.kind === kind);
+  ].filter((e) => (kind === undefined || e.kind === kind) && (includeReviewed || !e.reviewed));
   const counts: Record<string, number> = {};
   for (const e of entries) counts[e.kind] = (counts[e.kind] ?? 0) + 1;
   return { history, entries, counts };
@@ -44,7 +48,8 @@ function inline(text: string): string {
 
 export function formatDeviation(e: DeviationEntry): string {
   const decision = e.decision === null ? '' : `${inline(e.decision)}: `;
-  const line = `${e.spec}/${e.task} [${e.kind}] ${decision}${inline(e.what)} — ${inline(e.why)}`;
+  const reviewed = e.reviewed ? '(reviewed) ' : '';
+  const line = `${e.spec}/${e.task} [${e.kind}] ${reviewed}${decision}${inline(e.what)} — ${inline(e.why)}`;
   return e.question === null ? line : `${line}\n  ${formatQuestion(e.question)}`;
 }
 

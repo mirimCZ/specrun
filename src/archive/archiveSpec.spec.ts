@@ -139,6 +139,7 @@ describe('archiveSpec', () => {
         what: 'kept the alias',
         why: 'simplest',
         question: AMBIGUITY.question,
+        reviewed: false,
       },
     ]);
   });

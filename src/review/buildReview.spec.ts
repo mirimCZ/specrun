@@ -34,6 +34,7 @@ const context: ReviewContext = {
               what: 'changed firestore.rules',
               why: 'TRD-3 is about traits',
               question: null,
+              reviewed: false,
             },
           ],
           briefPath: '.specrun/worktrees/traits/docs/traits/tasks/TR-6.md',

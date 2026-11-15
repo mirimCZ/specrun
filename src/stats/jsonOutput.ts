@@ -33,6 +33,8 @@ export const DeviationEntrySchema = z.object({
   question: z
     .object({ text: z.string(), options: z.array(z.string()), chosen: z.string() })
     .nullable(),
+  // Defaulted: history.json files written before reviews were recorded lack it.
+  reviewed: z.boolean().default(false),
 });
 
 export const StatsJsonSchema = z.object({

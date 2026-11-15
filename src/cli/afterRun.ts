@@ -1,6 +1,5 @@
 import { relative } from 'node:path';
 import type { Config } from '../config/configSchema.js';
-import { SpecrunError } from '../errors.js';
 import { readEvents } from '../events/eventStore.js';
 import { deriveState } from '../events/taskState.js';
 import { createGit } from '../git/git.js';
@@ -8,6 +7,7 @@ import type { ProcessRunner } from '../process/run.js';
 import { loadSpec } from '../spec/loadSpec.js';
 import { activeSpecFiles, type CliDeps } from './cliDeps.js';
 import { selectDeviations } from './deviationListing.js';
+import { askYes } from './prompter.js';
 
 export interface AfterRunInput {
   repoRoot: string;
@@ -36,18 +36,8 @@ export function openTasks(repoRoot: string, config: Config, specs: readonly stri
   return open;
 }
 
-/** Enter takes yes; Ctrl+C at the question counts as no instead of an error. */
-async function ask(deps: CliDeps, question: string): Promise<boolean> {
-  // One prompter per question: Claude Code reads the same stdin in between.
-  const prompter = deps.prompter();
-  try {
-    return await prompter.confirm(question, true);
-  } catch (error) {
-    if (error instanceof SpecrunError && error.code === 'cancelled') return false;
-    throw error;
-  } finally {
-    prompter.close();
-  }
+function ask(deps: CliDeps, question: string): Promise<boolean> {
+  return askYes(deps.prompter, question);
 }
 
 /**
@@ -68,7 +58,7 @@ export async function afterRun(input: AfterRunInput, deps: CliDeps): Promise<voi
     return found;
   };
 
-  if (selectDeviations(repoRoot, config, specs, undefined).entries.length > 0) {
+  if (selectDeviations(repoRoot, config, specs, undefined, false).entries.length > 0) {
     if (!(await ask(deps, 'Run specrun review on the finished specs?'))) return;
     const dirtyBefore = new Set(await dirty());
     await input.review();

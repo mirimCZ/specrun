@@ -15,7 +15,7 @@ export function register(program: Command, deps: CliDeps): void {
     .action((names: string[], flags: { kind?: string; json?: boolean }) => {
       const repoRoot = findRepoRoot(deps.cwd);
       const config = loadConfig(repoRoot);
-      const { entries, counts } = selectDeviations(repoRoot, config, names, flags.kind);
+      const { entries, counts } = selectDeviations(repoRoot, config, names, flags.kind, true);
       if (flags.json === true) {
         const output = DeviationsJsonSchema.parse({
           version: 1,

@@ -8,6 +8,20 @@ export interface Prompter {
   close(): void;
 }
 
+/** Enter takes yes; Ctrl+C at the question counts as no instead of an error. */
+export async function askYes(prompter: () => Prompter, question: string): Promise<boolean> {
+  // One prompter per question: Claude Code reads the same stdin in between.
+  const open = prompter();
+  try {
+    return await open.confirm(question, true);
+  } catch (error) {
+    if (error instanceof SpecrunError && error.code === 'cancelled') return false;
+    throw error;
+  } finally {
+    open.close();
+  }
+}
+
 /** Answers one raw line; rejects when the user cancels. */
 export type ReadLine = (prompt: string) => Promise<string>;
 

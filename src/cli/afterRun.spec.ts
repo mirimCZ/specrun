@@ -13,6 +13,7 @@ import { doneTask } from '../../test/fixtures/taskEvents.js';
 import { ConfigSchema } from '../config/configSchema.js';
 import { SpecrunError } from '../errors.js';
 import { runCommand, type ProcessRunner } from '../process/run.js';
+import { deviationId } from '../stats/aggregate.js';
 import { afterRun, allDone, type AfterRunInput } from './afterRun.js';
 import type { Prompter } from './prompter.js';
 
@@ -39,6 +40,14 @@ const deviation = eventLine({
     deviations: [{ kind: 'scope', what: 'extra file', why: 'needed' }],
   },
 });
+
+const scopeEntry = {
+  task: 'D-1',
+  kind: 'scope',
+  decision: null,
+  what: 'extra file',
+  why: 'needed',
+} as const;
 
 let repo: string;
 let specDir: string;
@@ -124,6 +133,22 @@ describe('afterRun', () => {
 
   it('goes straight to the close without deviations', async () => {
     finish(false);
+    const { calls, prompts } = await answer(['']);
+    expect(prompts).toEqual(['Run specrun close on the finished specs? [Y/n] ']);
+    expect(calls).toEqual(['close']);
+  });
+
+  it('goes straight to the close when every deviation was reviewed before', async () => {
+    finish(true);
+    writeFileSync(
+      join(specDir, 'events.jsonl'),
+      eventLine({
+        t: 'deviations.reviewed',
+        deviations: [{ task: 'D-1', id: deviationId(scopeEntry) }],
+      }),
+      { flag: 'a' },
+    );
+    git(repo, 'commit', '-q', '-am', 'reviewed');
     const { calls, prompts } = await answer(['']);
     expect(prompts).toEqual(['Run specrun close on the finished specs? [Y/n] ']);
     expect(calls).toEqual(['close']);

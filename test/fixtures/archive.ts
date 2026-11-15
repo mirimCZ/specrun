@@ -1,16 +1,18 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { History } from '../../src/archive/history.js';
+import type { z } from 'zod';
+import type { HistorySchema } from '../../src/archive/history.js';
 
 /** `docs/archive/<spec>/history.json` with one done task `<prefix>-1` and the given deviations. */
 export function writeArchivedHistory(
   root: string,
   spec: string,
-  deviations: History['deviations'] = [],
+  // As written to disk: entries may lack `reviewed`, like history.json files from before reviews.
+  deviations: z.input<typeof HistorySchema>['deviations'] = [],
 ): void {
   const dir = join(root, 'docs', 'archive', spec);
   mkdirSync(dir, { recursive: true });
-  const history: History = {
+  const history: z.input<typeof HistorySchema> = {
     version: 1,
     spec,
     title: spec,

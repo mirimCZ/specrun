@@ -202,6 +202,14 @@ export const ManualStatusSchema = z.object({
   reason: z.string(),
 });
 
+/** `specrun review` marks what the user went through, so later reviews skip it. */
+export const DeviationsReviewedSchema = z.object({
+  ...EVENT_BASE,
+  t: z.literal('deviations.reviewed'),
+  /** `id` = `deviationId`: the same deviation reported again keeps counting as reviewed. */
+  deviations: z.array(z.object({ task: z.string(), id: z.string().min(1) })).min(1),
+});
+
 export const AnalyticsSessionSchema = z.object({
   ...EVENT_BASE,
   t: z.literal('analytics.session'),
@@ -227,6 +235,7 @@ export const EventSchema = z.discriminatedUnion('t', [
   BudgetExceededSchema,
   ProtocolViolationSchema,
   ManualStatusSchema,
+  DeviationsReviewedSchema,
   AnalyticsSessionSchema,
 ]);
 export type SpecrunEvent = z.infer<typeof EventSchema>;

@@ -8,7 +8,12 @@ import {
   makeTempRepo,
   writeDemoSpec,
 } from '../../../test/fixtures/specRepo.js';
+import { createScriptedPrompter } from '../../../test/fakes/fakePrompter.js';
+import { writeArchivedHistory } from '../../../test/fixtures/archive.js';
 import { doneTask } from '../../../test/fixtures/taskEvents.js';
+import { readArchivedHistories } from '../../archive/history.js';
+import { ConfigSchema } from '../../config/configSchema.js';
+import { readEvents } from '../../events/eventStore.js';
 import type { InteractiveResult } from '../../process/run.js';
 import { register } from './review.js';
 
@@ -49,9 +54,14 @@ interface Launch {
 
 async function review(
   args: string[],
-  { interactive = true, result = { code: 0, error: null } as InteractiveResult } = {},
-): Promise<{ launches: Launch[]; exit: number[]; out: string }> {
-  const deps = { ...captureDeps(dir), interactive };
+  {
+    interactive = true,
+    result = { code: 0, error: null } as InteractiveResult,
+    answers = [] as string[],
+  } = {},
+): Promise<{ launches: Launch[]; exit: number[]; out: string; prompts: string[] }> {
+  const scripted = createScriptedPrompter(answers);
+  const deps = { ...captureDeps(dir), interactive, prompter: () => scripted.prompter };
   const launches: Launch[] = [];
   const exit: number[] = [];
   const program = new Command('specrun');
@@ -65,7 +75,7 @@ async function review(
     setExitCode: (code) => void exit.push(code),
   });
   await program.parseAsync(['node', 'specrun', 'review', ...args]);
-  return { launches, exit, out: deps.out.join('') };
+  return { launches, exit, out: deps.out.join(''), prompts: scripted.prompts };
 }
 
 describe('specrun review', () => {
@@ -109,6 +119,58 @@ describe('specrun review', () => {
     const empty = await review(['--kind', 'constraint']);
     expect(empty.launches).toEqual([]);
     expect(empty.out).toBe('No deviations reported — nothing to review.\n');
+  });
+
+  it('marks the reviewed deviations on yes, so the next review skips them', async () => {
+    const first = await review(['demo', '--kind', 'scope'], { answers: [''] });
+    expect(first.prompts).toEqual(['Mark the 1 deviation(s) as reviewed? [Y/n] ']);
+    expect(first.out).toContain('Marked as reviewed in docs/demo/events.jsonl');
+    const { events } = readEvents(join(dir, 'docs', 'demo', 'events.jsonl'));
+    expect(events.at(-1)).toMatchObject({
+      t: 'deviations.reviewed',
+      deviations: [{ task: 'D-1', id: expect.stringMatching(/^[0-9a-f]{12}$/) }],
+    });
+
+    // Only the test trap is left; --include-reviewed brings the scope one back.
+    const second = await review([], { answers: ['n'] });
+    expect(second.launches[0]?.args[2]).toContain('demo/D-1 [test-trap] flaky');
+    expect(second.launches[0]?.args[2]).not.toContain('extra file');
+    const again = await review(['--include-reviewed'], { answers: ['n'] });
+    expect(again.prompts).toEqual(['Mark the 1 deviation(s) as reviewed? [Y/n] ']);
+    expect(again.launches[0]?.args[2]).toContain('demo/D-1 [scope] (reviewed) extra file');
+
+    await review([], { answers: ['y'] });
+    const done = await review([]);
+    expect(done.launches).toEqual([]);
+    expect(done.out).toBe(
+      'All 2 deviation(s) were reviewed before — --include-reviewed shows them again.\n',
+    );
+  });
+
+  it('rewrites history.json for archived specs', async () => {
+    writeArchivedHistory(dir, 'old', [
+      {
+        spec: 'old',
+        task: 'OLD-1',
+        kind: 'spec-bug',
+        decision: null,
+        what: 'wrong path',
+        why: 'moved',
+        question: null,
+      },
+    ]);
+    const { out } = await review(['old'], { answers: [''] });
+    expect(out).toContain('Marked as reviewed in docs/archive/old/history.json');
+    const config = ConfigSchema.parse({ verify: [{ name: 'ok', command: 'true' }] });
+    expect(readArchivedHistories(dir, config)[0]?.deviations[0]?.reviewed).toBe(true);
+  });
+
+  it('asks nothing when Claude fails, and nothing is marked on no', async () => {
+    const failed = await review(['demo'], { result: { code: 1, error: null } });
+    expect(failed.prompts).toEqual([]);
+    const declined = await review(['demo'], { answers: ['n'] });
+    expect(declined.out).not.toContain('Marked');
+    expect((await review(['demo'], { answers: ['n'] })).launches).toHaveLength(1);
   });
 
   it('explains a missing claude binary', async () => {

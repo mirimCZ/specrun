@@ -86,4 +86,6 @@ Run another round only when answers open new questions. Never ask "Shall I conti
 
 A compact summary: decisions (deviation → verdict → consequence), files changed, fix tasks
 added, and the next command (`specrun run <spec>`) when there are any. Offer `specrun archive
-<spec>` when the spec is merged and nothing is left open.
+<spec>` when the spec is merged and nothing is left open. Once Claude Code exits, specrun asks the
+user whether to mark these deviations as reviewed, so a later `specrun review` skips them — don't
+edit `events.jsonl` or `history.json` for that.

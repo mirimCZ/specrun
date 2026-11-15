@@ -200,17 +200,17 @@ existing file).
 
 ## Other commands
 
-| Command                                                                | What it does                                                                                   |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `specrun status [spec] [--json]`                                       | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
-| `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`      | Override a task's status by hand (recorded in the log)                                         |
-| `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]` | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |
-| `specrun deviations [spec...] [--kind <kind>]`                         | What agents reported as spec bugs, ambiguities, constraints, test traps, scope                 |
-| `specrun review [spec...] [--kind <kind>] [--print]`                   | Review those deviations with Claude Code on this terminal (below)                              |
-| `specrun analyze [spec] [--task <id>] [--reindex]`                     | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
-| `specrun archive <spec> [--force]`                                     | Archive a finished spec, remove its merged worktree and branch                                 |
-| `specrun close <spec> [--into <branch>] [--force]`                     | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
-| `specrun close --all [--into <branch>] [--force]`                      | The same for `specrun/all`: one merge, then archive every spec that ran there                  |
+| Command                                                                   | What it does                                                                                   |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `specrun status [spec] [--json]`                                          | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
+| `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`         | Override a task's status by hand (recorded in the log)                                         |
+| `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]`    | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |
+| `specrun deviations [spec...] [--kind <kind>]`                            | What agents reported as spec bugs, ambiguities, constraints, test traps, scope                 |
+| `specrun review [spec...] [--kind <kind>] [--include-reviewed] [--print]` | Review those deviations with Claude Code on this terminal (below)                              |
+| `specrun analyze [spec] [--task <id>] [--reindex]`                        | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
+| `specrun archive <spec> [--force]`                                        | Archive a finished spec, remove its merged worktree and branch                                 |
+| `specrun close <spec> [--into <branch>] [--force]`                        | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
+| `specrun close --all [--into <branch>] [--force]`                         | The same for `specrun/all`: one merge, then archive every spec that ran there                  |
 
 `status`, `stats`, `deviations` and `analyze` work from another terminal during a run, and all
 of them take `--json` (format in [`docs/json-output.md`](docs/json-output.md)).
@@ -233,7 +233,10 @@ Claude starts with its findings instead of reading files. It re-asks every quest
 decided on its own, with a recommendation to confirm or overturn it, and proposes fixes for the
 rules that caused the rest. After your OK it edits those files, records the decisions in the
 spec's README and adds fix tasks (with briefs) for overturned picks, so `specrun run <spec>` can
-apply them. `--print` shows what Claude would get.
+apply them. When Claude exits, specrun asks whether to mark the deviations as reviewed (in
+`events.jsonl`, or `history.json` of an archived spec — commit it with the review's edits); the
+next `specrun review` then shows only new ones, `--include-reviewed` all of them. `--print` shows
+what Claude would get.
 
 ## Development
 

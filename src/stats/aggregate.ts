@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Size, SizeName } from '../config/configSchema.js';
 import type { Deviation, SpecrunEvent } from '../events/eventSchema.js';
 import type { SpecState } from '../events/taskState.js';
@@ -61,12 +62,32 @@ export interface DeviationEntry {
   what: string;
   why: string;
   question: { text: string; options: string[]; chosen: string } | null;
+  /** Marked by `specrun review` (a `deviations.reviewed` event, or history.json). */
+  reviewed: boolean;
+}
+
+/**
+ * Content, not position: a task done again that reports the same deviation stays reviewed, and
+ * archived entries (history.json has no events) are matched the same way.
+ */
+export function deviationId(
+  e: Pick<DeviationEntry, 'task' | 'kind' | 'decision' | 'what' | 'why'>,
+): string {
+  return createHash('sha256')
+    .update(JSON.stringify([e.task, e.kind, e.decision, e.what, e.why]))
+    .digest('hex')
+    .slice(0, 12);
 }
 
 /** Deviations of done tasks and of blocked ones (their latest `task.completed`), in spec order. */
 export function deviationEntries(specs: readonly SpecInput[]): DeviationEntry[] {
-  return specs.flatMap(({ name, spec, state, events }) =>
-    spec.tasks.flatMap((task) => {
+  return specs.flatMap(({ name, spec, state, events }) => {
+    const reviewed = new Set<string>();
+    for (const e of events) {
+      if (e.t !== 'deviations.reviewed') continue;
+      for (const d of e.deviations) reviewed.add(`${d.task}\0${d.id}`);
+    }
+    return spec.tasks.flatMap((task) => {
       const s = state.tasks.get(task.id);
       // Done tasks keep their payload in state; for blocked ones it is the latest task.completed.
       let deviations: Deviation[] = [];
@@ -77,17 +98,20 @@ export function deviationEntries(specs: readonly SpecInput[]): DeviationEntry[] 
           if (e.t === 'task.completed' && e.task === task.id) deviations = e.payload.deviations;
         }
       }
-      return deviations.map((d) => ({
-        spec: name,
-        task: task.id,
-        kind: d.kind,
-        decision: d.decision ?? null,
-        what: d.what,
-        why: d.why,
-        question: d.question ?? null,
-      }));
-    }),
-  );
+      return deviations.map((d) => {
+        const entry = {
+          spec: name,
+          task: task.id,
+          kind: d.kind,
+          decision: d.decision ?? null,
+          what: d.what,
+          why: d.why,
+          question: d.question ?? null,
+        };
+        return { ...entry, reviewed: reviewed.has(`${task.id}\0${deviationId(entry)}`) };
+      });
+    });
+  });
 }
 
 /** Nearest-rank percentile, p in 0..100; 0 for no values. */

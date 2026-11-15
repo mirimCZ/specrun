@@ -61,6 +61,7 @@ Deviations from the `task.completed` payload of done tasks and of blocked tasks,
 included. `question` is
 the question the agent would have asked a human, the options it weighed and the one it
 implemented (`null` when the deviation has none; agents must give one for `ambiguity`).
+`reviewed` is true once `specrun review` marked it (SRD-34); all are listed either way.
 
 ```json
 {
@@ -74,7 +75,8 @@ implemented (`null` when the deviation has none; agents must give one for `ambig
       "decision": "use X",
       "what": "brief wrong",
       "why": "code differs",
-      "question": null
+      "question": null,
+      "reviewed": true
     },
     {
       "spec": "demo",
@@ -83,7 +85,8 @@ implemented (`null` when the deviation has none; agents must give one for `ambig
       "decision": null,
       "what": "kept the alias",
       "why": "simplest",
-      "question": { "text": "Keep the alias?", "options": ["keep", "drop"], "chosen": "keep" }
+      "question": { "text": "Keep the alias?", "options": ["keep", "drop"], "chosen": "keep" },
+      "reviewed": false
     }
   ],
   "counts": { "spec-bug": 1, "ambiguity": 1 }
