@@ -49,6 +49,9 @@ export function createTerminalPrompter(
   input: NodeJS.ReadableStream = process.stdin,
   output: NodeJS.WritableStream = process.stdout,
 ): Prompter {
+  // Ink unrefs stdin when the dashboard unmounts; unref'd, a pending question does not keep the
+  // event loop alive and node exits with "unsettled top-level await".
+  (input as Partial<{ ref: () => void }>).ref?.();
   const rl = createInterface({ input, output });
   const cancel = new AbortController();
   // Without a listener readline swallows Ctrl+C and the question never returns.
