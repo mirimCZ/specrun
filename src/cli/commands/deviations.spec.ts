@@ -7,7 +7,7 @@ import {
   makeTempRepo,
   writeDemoSpec,
 } from '../../../test/fixtures/specRepo.js';
-import { writeArchivedHistory } from '../../../test/fixtures/archive.js';
+import { SHELVED, writeArchivedHistory } from '../../../test/fixtures/archive.js';
 import { doneTask } from '../../../test/fixtures/taskEvents.js';
 import { DeviationsJsonSchema } from '../../stats/jsonOutput.js';
 import { createProgram } from '../program.js';
@@ -78,6 +78,24 @@ describe('specrun deviations', () => {
     const output = await deviations('--kind', 'test-trap');
     expect(output).toContain('test-trap (2)');
     expect(output).toContain('old/OLD-1 [test-trap] fake timers — leaked');
+  });
+
+  it('marks deviations of shelved specs', async () => {
+    const deviation = {
+      spec: 'old',
+      task: 'OLD-1',
+      kind: 'scope',
+      decision: null,
+      what: 'extra flag',
+      why: 'needed',
+      question: null,
+    } as const;
+    writeArchivedHistory(dir, 'old', [deviation], SHELVED);
+    expect(await deviations('--kind', 'scope')).toContain(
+      'old/OLD-1 [scope] (shelved) extra flag — needed',
+    );
+    const json = DeviationsJsonSchema.parse(JSON.parse(await deviations('--json')));
+    expect(json.shelved).toEqual(['old']);
   });
 
   it('filters by kind', async () => {

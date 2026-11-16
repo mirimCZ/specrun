@@ -47,6 +47,24 @@ export interface EventStore {
   read(): ReadResult;
 }
 
+/** Adds version, time and run id; throws on an event the schema rejects. */
+export function completeEvent(event: NewEvent, runId: string, at: Date): SpecrunEvent {
+  const parsed = EventSchema.safeParse({
+    ...event,
+    v: EVENT_VERSION,
+    at: at.toISOString(),
+    runId,
+  });
+  if (!parsed.success) {
+    throw new SpecrunError(
+      'events-invalid',
+      `Refusing to append an invalid ${event.t} event`,
+      formatIssues(parsed.error),
+    );
+  }
+  return parsed.data;
+}
+
 export function createEventStore(deps: EventStoreDeps): EventStore {
   const fsync = deps.fsync ?? fsyncSync;
   const readOptions: ReadOptions =
@@ -54,29 +72,17 @@ export function createEventStore(deps: EventStoreDeps): EventStore {
 
   return {
     append(event) {
-      const parsed = EventSchema.safeParse({
-        ...event,
-        v: EVENT_VERSION,
-        at: deps.clock.now().toISOString(),
-        runId: deps.runId,
-      });
-      if (!parsed.success) {
-        throw new SpecrunError(
-          'events-invalid',
-          `Refusing to append an invalid ${event.t} event`,
-          formatIssues(parsed.error),
-        );
-      }
+      const complete = completeEvent(event, deps.runId, deps.clock.now());
       mkdirSync(dirname(deps.file), { recursive: true });
       const prefix = repairTornTail(deps.file, readOptions.onWarning);
       const fd = openSync(deps.file, 'a');
       try {
-        appendFileSync(fd, `${prefix}${JSON.stringify(parsed.data)}\n`);
+        appendFileSync(fd, `${prefix}${JSON.stringify(complete)}\n`);
         fsync(fd);
       } finally {
         closeSync(fd);
       }
-      return parsed.data;
+      return complete;
     },
     read() {
       return readEvents(deps.file, readOptions);
@@ -125,7 +131,12 @@ function parsesAsJson(text: string): boolean {
 /** Missing file = no events. Only the last line may be unparsable (a crash mid-append). */
 export function readEvents(file: string, options: ReadOptions = {}): ReadResult {
   if (!existsSync(file)) return { events: [], unknown: 0 };
-  const lines = readFileSync(file, 'utf8').split('\n');
+  return parseEvents(readFileSync(file, 'utf8'), file, options);
+}
+
+/** The log's text, e.g. read from another branch; `file` names it in errors and warnings. */
+export function parseEvents(text: string, file: string, options: ReadOptions = {}): ReadResult {
+  const lines = text.split('\n');
   const lastIndex = lines.findLastIndex((line) => line.trim() !== '');
   const events: SpecrunEvent[] = [];
   let unknown = 0;

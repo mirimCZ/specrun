@@ -16,7 +16,7 @@ export interface CloseOverrides {
   isAlive?: (pid: number) => boolean;
 }
 
-function progressLine(step: CloseStep): string {
+export function progressLine(step: CloseStep): string {
   switch (step.step) {
     case 'merge': {
       const how = step.fastForward ? 'fast-forward' : 'merge commit';
@@ -31,6 +31,13 @@ function progressLine(step: CloseStep): string {
     case 'archive':
       return `archiving ${step.spec} …`;
   }
+}
+
+/** The merge part of a close report; shared with `specrun unshelve`. */
+export function merged(result: MergeResult): string {
+  return result.merge === 'already'
+    ? `${result.branch} was already merged into ${result.into}`
+    : `merged ${result.branch} into ${result.into} (${result.merge}, ${result.commits} commit(s))`;
 }
 
 export interface CloseTarget {
@@ -57,10 +64,6 @@ export async function runClose(
     onProgress: (step: CloseStep) => deps.stdout(`${progressLine(step)}\n`),
   };
   const into = target.into === undefined ? {} : { into: target.into };
-  const merged = (result: MergeResult): string =>
-    result.merge === 'already'
-      ? `${result.branch} was already merged into ${result.into}`
-      : `merged ${result.branch} into ${result.into} (${result.merge}, ${result.commits} commit(s))`;
 
   const report = async (): Promise<{ into: string; lines: string[] }> => {
     if (target.spec === null) {

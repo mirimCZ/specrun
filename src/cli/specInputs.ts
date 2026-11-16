@@ -1,4 +1,4 @@
-import { readArchivedHistories, type History } from '../archive/history.js';
+import { isShelved, readArchivedHistories, type History } from '../archive/history.js';
 import type { Config } from '../config/configSchema.js';
 import { SpecrunError } from '../errors.js';
 import { readEvents } from '../events/eventStore.js';
@@ -11,6 +11,11 @@ export interface RunHistory {
   inputs: SpecInput[];
   /** Archived specs (`specrun archive`): only what their `history.json` kept. */
   archived: History[];
+}
+
+/** Names of the archived specs that were shelved, not merged (SRD-35). */
+export function shelvedSpecs(history: RunHistory): string[] {
+  return history.archived.filter(isShelved).map((h) => h.spec);
 }
 
 /** Like `loadSpecInputs`, plus archived specs: all of them, or the named ones. */

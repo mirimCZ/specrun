@@ -4,6 +4,7 @@ import { DEVIATION_KINDS } from '../../events/eventSchema.js';
 import { DeviationsJsonSchema } from '../../stats/jsonOutput.js';
 import type { CliDeps } from '../cliDeps.js';
 import { formatListing, selectDeviations } from '../deviationListing.js';
+import { shelvedSpecs } from '../specInputs.js';
 
 export function register(program: Command, deps: CliDeps): void {
   program
@@ -15,19 +16,29 @@ export function register(program: Command, deps: CliDeps): void {
     .action((names: string[], flags: { kind?: string; json?: boolean }) => {
       const repoRoot = findRepoRoot(deps.cwd);
       const config = loadConfig(repoRoot);
-      const { entries, counts } = selectDeviations(repoRoot, config, names, flags.kind, true);
+      const { history, entries, counts } = selectDeviations(
+        repoRoot,
+        config,
+        names,
+        flags.kind,
+        true,
+      );
+      const shelved = shelvedSpecs(history).filter((spec) => entries.some((e) => e.spec === spec));
       if (flags.json === true) {
         const output = DeviationsJsonSchema.parse({
           version: 1,
           generatedAt: deps.now().toISOString(),
           deviations: entries,
           counts,
+          shelved,
         });
         deps.stdout(`${JSON.stringify(output, null, 2)}\n`);
         return;
       }
       deps.stdout(
-        entries.length === 0 ? 'No deviations reported.\n' : formatListing(entries, counts),
+        entries.length === 0
+          ? 'No deviations reported.\n'
+          : formatListing(entries, counts, shelved),
       );
     });
 }

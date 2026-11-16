@@ -12,8 +12,20 @@ import type { ProcessRunner } from '../process/run.js';
 import { lockFile, readLockPid } from '../runner/lock.js';
 import { readYamlFile, SPEC_FILE, specDir } from '../spec/loadSpec.js';
 import { SpecFileSchema, SpecSchema, type Spec } from '../spec/specSchema.js';
-import { deviationEntries, taskSamples } from '../stats/aggregate.js';
-import { ARCHIVE_DIR, archiveRoot, HISTORY_FILE, type History } from './history.js';
+import {
+  deviationEntries,
+  taskSamples,
+  type DeviationEntry,
+  type TaskSample,
+} from '../stats/aggregate.js';
+import {
+  ARCHIVE_DIR,
+  archiveRoot,
+  HISTORY_FILE,
+  refuseShelved,
+  type History,
+  type Outcome,
+} from './history.js';
 
 export const IGNORE_FILE = '.ignore';
 
@@ -21,6 +33,8 @@ export interface ArchiveOptions {
   spec: string;
   /** Archive although tasks are not done or tasks.yaml is missing / invalid. */
   force: boolean;
+  /** Set by `specrun unshelve`: when and why the spec was shelved before this merge. */
+  shelved?: { shelvedAt: string; reason: string };
 }
 
 export interface ArchiveDeps {
@@ -112,10 +126,132 @@ async function mergedWorktree(deps: ArchiveDeps, spec: string): Promise<MergedWo
   return { path, branch: entry.branch };
 }
 
+/** What an archive keeps of a spec, read before anything changes. */
+export interface ArchiveSource {
+  title: string;
+  readme: string | null;
+  samples: TaskSample[];
+  deviations: DeviationEntry[];
+  /** Tasks neither done in events nor `status: done` in tasks.yaml, as `<id> (<status>)`. */
+  unfinished: string[];
+}
+
+/**
+ * Reads the spec folder `dir`; `label` names it in errors. An unreadable tasks.yaml throws unless
+ * `force` — then only the README is kept.
+ */
+export function readArchiveSource(
+  dir: string,
+  label: string,
+  name: string,
+  force: boolean,
+): ArchiveSource {
+  const read = readSpec(dir, name);
+  if ('problems' in read && !force) {
+    throw new SpecrunError('spec-invalid', `Cannot read ${label}/${SPEC_FILE}`, [
+      ...read.problems,
+      'archive with --force to keep only the README',
+    ]);
+  }
+  const events = readEvents(join(dir, EVENTS_FILE)).events;
+  const input =
+    'spec' in read
+      ? { name, spec: read.spec, state: deriveState(read.spec, events), events }
+      : null;
+  const unfinished: string[] = [];
+  if (input !== null && 'doneInFile' in read) {
+    for (const task of input.spec.tasks) {
+      const status = input.state.tasks.get(task.id)?.status ?? 'todo';
+      if (status !== 'done' && !read.doneInFile.has(task.id)) {
+        unfinished.push(`${task.id} (${status})`);
+      }
+    }
+  }
+  const readmePath = join(dir, 'README.md');
+  return {
+    title: input?.spec.title ?? name,
+    readme: existsSync(readmePath) ? readFileSync(readmePath, 'utf8') : null,
+    samples: input === null ? [] : taskSamples([input]),
+    deviations: input === null ? [] : deviationEntries([input]),
+    unfinished,
+  };
+}
+
+export interface ArchiveWrite {
+  spec: string;
+  source: ArchiveSource;
+  /** The archive note under the README's title; `base` is HEAD before the archive commit. */
+  note: (at: { date: string; base: string; relDir: string }) => string;
+  outcome: Outcome;
+  subject: string;
+}
+
+export type WrittenArchive = Omit<ArchiveResult, 'removed'>;
+
+/**
+ * Writes `<specsDir>/archive/<spec>/` (README with the note, `history.json` when there is anything
+ * to keep), removes the spec folder of the main checkout when it has one, hides the archive from
+ * search through `.ignore` and commits only those paths.
+ */
+export async function writeArchive(
+  write: ArchiveWrite,
+  deps: ArchiveDeps,
+): Promise<WrittenArchive> {
+  const { repoRoot, config } = deps;
+  const { spec: name, source, outcome } = write;
+  const dir = specDir(repoRoot, config, name);
+  const relDir = relative(repoRoot, dir);
+  const archiveDir = join(archiveRoot(repoRoot, config), name);
+  const relArchive = relative(repoRoot, archiveDir);
+  const git = createGit(repoRoot, deps.run);
+
+  const baseCommit = await git.head();
+  const archivedAt = deps.now();
+  const date = archivedAt.toISOString().slice(0, 10);
+  const note = write.note({ date, base: baseCommit.slice(0, 7), relDir });
+
+  mkdirSync(archiveDir, { recursive: true });
+  writeFileSync(join(archiveDir, 'README.md'), archivedReadme(source.readme, source.title, note));
+  const counts = source.samples.length > 0 || source.deviations.length > 0;
+  // A shelved spec always keeps it: unshelve reads where its work is from there.
+  const keepHistory = counts || outcome.kind === 'shelved' || outcome.shelved !== null;
+  if (keepHistory) {
+    const history: History = {
+      version: 1,
+      spec: name,
+      title: source.title,
+      archivedAt: archivedAt.toISOString(),
+      commit: baseCommit,
+      outcome,
+      samples: source.samples,
+      deviations: source.deviations,
+    };
+    writeFileSync(join(archiveDir, HISTORY_FILE), `${JSON.stringify(history, null, 2)}\n`);
+  }
+  // A spec written on its branch only has no folder in the main checkout.
+  const hadDir = existsSync(dir);
+  rmSync(dir, { recursive: true, force: true });
+  ensureLine(join(repoRoot, IGNORE_FILE), `${config.specsDir}/${ARCHIVE_DIR}/`);
+
+  const commit = await git.commitPaths(
+    { subject: write.subject, body: '', trailers: config.commitTrailers },
+    [...(hadDir ? [relDir] : []), relArchive, IGNORE_FILE],
+  );
+  if (commit === null) throw new SpecrunError('git-failed', 'Nothing to commit after archiving');
+  return {
+    archiveDir: relArchive,
+    commit,
+    baseCommit,
+    history: counts
+      ? { samples: source.samples.length, deviations: source.deviations.length }
+      : null,
+    forced: source.unfinished,
+  };
+}
+
 /**
  * Replaces `<specsDir>/<spec>/` by `<specsDir>/archive/<spec>/` (README with an archive note +
- * `history.json` for stats), hides the archive from search through `.ignore`, commits only those
- * paths, then removes the spec's merged worktree and branch.
+ * `history.json` for stats), then removes the spec's merged worktree and branch.
  */
 export async function archiveSpec(
   options: ArchiveOptions,
@@ -128,6 +264,7 @@ export async function archiveSpec(
   const archiveDir = join(archiveRoot(repoRoot, config), name);
   const relArchive = relative(repoRoot, archiveDir);
 
+  refuseShelved(repoRoot, config, name);
   if (!existsSync(dir)) {
     throw new SpecrunError('spec-missing', `Spec "${name}" not found: ${relDir} does not exist`);
   }
@@ -148,84 +285,49 @@ export async function archiveSpec(
   }
   const worktree = await mergedWorktree(deps, name);
 
-  const read = readSpec(dir, name);
-  if ('problems' in read && !options.force) {
-    throw new SpecrunError('spec-invalid', `Cannot read ${relDir}/${SPEC_FILE}`, [
-      ...read.problems,
-      'archive with --force to keep only the README',
-    ]);
-  }
-  const events = readEvents(join(dir, EVENTS_FILE)).events;
-  const input =
-    'spec' in read
-      ? { name, spec: read.spec, state: deriveState(read.spec, events), events }
-      : null;
-
-  const forced: string[] = [];
-  if (input !== null && 'doneInFile' in read) {
-    for (const task of input.spec.tasks) {
-      const status = input.state.tasks.get(task.id)?.status ?? 'todo';
-      if (status !== 'done' && !read.doneInFile.has(task.id)) forced.push(`${task.id} (${status})`);
-    }
-  }
-  if (forced.length > 0 && !options.force) {
+  const source = readArchiveSource(dir, relDir, name, options.force);
+  if (source.unfinished.length > 0 && !options.force) {
     throw new SpecrunError('spec-invalid', `Spec "${name}" has unfinished tasks`, [
-      ...forced,
+      ...source.unfinished,
       'archive with --force to archive it anyway',
     ]);
   }
 
-  const baseCommit = await git.head();
-  const short = baseCommit.slice(0, 7);
-  const archivedAt = deps.now();
-  const title = input?.spec.title ?? name;
-  const samples = input === null ? [] : taskSamples([input]);
-  const deviations = input === null ? [] : deviationEntries([input]);
-
-  const readmePath = join(dir, 'README.md');
-  const readme = existsSync(readmePath) ? readFileSync(readmePath, 'utf8') : null;
-  const date = archivedAt.toISOString().slice(0, 10);
-  const note =
-    `> Archived on ${date} by \`specrun archive\`. The full spec folder (briefs, prompts, run ` +
-    `log) is in git at \`${short}\`: \`git ls-tree -r --name-only ${short} -- ${relDir}\`.`;
-
-  mkdirSync(archiveDir, { recursive: true });
-  writeFileSync(join(archiveDir, 'README.md'), archivedReadme(readme, title, note));
-  const keepHistory = samples.length > 0 || deviations.length > 0;
-  if (keepHistory) {
-    const history: History = {
-      version: 1,
+  const shelved = options.shelved ?? null;
+  const written = await writeArchive(
+    {
       spec: name,
-      title,
-      archivedAt: archivedAt.toISOString(),
-      commit: baseCommit,
-      samples,
-      deviations,
-    };
-    writeFileSync(join(archiveDir, HISTORY_FILE), `${JSON.stringify(history, null, 2)}\n`);
-  }
-  rmSync(dir, { recursive: true, force: true });
-  ensureLine(join(repoRoot, IGNORE_FILE), `${config.specsDir}/${ARCHIVE_DIR}/`);
-
-  const commit = await git.commitPaths(
-    { subject: `docs(${name}): archive spec`, body: '', trailers: config.commitTrailers },
-    [relDir, relArchive, IGNORE_FILE],
+      source,
+      note: ({ date, base, relDir: rel }) => {
+        const archived =
+          `> Archived on ${date} by \`specrun archive\`. The full spec folder (briefs, prompts, ` +
+          `run log) is in git at \`${base}\`: \`git ls-tree -r --name-only ${base} -- ${rel}\`.`;
+        return shelved === null
+          ? archived
+          : `${archived} It was shelved on ${shelved.shelvedAt.slice(0, 10)} ` +
+              `(${oneLine(shelved.reason)}) and merged by \`specrun unshelve\`.`;
+      },
+      outcome: { kind: 'merged', shelved },
+      subject: `docs(${name}): archive spec`,
+    },
+    deps,
   );
-  if (commit === null) throw new SpecrunError('git-failed', 'Nothing to commit after archiving');
 
   if (worktree !== null) {
     await git.removeWorktree(worktree.path);
-    await git.deleteBranch(worktree.branch);
+    // Checked merged into HEAD above; `-d` would also want a pushed branch (shelve) in its upstream.
+    await git.deleteBranch(worktree.branch, true);
   }
   return {
-    archiveDir: relArchive,
-    commit,
-    baseCommit,
-    history: keepHistory ? { samples: samples.length, deviations: deviations.length } : null,
+    ...written,
     removed:
       worktree === null
         ? null
         : { worktree: relative(repoRoot, worktree.path), branch: worktree.branch },
-    forced,
   };
+}
+
+/** Archive notes are one blockquote line. */
+export function oneLine(text: string): string {
+  return text.replace(/\s*\n\s*/g, ' ').trim();
 }

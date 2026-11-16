@@ -43,8 +43,8 @@ export interface Git {
   worktreeList(): Promise<WorktreeEntry[]>;
   /** Fails when the worktree has changes. */
   removeWorktree(path: string): Promise<void>;
-  /** Fails when the branch is not merged. */
-  deleteBranch(name: string): Promise<void>;
+  /** Fails when the branch is not merged — `force` skips git's check (callers check themselves). */
+  deleteBranch(name: string, force?: boolean): Promise<void>;
   /** Merges `branch` into the checked-out one; on failure aborts it and returns git's message. */
   merge(
     branch: string,
@@ -52,6 +52,29 @@ export interface Git {
   ): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Commits reachable from `to` but not from `from`. */
   countCommits(from: string, to: string): Promise<number>;
+  remoteExists(name: string): Promise<boolean>;
+  /** `git push -u`, never forced: a remote branch that moved elsewhere makes it fail. */
+  push(remote: string, branch: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Fetches the remote's `branch` into `refs/remotes/<remote>/<branch>`; returns its sha. */
+  fetchBranch(
+    remote: string,
+    branch: string,
+  ): Promise<{ ok: true; sha: string } | { ok: false; error: string }>;
+  /** Content of `path` (relative to the repo root) at `ref`; null when it isn't there. */
+  showFile(ref: string, path: string): Promise<string | null>;
+  hasPath(ref: string, path: string): Promise<boolean>;
+  /** `git checkout <ref> -- <paths>`: the working tree and index get the paths as at `ref`. */
+  restorePaths(ref: string, paths: readonly string[]): Promise<void>;
+  /**
+   * Commits `content` as `path` on top of `branch` without checking it out (the branch must not be
+   * checked out anywhere, its working tree would fall behind); returns the new sha.
+   */
+  commitFileOnBranch(
+    branch: string,
+    path: string,
+    content: string,
+    message: CommitMessageParts,
+  ): Promise<string>;
 }
 
 export function createGit(cwd: string, run: ProcessRunner): Git {
@@ -198,8 +221,8 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
       await git(['worktree', 'remove', path]);
     },
 
-    async deleteBranch(name) {
-      await git(['branch', '-q', '-d', name]);
+    async deleteBranch(name, force = false) {
+      await git(['branch', '-q', force ? '-D' : '-d', name]);
     },
 
     async merge(branch, mode) {
@@ -216,6 +239,69 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
 
     async countCommits(from, to) {
       return Number((await git(['rev-list', '--count', `${from}..${to}`])).trim());
+    },
+
+    async remoteExists(name) {
+      return lines(await git(['remote'])).includes(name);
+    },
+
+    async push(remote, branch) {
+      const result = await run('git', ['push', '-q', '-u', remote, branch], { cwd });
+      if (result.code === 0) return { ok: true };
+      return { ok: false, error: result.stderr.trim() || `exit code ${result.code}` };
+    },
+
+    async fetchBranch(remote, branch) {
+      const tracking = `refs/remotes/${remote}/${branch}`;
+      const result = await run(
+        'git',
+        ['fetch', '-q', remote, `+refs/heads/${branch}:${tracking}`],
+        { cwd },
+      );
+      if (result.code !== 0) {
+        return { ok: false, error: result.stderr.trim() || `exit code ${result.code}` };
+      }
+      return { ok: true, sha: await api.resolve(tracking) };
+    },
+
+    async showFile(ref, path) {
+      if (!(await api.hasPath(ref, path))) return null;
+      return git(['show', `${ref}:${path}`]);
+    },
+
+    async hasPath(ref, path) {
+      const result = await run('git', ['cat-file', '-e', `${ref}:${path}`], { cwd });
+      return result.code === 0;
+    },
+
+    async restorePaths(ref, paths) {
+      await git(['checkout', '-q', ref, '--', ...paths]);
+    },
+
+    async commitFileOnBranch(branch, path, content, { subject, body, trailers }) {
+      const parent = await api.resolve(`refs/heads/${branch}`);
+      const blob = (await git(['hash-object', '-w', '--stdin'], content)).trim();
+      // Rebuilds the trees along `path` with mktree; an index would need GIT_INDEX_FILE.
+      const replace = async (tree: string | null, segments: string[]): Promise<string> => {
+        const [name = '', ...rest] = segments;
+        const entries =
+          tree === null ? [] : (await git(['ls-tree', '-z', tree])).split('\0').filter(Boolean);
+        const old = entries.find((entry) => entry.split('\t')[1] === name);
+        const kept = entries.filter((entry) => entry !== old);
+        const oldTree = old?.split(/\s/)[1] === 'tree' ? (old.split(/\s/)[2] ?? null) : null;
+        const entry =
+          rest.length === 0
+            ? `100644 blob ${blob}\t${name}`
+            : `040000 tree ${await replace(oldTree, rest)}\t${name}`;
+        return (await git(['mktree', '-z'], [...kept, entry].map((e) => `${e}\0`).join(''))).trim();
+      };
+      const tree = await replace(`${parent}^{tree}`, path.split('/'));
+      const sections = [subject, body, trailers.join('\n')].filter((s) => s !== '');
+      const sha = (
+        await git(['commit-tree', tree, '-p', parent, '-F', '-'], `${sections.join('\n\n')}\n`)
+      ).trim();
+      await git(['update-ref', `refs/heads/${branch}`, sha, parent]);
+      return sha;
     },
   };
   return api;

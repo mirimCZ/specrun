@@ -40,6 +40,8 @@ export const DeviationEntrySchema = z.object({
 export const StatsJsonSchema = z.object({
   ...Generated,
   specs: z.array(z.string()),
+  /** Those of `specs` shelved without merging (SRD-35); their samples are included. */
+  shelved: z.array(z.string()),
   by: z.enum(['task', 'model', 'size', 'spec']),
   samples: z.array(TaskSampleSchema),
   groups: z.array(
@@ -71,6 +73,8 @@ export const DeviationsJsonSchema = z.object({
   ...Generated,
   deviations: z.array(DeviationEntrySchema),
   counts: z.record(z.string(), z.number()),
+  /** Specs of `deviations` shelved without merging (SRD-35). */
+  shelved: z.array(z.string()),
 });
 export type DeviationsJson = z.infer<typeof DeviationsJsonSchema>;
 

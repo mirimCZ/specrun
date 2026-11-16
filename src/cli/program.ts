@@ -9,8 +9,10 @@ import { register as registerInit } from './commands/init.js';
 import { register as registerReview } from './commands/review.js';
 import { register as registerRun } from './commands/run.js';
 import { register as registerSet } from './commands/set.js';
+import { register as registerShelve } from './commands/shelve.js';
 import { register as registerStats } from './commands/stats.js';
 import { register as registerStatus } from './commands/status.js';
+import { register as registerUnshelve } from './commands/unshelve.js';
 
 // Same relative path from src/cli (tsx, vitest) and dist/cli (build).
 const { version } = createRequire(import.meta.url)('../../package.json') as { version: string };
@@ -30,5 +32,7 @@ export function createProgram(deps: CliDeps = defaultCliDeps()): Command {
   registerAnalyze(program, deps);
   registerArchive(program, deps);
   registerClose(program, deps);
+  registerShelve(program, deps);
+  registerUnshelve(program, deps);
   return program;
 }

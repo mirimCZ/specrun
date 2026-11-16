@@ -7,7 +7,7 @@ import {
   makeTempRepo,
   writeDemoSpec,
 } from '../../../test/fixtures/specRepo.js';
-import { writeArchivedHistory } from '../../../test/fixtures/archive.js';
+import { SHELVED, writeArchivedHistory } from '../../../test/fixtures/archive.js';
 import { doneTask } from '../../../test/fixtures/taskEvents.js';
 import { StatsJsonSchema } from '../../stats/jsonOutput.js';
 import { createProgram } from '../program.js';
@@ -38,6 +38,18 @@ describe('specrun stats', () => {
     expect(old.samples.map((s) => s.task)).toEqual(['OLD-1']);
     const demo = StatsJsonSchema.parse(JSON.parse(await stats('demo', '--json')));
     expect(demo.specs).toEqual(['demo']);
+  });
+
+  it('marks shelved specs, whose samples still count', async () => {
+    const specDir = writeDemoSpec(dir);
+    writeFileSync(join(specDir, 'events.jsonl'), doneTask('D-1', 12, 0.4));
+    writeArchivedHistory(dir, 'old', [], SHELVED);
+
+    const json = StatsJsonSchema.parse(JSON.parse(await stats('--json')));
+    expect(json.shelved).toEqual(['old']);
+    expect(json.samples.map((s) => s.task)).toEqual(['D-1', 'OLD-1']);
+    expect(await stats('--by', 'spec')).toMatch(/old \(shelved\)\s+1\s+50/);
+    expect(await stats()).toContain('Includes shelved specs (not merged): old\n');
   });
 
   it('prints a table grouped by the chosen dimension', async () => {

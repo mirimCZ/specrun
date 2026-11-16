@@ -211,6 +211,8 @@ existing file).
 | `specrun archive <spec> [--force]`                                        | Archive a finished spec, remove its merged worktree and branch                                 |
 | `specrun close <spec> [--into <branch>] [--force]`                        | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
 | `specrun close --all [--into <branch>] [--force]`                         | The same for `specrun/all`: one merge, then archive every spec that ran there                  |
+| `specrun shelve <spec> --reason <text> [--remote <name>] [--no-push]`     | Push the spec branch, archive the spec without merging it, remove the worktree                 |
+| `specrun unshelve <spec> [--into <branch>] [--force] [--no-merge]`        | Bring a shelved spec back, merge it like `close` and archive it as merged                      |
 
 `status`, `stats`, `deviations` and `analyze` work from another terminal during a run, and all
 of them take `--json` (format in [`docs/json-output.md`](docs/json-output.md)).
@@ -224,6 +226,15 @@ A conflict aborts the merge. Then it runs `specrun archive` and deletes the spec
 pushes. `specrun close --all` does the same for `specrun/all`: every spec that ran there must be
 done (`--force` archives them anyway), then it archives each of them and removes the shared
 worktree and branch.
+
+**Shelving a spec** — when a spec's work should not be merged (yet) but not be lost either,
+`specrun shelve <spec> --reason "…"` pushes its branch to `origin` (`--remote` for another,
+`--no-push` keeps it local), archives the spec as with `specrun archive` but without a merge —
+unfinished tasks are fine, the README note says it is not merged, why and where the work is — and
+removes the worktree; the branch stays. `specrun status` lists shelved specs separately, `stats` and
+`deviations` mark them. `specrun unshelve <spec>` takes it back: it fetches the branch if needed,
+restores the spec folder, merges and verifies like `close` and archives the spec as merged.
+`--no-merge` only restores it, to finish it with `specrun run` and `specrun close`.
 
 **Reviewing deviations** — `specrun review <spec>` starts Claude Code on the same terminal. specrun
 first gathers what the review needs — the config, each task's brief, its commit (message, changed

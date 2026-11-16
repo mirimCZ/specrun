@@ -46,10 +46,10 @@ function inline(text: string): string {
   return text.replace(/\s*\n\s*/g, ' ').trim();
 }
 
-export function formatDeviation(e: DeviationEntry): string {
+export function formatDeviation(e: DeviationEntry, shelved = false): string {
   const decision = e.decision === null ? '' : `${inline(e.decision)}: `;
-  const reviewed = e.reviewed ? '(reviewed) ' : '';
-  const line = `${e.spec}/${e.task} [${e.kind}] ${reviewed}${decision}${inline(e.what)} — ${inline(e.why)}`;
+  const marks = `${shelved ? '(shelved) ' : ''}${e.reviewed ? '(reviewed) ' : ''}`;
+  const line = `${e.spec}/${e.task} [${e.kind}] ${marks}${decision}${inline(e.what)} — ${inline(e.why)}`;
   return e.question === null ? line : `${line}\n  ${formatQuestion(e.question)}`;
 }
 
@@ -57,11 +57,12 @@ export function formatDeviation(e: DeviationEntry): string {
 export function formatListing(
   entries: readonly DeviationEntry[],
   counts: Record<string, number>,
+  shelved: readonly string[] = [],
 ): string {
   const sections = DEVIATION_KINDS.filter((kind) => (counts[kind] ?? 0) > 0).map((kind) => {
     const lines = entries
       .filter((e) => e.kind === kind)
-      .map((e) => `  ${formatDeviation(e).replace(/\n/g, '\n  ')}`);
+      .map((e) => `  ${formatDeviation(e, shelved.includes(e.spec)).replace(/\n/g, '\n  ')}`);
     return `${kind} (${counts[kind]})\n${lines.join('\n')}`;
   });
   return `${sections.join('\n\n')}\n`;

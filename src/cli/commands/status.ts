@@ -1,4 +1,10 @@
 import type { Command } from 'commander';
+import {
+  isShelved,
+  readArchivedHistories,
+  refuseShelved,
+  type ShelvedHistory,
+} from '../../archive/history.js';
 import { findRepoRoot, loadConfig } from '../../config/loadConfig.js';
 import { readEvents } from '../../events/eventStore.js';
 import { deriveState, type SpecState } from '../../events/taskState.js';
@@ -19,6 +25,26 @@ interface Overview {
   /** Where the live copy is: own worktree, the shared one of `run --all`, or the checkout. */
   workspace: ActiveSpecFiles['workspace'];
   runningPid: number | null;
+}
+
+/** SRD-35: in the same list, so `--json` keeps its shape; only its branch has the spec. */
+interface ShelvedOverview {
+  name: string;
+  /** Tasks done when it was shelved; the total is only on the branch. */
+  done: number;
+  workspace: 'shelved';
+  shelved: ShelvedHistory['outcome'];
+}
+
+function shelvedOverviews(repoRoot: string, config: Config): ShelvedOverview[] {
+  return readArchivedHistories(repoRoot, config)
+    .filter(isShelved)
+    .map((history) => ({
+      name: history.spec,
+      done: history.samples.length,
+      workspace: 'shelved',
+      shelved: history.outcome,
+    }));
 }
 
 function runningPid(repoRoot: string, spec: string): number | null {
@@ -58,22 +84,38 @@ export function register(program: Command, deps: CliDeps): void {
 
       if (name === undefined) {
         const all = listSpecs(repoRoot, config).map((spec) => overview(repoRoot, config, spec));
+        const shelved = shelvedOverviews(repoRoot, config);
         if (flags.json === true) {
-          deps.stdout(`${JSON.stringify(all, null, 2)}\n`);
+          deps.stdout(`${JSON.stringify([...all, ...shelved], null, 2)}\n`);
           return;
         }
-        if (all.length === 0) {
+        if (all.length === 0 && shelved.length === 0) {
           deps.stdout(`No specs found under ${config.specsDir}/\n`);
           return;
         }
-        const rows = all.map((s) => [
-          s.name,
-          `${s.done}/${s.total}`,
-          s.blocked > 0 ? `${s.blocked} blocked` : '',
-          s.workspace === 'checkout' ? '' : s.workspace === 'shared' ? 'run --all' : 'worktree',
-          s.runningPid === null ? '' : `running (pid ${s.runningPid})`,
-        ]);
-        deps.stdout(`${table(rows)}\n`);
+        const sections: string[] = [];
+        if (all.length > 0) {
+          const rows = all.map((s) => [
+            s.name,
+            `${s.done}/${s.total}`,
+            s.blocked > 0 ? `${s.blocked} blocked` : '',
+            s.workspace === 'checkout' ? '' : s.workspace === 'shared' ? 'run --all' : 'worktree',
+            s.runningPid === null ? '' : `running (pid ${s.runningPid})`,
+          ]);
+          sections.push(table(rows));
+        }
+        if (shelved.length > 0) {
+          const rows = shelved.map((s) => [
+            s.name,
+            `${s.done} done`,
+            s.shelved.branch,
+            s.shelved.remote ?? 'local only',
+            s.shelved.shelvedAt.slice(0, 10),
+            s.shelved.reason,
+          ]);
+          sections.push(`Shelved, not merged (specrun unshelve <spec>):\n${table(rows)}`);
+        }
+        deps.stdout(`${sections.join('\n\n')}\n`);
         return;
       }
 
@@ -81,6 +123,7 @@ export function register(program: Command, deps: CliDeps): void {
         !listSpecs(repoRoot, config).includes(name) &&
         activeSpecFiles(repoRoot, config, name).worktree === null
       ) {
+        refuseShelved(repoRoot, config, name);
         throw new SpecrunError('spec-missing', `Spec "${name}" not found`);
       }
       const { files, spec, state } = load(repoRoot, config, name);

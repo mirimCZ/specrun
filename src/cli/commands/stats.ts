@@ -11,7 +11,7 @@ import {
 } from '../../stats/aggregate.js';
 import { StatsJsonSchema, type StatsJson } from '../../stats/jsonOutput.js';
 import type { CliDeps } from '../cliDeps.js';
-import { loadRunHistory } from '../specInputs.js';
+import { loadRunHistory, shelvedSpecs } from '../specInputs.js';
 import { table } from '../table.js';
 
 const DIMENSIONS: readonly GroupDimension[] = ['task', 'model', 'size', 'spec'];
@@ -66,6 +66,7 @@ export function register(program: Command, deps: CliDeps): void {
           flags.all === true ? [] : names,
         );
         const samples = [...taskSamples(inputs), ...archived.flatMap((h) => h.samples)];
+        const shelved = shelvedSpecs({ inputs, archived });
         const groups = groupStats(samples, flags.by);
         const calibration = flags.calibrate === true ? calibrate(samples, config.sizes) : null;
 
@@ -74,6 +75,7 @@ export function register(program: Command, deps: CliDeps): void {
             version: 1,
             generatedAt: deps.now().toISOString(),
             specs: [...inputs.map((i) => i.name), ...archived.map((h) => h.spec)],
+            shelved,
             by: flags.by,
             samples,
             groups,
@@ -87,7 +89,7 @@ export function register(program: Command, deps: CliDeps): void {
           return;
         }
         const rows = groups.map((g) => [
-          g.key,
+          flags.by === 'spec' && shelved.includes(g.key) ? `${g.key} (shelved)` : g.key,
           String(g.count),
           String(g.turns.sum),
           String(g.turns.p50),
@@ -117,6 +119,10 @@ export function register(program: Command, deps: CliDeps): void {
             ...rows,
           ])}\n`,
         );
+        const counted = shelved.filter((spec) => samples.some((s) => s.spec === spec));
+        if (counted.length > 0 && flags.by !== 'spec') {
+          deps.stdout(`Includes shelved specs (not merged): ${counted.join(', ')}\n`);
+        }
         if (calibration !== null) deps.stdout(`\n${calibrationTable(calibration)}\n`);
       },
     );

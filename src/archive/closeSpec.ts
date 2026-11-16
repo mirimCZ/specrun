@@ -10,6 +10,7 @@ import { lockFile, readLockPid } from '../runner/lock.js';
 import { loadSpec } from '../spec/loadSpec.js';
 import { runVerify, type VerifyResult, type VerifyStepResult } from '../verify/verify.js';
 import { archiveSpec, type ArchiveDeps, type ArchiveResult } from './archiveSpec.js';
+import { refuseShelved } from './history.js';
 
 export interface CloseOptions {
   spec: string;
@@ -46,7 +47,8 @@ export interface CloseResult extends MergeResult {
   deletedBranch: string | null;
 }
 
-async function targetBranch(
+/** `--into`, else the main checkout's branch, else (checkout on the spec branch) main / master. */
+export async function targetBranch(
   into: string | undefined,
   current: string | null,
   branch: string,
@@ -67,6 +69,7 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
   const name = options.spec;
   const git = createGit(repoRoot, deps.run);
 
+  refuseShelved(repoRoot, config, name);
   const pid = readLockPid(lockFile(repoRoot, name));
   if (pid !== null && deps.isAlive(pid)) {
     throw new SpecrunError('locked', `A run holds the lock of "${name}" (pid ${pid})`, [
@@ -121,7 +124,8 @@ export async function closeSpec(options: CloseOptions, deps: CloseDeps): Promise
   const archive = await archiveSpec({ spec: name, force: options.force }, deps);
   let deletedBranch: string | null = null;
   if (archive.removed === null && (await git.branchExists(branch))) {
-    await git.deleteBranch(branch);
+    // Merged just now; `-d` would also want a pushed branch (shelve) in its upstream.
+    await git.deleteBranch(branch, true);
     deletedBranch = branch;
   }
   return { ...merged, archive, deletedBranch };

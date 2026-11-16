@@ -57,6 +57,44 @@ describe('specrun status', () => {
     expect(parsed.runningPid).toBe(process.pid);
   });
 
+  it('lists shelved specs after the live ones', async () => {
+    writeDemoSpec(dir);
+    const archived = join(dir, 'docs', 'archive', 'old');
+    mkdirSync(archived, { recursive: true });
+    const outcome = {
+      kind: 'shelved',
+      shelvedAt: '2026-11-16T10:00:00.000Z',
+      reason: 'wrong approach',
+      branch: 'specrun/old',
+      remote: 'origin',
+      tip: 'abc1234def',
+    };
+    writeFileSync(
+      join(archived, 'history.json'),
+      JSON.stringify({
+        version: 1,
+        spec: 'old',
+        title: 'Old',
+        archivedAt: '2026-11-16T10:00:00.000Z',
+        commit: 'abc',
+        outcome,
+        samples: [],
+        deviations: [],
+      }),
+    );
+
+    const output = await status();
+    expect(output).toMatch(/demo\s+0\/2\n\nShelved, not merged \(specrun unshelve <spec>\):\n/);
+    expect(output).toMatch(/old\s+0 done\s+specrun\/old\s+origin\s+2026-11-16\s+wrong approach/);
+    expect(JSON.parse(await status('--json'))).toContainEqual({
+      name: 'old',
+      done: 0,
+      workspace: 'shelved',
+      shelved: outcome,
+    });
+    await expect(status('old')).rejects.toThrow('Spec "old" is shelved since 2026-11-16');
+  });
+
   it('fails for an unknown spec', async () => {
     writeDemoSpec(dir);
     await expect(status('nope')).rejects.toThrow(/not found/);
