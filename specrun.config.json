@@ -3,6 +3,7 @@
   "verify": [
     { "name": "typecheck", "command": "npm run -s verify:typecheck" },
     { "name": "test", "command": "npm run -s verify:test" },
-    { "name": "format", "command": "npm run -s verify:format" }
+    { "name": "format", "command": "npm run -s verify:format" },
+    { "name": "features", "command": "npx tsx src/cli/main.ts features check" }
   ]
 }
