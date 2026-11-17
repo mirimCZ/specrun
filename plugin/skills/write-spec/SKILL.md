@@ -141,6 +141,11 @@ every `<placeholder>`; delete optional comment blocks you don't use. Don't autho
   translation keys, docs to annotate ("superseded by <PX>-n").
 - **Done when:** tests that must exist and what they assert; behaviour that must stay unchanged
   and the existing tests guarding it.
+  - A must-find-nothing grep searches for code identifiers only (symbol, key, path names), never
+    natural-language words that also occur in content or game text.
+  - Each required test must be writable with the existing spec harness. If it needs a new render
+    path (another role, a mocked hook), name it in Changes. "Existing cases unchanged" refers to
+    the cases; the harness (mocks, state) may be extended.
 - No "Implementation notes" section — notes reach later tasks through `complete_task`.
 - Test know-how (mocks, queries, traps) lives in the project's test docs, which CLAUDE.md or
   `TASK_PROMPT.md` makes the agent read — don't repeat it in briefs. Name only the test to copy
