@@ -1,5 +1,7 @@
 # Feature Map
 
+> Archived on 2026-11-17 by `specrun archive`. The full spec folder (briefs, prompts, run log) is in git at `06feef7`: `git ls-tree -r --name-only 06feef7 -- docs/002-feature-map`.
+
 A repository can keep a **feature map**: a maintained, high-level overview of what the
 application does. It has one Mermaid diagram plus one short doc per feature (purpose,
 capabilities, expectations, pitfalls, code references). specrun defines the standard, checks it

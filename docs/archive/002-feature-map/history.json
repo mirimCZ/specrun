@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "spec": "002-feature-map",
+  "title": "Feature Map",
+  "archivedAt": "2026-11-17T19:49:50.682Z",
+  "commit": "06feef70be9550be32cee040d89775052b19a5b0",
+  "outcome": {
+    "kind": "merged",
+    "shelved": null
+  },
+  "samples": [
+    {
+      "spec": "002-feature-map",
+      "task": "FM-1",
+      "model": "strong",
+      "size": "M",
+      "turns": 14,
+      "costUsd": 0.7370155,
+      "peakContext": 42616,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 4,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-2",
+      "model": "default",
+      "size": "M",
+      "turns": 10,
+      "costUsd": 0.3035183,
+      "peakContext": 44017,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 3,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-3",
+      "model": "default",
+      "size": "M",
+      "turns": 9,
+      "costUsd": 0.18937669999999998,
+      "peakContext": 32162,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-4",
+      "model": "default",
+      "size": "M",
+      "turns": 8,
+      "costUsd": 0.15309920000000002,
+      "peakContext": 27891,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 1,
+      "budgetExceeded": false
+    }
+  ],
+  "deviations": [
+    {
+      "spec": "002-feature-map",
+      "task": "FM-1",
+      "kind": "spec-bug",
+      "decision": null,
+      "what": "I changed the existing 'fills every default for a minimal config' test in configSchema.spec.ts to expect `featuresDir: 'docs/features'`.",
+      "why": "The test compares the whole parsed config with toEqual, so a new default field makes it fail unless the expectation includes it. Leaving existing config tests unchanged was not possible.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-1",
+      "kind": "scope",
+      "decision": null,
+      "what": "The loader also reports a README without a `## Features` section as an error, and table rows with fewer than 3 cells as errors.",
+      "why": "Without these problems the check could not tell a missing table from an empty one, and malformed rows would be dropped silently. Both count as 'reports what it can't parse'.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-1",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "Markdown files at other depths than <area>/<name>.md are reported as warnings and are not loaded as docs.",
+      "why": "The brief says 'other depths reported' but does not give a level.",
+      "question": {
+        "text": "Which level should a .md file at the wrong depth under featuresDir get?",
+        "options": [
+          "warning",
+          "error"
+        ],
+        "chosen": "warning"
+      },
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-1",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "`code`/`tests` entries that contain glob characters (*?[]{}) fail the frontmatter schema.",
+      "why": "FMD-4 says 'no globs'. It does not say whether the schema enforces this or the check does.",
+      "question": {
+        "text": "Should the frontmatter schema reject glob patterns in code/tests, or leave it to the existence check?",
+        "options": [
+          "reject in schema",
+          "leave to existence check"
+        ],
+        "chosen": "reject in schema"
+      },
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-2",
+      "kind": "scope",
+      "decision": null,
+      "what": "SpecTask/Spec types declare `features` as optional, though the schema always fills it.",
+      "why": "Required would have broken ~10 spec files that build SpecTask literals by hand; consumers use `?? []`.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-2",
+      "kind": "scope",
+      "decision": null,
+      "what": "Also check that known `##` sections are in order (required, then optional), reported as an error.",
+      "why": "FM-1's notes listed section order among the checks FM-2 owes.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-2",
+      "kind": "scope",
+      "decision": null,
+      "what": "Updated the existing loadSpec.spec.ts toEqual expectation to include `features: []`.",
+      "why": "The transform now outputs the field.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "002-feature-map",
+      "task": "FM-4",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "Map presence is decided by whether <featuresDir>/README.md exists, since featuresDir has a schema default.",
+      "why": "FMD-9 says to use the map README path when it exists, else 'No feature map'.",
+      "question": {
+        "text": "featuresDir always has a default, so how should plan.ts decide that the repo has a map?",
+        "options": [
+          "README.md exists in featuresDir",
+          "featuresDir directory exists"
+        ],
+        "chosen": "README.md exists in featuresDir"
+      },
+      "reviewed": true
+    }
+  ]
+}
