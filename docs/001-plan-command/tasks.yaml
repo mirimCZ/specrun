@@ -29,3 +29,8 @@ tasks:
     title: Plan skill, write-spec folder rule, docs
     needs: [PL-2, PL-3]
     size: M
+  - id: PL-5
+    phase: 1
+    title: Resolve absolute --file paths
+    needs: [PL-2]
+    size: S
