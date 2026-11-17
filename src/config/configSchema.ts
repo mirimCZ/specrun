@@ -44,6 +44,8 @@ const SizesSchema = z.strictObject({
 // remaining defaults.
 export const ConfigSchema = z.strictObject({
   specsDir: z.string().min(1).default(DEFAULT_SPECS_DIR),
+  /** Repo-relative feature map folder; when it doesn't exist every feature-map step is skipped. */
+  featuresDir: z.string().min(1).default('docs/features'),
   verify: z.array(VerifyStepSchema).min(1),
   setup: z.string().min(1).nullable().default(null),
   /** false: run in the main checkout on the spec branch (needs a clean tree, no setup). */

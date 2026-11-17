@@ -12,6 +12,7 @@ src/
   cli/        commander program + one file per subcommand (commands/<name>.ts)
   config/     specrun.config.json schema + loader
   spec/       tasks.yaml schema + loader (validation: ids, needs, cycles, briefs)
+  features/   feature map: schema, loader, check (specrun features)
   events/     event schema, append-only JSONL store, state reducer
   progress/   generated PROGRESS.md
   git/        worktree, commit, parking of blocked work

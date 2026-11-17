@@ -7,6 +7,7 @@ describe('ConfigSchema', () => {
   it('fills every default for a minimal config', () => {
     expect(ConfigSchema.parse({ verify })).toEqual({
       specsDir: 'docs',
+      featuresDir: 'docs/features',
       verify,
       setup: null,
       worktree: true,
@@ -29,6 +30,13 @@ describe('ConfigSchema', () => {
     });
     expect(config.models).toEqual({ default: 'sonnet', strong: 'claude-opus-5-5' });
     expect(config.sizes).toEqual({ ...DEFAULT_SIZES, M: { turns: [5, 8], usd: 0.5 } });
+  });
+
+  it('accepts a custom featuresDir and rejects an empty one', () => {
+    expect(ConfigSchema.parse({ verify, featuresDir: 'spec/features' }).featuresDir).toBe(
+      'spec/features',
+    );
+    expect(ConfigSchema.safeParse({ verify, featuresDir: '' }).success).toBe(false);
   });
 
   it('rejects unknown keys, also nested ones', () => {
