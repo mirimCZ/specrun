@@ -1,3 +1,5 @@
+import { existsSync, realpathSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { SpecrunError } from '../errors.js';
 import type { ProcessRunner } from '../process/run.js';
 import type { CommitMessageParts } from './commitMessage.js';
@@ -41,7 +43,7 @@ export interface Git {
   parkChanges(ref: string, message: string): Promise<string | null>;
   updateRef(ref: string, sha: string): Promise<void>;
   worktreeList(): Promise<WorktreeEntry[]>;
-  /** Fails when the worktree has changes. */
+  /** Fails when the worktree has changes; retries a folder that something keeps writing into. */
   removeWorktree(path: string): Promise<void>;
   /** Fails when the branch is not merged — `force` skips git's check (callers check themselves). */
   deleteBranch(name: string, force?: boolean): Promise<void>;
@@ -218,7 +220,27 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
     },
 
     async removeWorktree(path) {
-      await git(['worktree', 'remove', path]);
+      const result = await run('git', ['worktree', 'remove', path], { cwd });
+      if (result.code === 0) return;
+      const failed = new SpecrunError('git-failed', `git worktree remove ${path} failed`, [
+        result.stderr.trim() || `exit code ${result.code}`,
+      ]);
+      // git unregisters a clean worktree even when deleting its folder fails — a daemon the verify
+      // steps started there (the Nx daemon) still writes into it — and won't try again.
+      const real = existsSync(path) ? realpathSync(path) : null;
+      const registered = (await api.worktreeList()).some(
+        (e) => existsSync(e.path) && realpathSync(e.path) === real,
+      );
+      if (real === null || registered) throw failed;
+      try {
+        await rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      } catch (error) {
+        throw new SpecrunError('git-failed', `Could not delete the worktree folder ${path}`, [
+          error instanceof Error ? error.message : String(error),
+          'git no longer tracks it — stop what still runs there (e.g. `npx nx daemon --stop`) ' +
+            'and delete the folder',
+        ]);
+      }
     },
 
     async deleteBranch(name, force = false) {

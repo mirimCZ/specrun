@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -78,6 +78,31 @@ describe('createGit', () => {
     await git.deleteBranch('spec');
     expect(await git.worktreeList()).toHaveLength(1);
     expect(await git.branchExists('spec')).toBe(false);
+  });
+
+  it('finishes deleting a worktree folder that something wrote into during the removal', async () => {
+    const path = join(dir, 'wt');
+    sh(dir, 'worktree', 'add', '-q', '-b', 'spec', path);
+    // Like a daemon writing its cache while git deletes the folder: git unregisters it and fails.
+    const racing = createGit(dir, async (cmd, args, opts) => {
+      const result = await runCommand(cmd, args, { ...opts, env });
+      if (args[0] !== 'worktree' || args[1] !== 'remove') return result;
+      mkdirSync(join(path, '.nx'), { recursive: true });
+      writeFileSync(join(path, '.nx', 'project-graph.json'), '{}');
+      return { ...result, code: 255, stderr: `error: failed to delete '${path}'` };
+    });
+    await racing.removeWorktree(path);
+    expect(existsSync(path)).toBe(false);
+    expect(await git.worktreeList()).toHaveLength(1);
+  });
+
+  it('keeps a worktree with changes', async () => {
+    const path = join(dir, 'wt');
+    sh(dir, 'worktree', 'add', '-q', '-b', 'spec', path);
+    writeFileSync(join(path, 'dirty.txt'), 'x');
+    await expect(git.removeWorktree(path)).rejects.toMatchObject({ code: 'git-failed' });
+    expect(existsSync(join(path, 'dirty.txt'))).toBe(true);
+    expect(await git.worktreeList()).toHaveLength(2);
   });
 
   it('knows existing branches', async () => {
