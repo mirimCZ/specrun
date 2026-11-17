@@ -2,11 +2,11 @@
 
 # Feature Map Bootstrap — Progress
 
-| Phase | Task | Title                                                    | Size | Model   | Status | Sessions | Turns | Peak ctx | Cost  | Commit | Summary                                                                                                            |
-| ----- | ---- | -------------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------ | ------------------------------------------------------------------------------------------------------------------ |
-| 1     | FB-1 | Bootstrap mode of the feature-map skill                  | S    | default | done   | 1        | 6     | 18k      | $0.09 | —      | Added bootstrap.md procedure, routed SKILL.md to it with new triggers, and added a bootstrapping how-to to README. |
-| 1     | FB-2 | specrun feature map: run, specs, setup areas             | M    | default | todo   | —        | —     | —        | —     | —      |                                                                                                                    |
-| 1     | FB-3 | specrun feature map: insights, knowledge, README, verify | M    | default | todo   | —        | —     | —        | —     | —      |                                                                                                                    |
+| Phase | Task | Title                                                    | Size | Model   | Status | Sessions | Turns | Peak ctx | Cost  | Commit  | Summary                                                                                                            |
+| ----- | ---- | -------------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1     | FB-1 | Bootstrap mode of the feature-map skill                  | S    | default | done   | 1        | 6     | 18k      | $0.09 | 54f9f70 | Added bootstrap.md procedure, routed SKILL.md to it with new triggers, and added a bootstrapping how-to to README. |
+| 1     | FB-2 | specrun feature map: run, specs, setup areas             | M    | default | done   | 1        | 20    | 42k      | $0.29 | —       | Wrote nine draft feature docs for the run, specs and setup areas under docs/features.                              |
+| 1     | FB-3 | specrun feature map: insights, knowledge, README, verify | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                    |
 
 ## Deviations
 
@@ -14,5 +14,5 @@ None.
 
 ## Totals
 
-- Tasks: 3 (1 done · 0 blocked · 0 interrupted · 2 todo)
-- Sessions: 1 · Turns: 6 · Cost: $0.09 · Time: 1m
+- Tasks: 3 (2 done · 0 blocked · 0 interrupted · 1 todo)
+- Sessions: 2 · Turns: 26 · Cost: $0.38 · Time: 3m
