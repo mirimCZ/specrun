@@ -22,8 +22,8 @@ export async function askYes(prompter: () => Prompter, question: string): Promis
   }
 }
 
-/** Answers one raw line; rejects when the user cancels. */
-export type ReadLine = (prompt: string) => Promise<string>;
+/** Answers one raw line; rejects when the user cancels. The placeholder shows what Enter takes. */
+export type ReadLine = (prompt: string, placeholder?: string) => Promise<string>;
 
 /** The parsing of answers, independent of where the lines come from (tests script them). */
 export function createPrompter(readLine: ReadLine, close: () => void = () => undefined): Prompter {
@@ -35,7 +35,8 @@ export function createPrompter(readLine: ReadLine, close: () => void = () => und
     },
     async confirm(question, fallback) {
       for (;;) {
-        const answer = (await readLine(`${question} ${fallback ? '[Y/n]' : '[y/N]'} `)).trim();
+        const prompt = `${question} ${fallback ? '[Y/n]' : '[y/N]'} `;
+        const answer = (await readLine(prompt, fallback ? 'Y' : 'N')).trim();
         if (answer === '') return fallback;
         if (/^y(es)?$/i.test(answer)) return true;
         if (/^no?$/i.test(answer)) return false;
@@ -57,9 +58,11 @@ export function createTerminalPrompter(
   // Without a listener readline swallows Ctrl+C and the question never returns.
   rl.on('SIGINT', () => cancel.abort());
   return createPrompter(
-    async (prompt) => {
+    async (prompt, placeholder) => {
+      const answer = rl.question(prompt, { signal: cancel.signal });
+      if (placeholder !== undefined && rl.terminal) showPlaceholder(input, output, placeholder);
       try {
-        return await rl.question(prompt, { signal: cancel.signal });
+        return await answer;
       } catch (error) {
         if (cancel.signal.aborted) {
           output.write('\n');
@@ -70,4 +73,17 @@ export function createTerminalPrompter(
     },
     () => rl.close(),
   );
+}
+
+/**
+ * Dimmed text after the cursor, as CLIs show a default. Readline doesn't redraw the line when
+ * typing at its end, so the first key also clears the rest of it; on Enter it stays as the answer.
+ */
+function showPlaceholder(
+  input: NodeJS.ReadableStream,
+  output: NodeJS.WritableStream,
+  placeholder: string,
+): void {
+  output.write(`\x1b[2m${placeholder}\x1b[22m\x1b[${placeholder.length}D`);
+  input.once('keypress', () => output.write('\x1b[K'));
 }
