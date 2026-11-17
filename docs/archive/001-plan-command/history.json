@@ -95,10 +95,7 @@
       "why": "The brief does not say how relative paths or unreadable request files behave.",
       "question": {
         "text": "How should --file be resolved and what if unreadable?",
-        "options": [
-          "relative to cwd, error spec-invalid",
-          "relative to repo root"
-        ],
+        "options": ["relative to cwd, error spec-invalid", "relative to repo root"],
         "chosen": "relative to cwd, error spec-invalid"
       },
       "reviewed": true

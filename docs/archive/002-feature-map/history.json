@@ -92,10 +92,7 @@
       "why": "The brief says 'other depths reported' but does not give a level.",
       "question": {
         "text": "Which level should a .md file at the wrong depth under featuresDir get?",
-        "options": [
-          "warning",
-          "error"
-        ],
+        "options": ["warning", "error"],
         "chosen": "warning"
       },
       "reviewed": true
@@ -109,10 +106,7 @@
       "why": "FMD-4 says 'no globs'. It does not say whether the schema enforces this or the check does.",
       "question": {
         "text": "Should the frontmatter schema reject glob patterns in code/tests, or leave it to the existence check?",
-        "options": [
-          "reject in schema",
-          "leave to existence check"
-        ],
+        "options": ["reject in schema", "leave to existence check"],
         "chosen": "reject in schema"
       },
       "reviewed": true
@@ -156,10 +150,7 @@
       "why": "FMD-9 says to use the map README path when it exists, else 'No feature map'.",
       "question": {
         "text": "featuresDir always has a default, so how should plan.ts decide that the repo has a map?",
-        "options": [
-          "README.md exists in featuresDir",
-          "featuresDir directory exists"
-        ],
+        "options": ["README.md exists in featuresDir", "featuresDir directory exists"],
         "chosen": "README.md exists in featuresDir"
       },
       "reviewed": true
