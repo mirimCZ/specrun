@@ -67,6 +67,9 @@ export async function runPlan(
     files,
     specsDir: config.specsDir,
     request,
+    featureMap: existsSync(join(repoRoot, config.featuresDir, 'README.md'))
+      ? join(config.featuresDir, 'README.md')
+      : null,
   });
   const contextFile = join(repoRoot, '.specrun', 'plan', `${spec}.md`);
 

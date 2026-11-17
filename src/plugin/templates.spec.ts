@@ -41,6 +41,20 @@ describe('write-spec templates', () => {
   });
 });
 
+describe('feature-map task template', () => {
+  const read = (file: string): string =>
+    readFileSync(join(SKILLS_DIR, 'write-spec/templates', file), 'utf8');
+
+  it('names the check and needs: all, with the header line of task.md', () => {
+    const template = read('feature-map-task.md');
+    expect(template).toContain('specrun features check');
+    expect(template).toContain('needs: all');
+    const format = /^Phase \d+ · Needs: .+ · Implements: .+$/m;
+    expect(read('task.md')).toMatch(format);
+    expect(template).toMatch(format);
+  });
+});
+
 describe('feature-map templates', () => {
   it('filled in, they form a valid map', () => {
     const repo = mkdtempSync(join(tmpdir(), 'specrun-'));

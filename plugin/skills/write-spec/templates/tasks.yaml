@@ -13,6 +13,7 @@ tasks:
     needs: []
     model: strong
     size: M
+    # features: [<area>/<name>]   # only in repos with a feature map
   - id: <PX>-2
     phase: 1
     title: <title>

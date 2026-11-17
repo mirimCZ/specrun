@@ -35,8 +35,11 @@ Where rule fixes go, by kind:
 - `spec-bug`, `ambiguity` that recurs, `scope` → the write-spec skill (analysis, cutting and
   Read-first rules) and, while the spec is still running, its `TASK_PROMPT.md` or the briefs of
   tasks that haven't started yet.
+- A lesson tied to one feature, when the repo has a feature map → that feature doc's
+  `## Pitfalls` (format: feature-map skill). Without a map, skip this bullet.
 - `test-trap` → the project's test docs (a recipe that avoids the trap).
-- `constraint` → the project's `CLAUDE.md` or `specrun.config.json`.
+- `constraint` → the project's `CLAUDE.md` or `specrun.config.json` (a project-wide one; a
+  feature-specific one goes to the feature doc's `## Pitfalls`).
 
 A finding can have both a verdict and a rule fix. Be honest when the user's own spec caused it.
 

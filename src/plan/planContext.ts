@@ -7,11 +7,13 @@ export interface PlanContextInput {
   specsDir: string;
   /** Content of `--file`, verbatim; null when none was given. */
   request: string | null;
+  /** Repo-relative feature map README; null when the repo has no map. */
+  featureMap: string | null;
 }
 
 /** Only facts the model cannot get cheaply (PLD-4). */
 export function renderPlanContext(input: PlanContextInput): string {
-  const { spec, dir, files, specsDir, request } = input;
+  const { spec, dir, files, specsDir, request, featureMap } = input;
   const state =
     files.length === 0 ? 'new' : `existing, contains:\n${files.map((f) => `- ${f}`).join('\n')}`;
   return [
@@ -21,6 +23,7 @@ export function renderPlanContext(input: PlanContextInput): string {
     `- Folder: ${dir}`,
     `- State: ${state}`,
     `- specsDir: ${specsDir}`,
+    featureMap === null ? '- No feature map' : `- Feature map: ${featureMap}`,
     '',
     request === null
       ? 'No request file — ask the user for the request.'

@@ -87,6 +87,10 @@ project's `specrun.config.json` under `sizes` (defaults: S 10–25, M 20–45, L
 permission rules, data model or migration changes, cross-cutting refactors shared by several
 callers, tricky state / history / concurrency handling. Everything else is `default`.
 
+**Feature map.** When the context or repo has a feature map (`<featuresDir>/README.md`; format:
+**feature-map** skill), add a last task "Update the feature map" (`needs: all`, size S, model
+default) from `templates/feature-map-task.md`. Without a map, no such task.
+
 In §4 of the README, add one line on how the work was cut when it isn't obvious.
 
 ## 4. Name the spec
@@ -119,6 +123,8 @@ every `<placeholder>`; delete optional comment blocks you don't use. Don't autho
 `needs` lists task ids of this spec (`[]` when none, `all` = every other task); no cycles.
 `model` may be omitted for `default`; the header comment says why the strong tasks were picked
 (see **Model** above). No task status — specrun keeps it in `events.jsonl`.
+With a feature map, each task also gets `features: [<area>/<name>]` — the features it touches
+(ids as in the map index). Never invent ids; `specrun features check` validates them.
 
 **README.md** — for the humans and as the source of truth:
 
@@ -170,13 +176,14 @@ nothing is left.
    neighbouring words. Rephrase so no inline code contains a backtick. Also check numbered
    lists: a continuation line starting with inline code that contains `<…>` can lose its
    indentation.
-2. Consistency: every task in `tasks.yaml` has a brief and a row in the README overview with the
+2. With a feature map: every brief lists the features it touches; the last task is the map update.
+3. Consistency: every task in `tasks.yaml` has a brief and a row in the README overview with the
    same phase, needs, size and model; the brief's header line has the same phase and needs;
    every decision ID a brief cites is quoted in it and exists in §3.
-3. `specrun status <spec>` loads without errors — it validates `tasks.yaml`, ids, needs, cycles
+4. `specrun status <spec>` loads without errors — it validates `tasks.yaml`, ids, needs, cycles
    and that every task has its brief — and lists every task as `todo`. Brief lengths should be
    roughly even for tasks of the same size (an outlier brief is a sizing smell).
-4. Commit only the spec folder (`git add <spec dir>`): `docs(<scope>): add <name> spec` with
+5. Commit only the spec folder (`git add <spec dir>`): `docs(<scope>): add <name> spec` with
    the attribution trailer from the system prompt — only when the user asked to commit;
    otherwise tell them it's ready to commit.
 

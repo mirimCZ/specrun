@@ -6,8 +6,8 @@
 | ----- | ---- | --------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | FM-1 | Feature map loader: config, schema, mermaid nodes   | M    | strong  | done   | 1        | 14    | 43k      | $0.74 | cd16bc6 | Added `featuresDir` to the config and a new `src/features/` module: a feature schema, a regex-based Mermaid node scanner and `loadFeatureMap`, which reads the map README and the feature docs into a typed model and reports what it can't parse as problems. |
 | 1     | FM-2 | specrun features check and task features field      | M    | default | done   | 1        | 10    | 44k      | $0.30 | 19f46be | Added the task `features` field, `checkFeatureMap`, and the `specrun features check` command with tests.                                                                                                                                                       |
-| 1     | FM-3 | feature-map skill: standard and templates           | M    | default | done   | 1        | 9     | 32k      | $0.19 | —       | Added the feature-map skill with README and feature templates, a symlink in .claude/skills, a template validity test, and README sections.                                                                                                                     |
-| 1     | FM-4 | Map in planning, write-spec upkeep, review pitfalls | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                |
+| 1     | FM-3 | feature-map skill: standard and templates           | M    | default | done   | 1        | 9     | 32k      | $0.19 | 78e5c29 | Added the feature-map skill with README and feature templates, a symlink in .claude/skills, a template validity test, and README sections.                                                                                                                     |
+| 1     | FM-4 | Map in planning, write-spec upkeep, review pitfalls | M    | default | done   | 1        | 8     | 28k      | $0.15 | —       | Wired the feature map into planning context, plan/write-spec skills, a new map-update task template and the review prompt.                                                                                                                                     |
 
 ## Deviations
 
@@ -20,8 +20,10 @@
 - **FM-2** [scope] SpecTask/Spec types declare `features` as optional, though the schema always fills it. — Required would have broken ~10 spec files that build SpecTask literals by hand; consumers use `?? []`.
 - **FM-2** [scope] Also check that known `##` sections are in order (required, then optional), reported as an error. — FM-1's notes listed section order among the checks FM-2 owes.
 - **FM-2** [scope] Updated the existing loadSpec.spec.ts toEqual expectation to include `features: []`. — The transform now outputs the field.
+- **FM-4** [ambiguity] Map presence is decided by whether <featuresDir>/README.md exists, since featuresDir has a schema default. — FMD-9 says to use the map README path when it exists, else 'No feature map'.
+  - Q: featuresDir always has a default, so how should plan.ts decide that the repo has a map? → README.md exists in featuresDir (over featuresDir directory exists)
 
 ## Totals
 
-- Tasks: 4 (3 done · 0 blocked · 0 interrupted · 1 todo)
-- Sessions: 3 · Turns: 33 · Cost: $1.23 · Time: 6m
+- Tasks: 4 (4 done · 0 blocked · 0 interrupted · 0 todo)
+- Sessions: 4 · Turns: 41 · Cost: $1.38 · Time: 6m

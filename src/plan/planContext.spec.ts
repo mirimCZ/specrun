@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planLaunchArgs, renderPlanContext } from './planContext.js';
 
-const base = { spec: '001-x', dir: 'spec/001-x', specsDir: 'spec' };
+const base = { spec: '001-x', dir: 'spec/001-x', specsDir: 'spec', featureMap: null };
 
 describe('renderPlanContext', () => {
   it('says new for an empty folder and quotes the request', () => {
@@ -16,6 +16,23 @@ describe('renderPlanContext', () => {
     expect(text).toContain('- README.md\n- tasks.yaml');
     expect(text).toContain('No request file — ask the user for the request.');
     expect(text).not.toContain('<request>');
+  });
+});
+
+describe('renderPlanContext feature map', () => {
+  it('names the map README when given', () => {
+    const text = renderPlanContext({
+      ...base,
+      files: [],
+      request: null,
+      featureMap: 'docs/features/README.md',
+    });
+    expect(text).toContain('- Feature map: docs/features/README.md');
+    expect(text).not.toContain('No feature map');
+  });
+
+  it('says there is no map otherwise', () => {
+    expect(renderPlanContext({ ...base, files: [], request: null })).toContain('No feature map');
   });
 });
 

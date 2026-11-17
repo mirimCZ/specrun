@@ -21,6 +21,8 @@ restate their rules.
 
 Read the specrun context from the system prompt. `CLAUDE.md` is already loaded. Read only the
 code and docs the request touches. If the folder has files, they are the state to continue from.
+If the context names a **Feature map**, read its README first, then only the docs of the
+features the request touches (format: **feature-map** skill). "No feature map" → skip this.
 Without a `<request>`, ask the user what to plan.
 
 ## 2. Refine
@@ -35,6 +37,7 @@ Follow the **refine** skill. Before the questions, walk this checklist and mark 
 - UI states and user-visible texts
 - tests and verify
 - docs to update
+- feature map impact (features touched, new features) — only with a map
 - out of scope
 
 ## 3. Gate
