@@ -1,6 +1,6 @@
 ---
 name: feature-map
-description: The feature map standard — a repo's user-level feature docs plus one Mermaid overview, kept up to date by agents and humans. Use when creating, updating or reading feature docs or the feature map, when a change adds, alters or removes user-visible behaviour, or when writing documentation or test plans from them — e.g. "update the feature map", "feature doc", "add a feature to the map", "aktualizuj feature mapu", "popiš feature".
+description: The feature map standard — a repo's user-level feature docs plus one Mermaid overview, kept up to date by agents and humans. Use when creating, updating or reading feature docs or the feature map, when a change adds, alters or removes user-visible behaviour, or when writing documentation or test plans from them — e.g. "update the feature map", "feature doc", "add a feature to the map", "aktualizuj feature mapu", "popiš feature", "create the feature map", "vytvoř feature mapu".
 ---
 
 # Feature map
@@ -81,4 +81,5 @@ feature.
 
 ## No map yet
 
-Bootstrapping a map for an existing repo comes with the bootstrap instructions; don't improvise one.
+No `<featuresDir>/README.md` → bootstrap: follow [bootstrap.md](bootstrap.md) and don't improvise
+one. Otherwise update, as above.

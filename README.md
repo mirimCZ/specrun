@@ -99,6 +99,20 @@ The format and how to update it are in the plugin's `feature-map` skill (templat
 `features:` of tasks — and exits 1 on errors. Add it to `verify` in `specrun.config.json`
 (`{ "name": "features", "command": "specrun features check" }`) to keep the map true.
 
+### Bootstrapping an existing repo
+
+Ask the `feature-map` skill to "create the feature map" in a repo without `<featuresDir>/README.md`:
+
+1. **Inventory** — it scans cheap signals (CLAUDE.md, entry points, folders, docs, test names) and
+   proposes areas, features and a diagram. Nothing is written.
+2. **Review** — you merge, split or rename features; nothing is written before you approve.
+3. **Drafts** — one subagent per area writes its docs with `status: draft`.
+4. **Assemble** — the README (diagram + index), then `specrun features check` until green.
+5. **Final message** — the drafts to verify, plus proposals you decide on: trim the CLAUDE.md
+   sections the map covers, add `specrun features check` to `verify`.
+
+Only you flip `draft` to `verified` — do it gradually, e.g. when a spec touches a doc.
+
 ## Planning
 
 `specrun plan -n <name>` creates the next numbered spec folder (`docs/<NNN>-<name>/`) and starts
