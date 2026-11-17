@@ -8,6 +8,7 @@
 | 1     | PL-2 | specrun plan command                                  | M    | default | done   | 1        | 18    | 45k      | $0.33 | ff70db3 | Added `specrun plan` with spec-folder resolution, plan context rendering, launch args, and a `plan.session` event recorded after the session, plus tests.                                                                                                                        |
 | 1     | PL-3 | Planning totals in history.json and stats             | M    | default | done   | 1        | 9     | 37k      | $0.22 | abe8659 | Added planning totals (planningSummary) to history.json, archive and specrun stats (text Planning table and JSON planning field).                                                                                                                                                |
 | 1     | PL-4 | Plan skill, write-spec folder rule, docs              | M    | default | done   | 1        | 7     | 23k      | $0.12 | 8c52efd | Added the plan skill with its symlink, the write-spec folder rule, the templates test, and the README, plugin README and feedback docs.                                                                                                                                          |
+| 1     | PL-5 | Resolve absolute --file paths                         | S    | default | done   | 1        | 6     | 17k      | $0.09 | —       | readRequest now uses resolve(cwd, file) so absolute --file paths work; added three plan.spec.ts cases.                                                                                                                                                                           |
 
 ## Deviations
 
@@ -18,5 +19,5 @@
 
 ## Totals
 
-- Tasks: 4 (4 done · 0 blocked · 0 interrupted · 0 todo)
-- Sessions: 4 · Turns: 46 · Cost: $1.38 · Time: 6m
+- Tasks: 5 (5 done · 0 blocked · 0 interrupted · 0 todo)
+- Sessions: 5 · Turns: 52 · Cost: $1.48 · Time: 7m

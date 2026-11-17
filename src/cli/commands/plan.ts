@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import type { Command } from 'commander';
 import { findRepoRoot, loadConfig } from '../../config/loadConfig.js';
 import { SpecrunError } from '../../errors.js';
@@ -143,7 +143,7 @@ export async function runPlan(
 
 function readRequest(file: string, cwd: string): string {
   try {
-    return readFileSync(join(cwd, file), 'utf8');
+    return readFileSync(resolve(cwd, file), 'utf8');
   } catch (error) {
     throw new SpecrunError('spec-invalid', `Cannot read request file ${file}`, [
       error instanceof Error ? error.message : String(error),

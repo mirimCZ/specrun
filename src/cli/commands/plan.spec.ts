@@ -123,6 +123,30 @@ describe('specrun plan', () => {
     expect(existsSync(join(dir, '.specrun'))).toBe(false);
   });
 
+  it('--file reads an absolute path', async () => {
+    const file = join(dir, 'abs-req.md');
+    writeFileSync(file, 'ABSOLUTE REQUEST');
+    const { out } = await plan(['-n', 'demo', '--print', '--file', file], { interactive: false });
+    expect(out).toMatch(/<request>[\s\S]*ABSOLUTE REQUEST[\s\S]*<\/request>/);
+  });
+
+  it('--file resolves a relative path against the cwd', async () => {
+    writeFileSync(join(dir, 'rel-req.md'), 'RELATIVE REQUEST');
+    const { out } = await plan(['-n', 'demo', '--print', '--file', 'rel-req.md'], {
+      interactive: false,
+    });
+    expect(out).toMatch(/<request>[\s\S]*RELATIVE REQUEST[\s\S]*<\/request>/);
+  });
+
+  it('--file throws spec-invalid naming a missing file', async () => {
+    await expect(
+      plan(['-n', 'demo', '--print', '--file', 'missing.md'], { interactive: false }),
+    ).rejects.toMatchObject({
+      code: 'spec-invalid',
+      message: expect.stringContaining('missing.md'),
+    });
+  });
+
   it('needs a terminal', async () => {
     await expect(plan(['-n', 'demo'], { interactive: false })).rejects.toThrow('needs a terminal');
     expect(existsSync(join(dir, 'spec'))).toBe(false);
