@@ -91,8 +91,15 @@ In §4 of the README, add one line on how the work was cut when it isn't obvious
 
 ## 4. Name the spec
 
-- Folder `<specsDir>/<kebab-name>/` (`specsDir` from `specrun.config.json`, default `docs`),
-  e.g. `docs/export-dialog/`.
+- Folder `<specsDir>/<NNN>-<kebab-name>/` (`specsDir` from `specrun.config.json`, default
+  `docs`), e.g. `docs/014-export-dialog/`. `NNN` is one number series across all specs, active
+  and archived (`specrun archive` and `specrun shelve` keep the folder name under
+  `<specsDir>/archive/`), so the folders sort in the order they were written. Take the highest
+  number in use plus one, zero-padded to three digits (folders without a number don't count; no
+  output means `001`):
+  `ls -1 <specsDir> <specsDir>/archive 2>/dev/null | grep -oE '^[0-9]+' | sort -n | tail -1`.
+- When one request becomes several specs that must run one after another, give them consecutive
+  numbers in run order, and say in each later spec's README §1 which spec must be merged first.
 - Two prefixes: tasks `<PX>-n` and decisions `<PD>-n` (e.g. `ED-1` / `EDD-1`; task ids must
   match `^[A-Z][A-Z0-9]*-[0-9]+$`). Check they are unused:
   `grep -rnE '\b<PX>-[0-9]+' <specsDir>/` must return nothing.
