@@ -5,6 +5,7 @@ import { register as registerAnalyze } from './commands/analyze.js';
 import { register as registerArchive } from './commands/archive.js';
 import { register as registerClose } from './commands/close.js';
 import { register as registerDeviations } from './commands/deviations.js';
+import { register as registerFeatures } from './commands/features.js';
 import { register as registerInit } from './commands/init.js';
 import { register as registerPlan } from './commands/plan.js';
 import { register as registerReview } from './commands/review.js';
@@ -36,5 +37,6 @@ export function createProgram(deps: CliDeps = defaultCliDeps()): Command {
   registerClose(program, deps);
   registerShelve(program, deps);
   registerUnshelve(program, deps);
+  registerFeatures(program, deps);
   return program;
 }

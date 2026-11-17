@@ -2,12 +2,12 @@
 
 # Feature Map — Progress
 
-| Phase | Task | Title                                               | Size | Model   | Status | Sessions | Turns | Peak ctx | Cost  | Commit | Summary                                                                                                                                                                                                                                                        |
-| ----- | ---- | --------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | FM-1 | Feature map loader: config, schema, mermaid nodes   | M    | strong  | done   | 1        | 14    | 43k      | $0.74 | —      | Added `featuresDir` to the config and a new `src/features/` module: a feature schema, a regex-based Mermaid node scanner and `loadFeatureMap`, which reads the map README and the feature docs into a typed model and reports what it can't parse as problems. |
-| 1     | FM-2 | specrun features check and task features field      | M    | default | todo   | —        | —     | —        | —     | —      |                                                                                                                                                                                                                                                                |
-| 1     | FM-3 | feature-map skill: standard and templates           | M    | default | todo   | —        | —     | —        | —     | —      |                                                                                                                                                                                                                                                                |
-| 1     | FM-4 | Map in planning, write-spec upkeep, review pitfalls | M    | default | todo   | —        | —     | —        | —     | —      |                                                                                                                                                                                                                                                                |
+| Phase | Task | Title                                               | Size | Model   | Status | Sessions | Turns | Peak ctx | Cost  | Commit  | Summary                                                                                                                                                                                                                                                        |
+| ----- | ---- | --------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | FM-1 | Feature map loader: config, schema, mermaid nodes   | M    | strong  | done   | 1        | 14    | 43k      | $0.74 | cd16bc6 | Added `featuresDir` to the config and a new `src/features/` module: a feature schema, a regex-based Mermaid node scanner and `loadFeatureMap`, which reads the map README and the feature docs into a typed model and reports what it can't parse as problems. |
+| 1     | FM-2 | specrun features check and task features field      | M    | default | done   | 1        | 10    | 44k      | $0.30 | —       | Added the task `features` field, `checkFeatureMap`, and the `specrun features check` command with tests.                                                                                                                                                       |
+| 1     | FM-3 | feature-map skill: standard and templates           | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                |
+| 1     | FM-4 | Map in planning, write-spec upkeep, review pitfalls | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                |
 
 ## Deviations
 
@@ -17,8 +17,11 @@
   - Q: Which level should a .md file at the wrong depth under featuresDir get? → warning (over error)
 - **FM-1** [ambiguity] `code`/`tests` entries that contain glob characters (*?[]{}) fail the frontmatter schema. — FMD-4 says 'no globs'. It does not say whether the schema enforces this or the check does.
   - Q: Should the frontmatter schema reject glob patterns in code/tests, or leave it to the existence check? → reject in schema (over leave to existence check)
+- **FM-2** [scope] SpecTask/Spec types declare `features` as optional, though the schema always fills it. — Required would have broken ~10 spec files that build SpecTask literals by hand; consumers use `?? []`.
+- **FM-2** [scope] Also check that known `##` sections are in order (required, then optional), reported as an error. — FM-1's notes listed section order among the checks FM-2 owes.
+- **FM-2** [scope] Updated the existing loadSpec.spec.ts toEqual expectation to include `features: []`. — The transform now outputs the field.
 
 ## Totals
 
-- Tasks: 4 (1 done · 0 blocked · 0 interrupted · 3 todo)
-- Sessions: 1 · Turns: 14 · Cost: $0.74 · Time: 3m
+- Tasks: 4 (2 done · 0 blocked · 0 interrupted · 2 todo)
+- Sessions: 2 · Turns: 24 · Cost: $1.04 · Time: 5m

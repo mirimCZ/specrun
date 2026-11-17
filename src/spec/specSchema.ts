@@ -31,6 +31,8 @@ export const TaskSchema = z.strictObject({
   needs: z.union([z.array(TaskIdSchema), z.literal('all')]).default([]),
   model: ModelSchema,
   size: z.enum(['S', 'M', 'L']).default('M'),
+  /** Feature ids the task touches; only `specrun features check` validates them (FMD-7). */
+  features: z.array(z.string().min(1)).default([]),
   ...IgnoredStateFields,
 });
 
@@ -43,15 +45,25 @@ export const SpecFileSchema = z.strictObject({
 
 export const SpecSchema = SpecFileSchema.transform(({ tasks, ...spec }) => ({
   ...spec,
-  tasks: tasks.map(({ id, title, phase, needs, model, size }) => ({
+  tasks: tasks.map(({ id, title, phase, needs, model, size, features }) => ({
     id,
     title,
     phase,
     needs: needs === 'all' ? tasks.map((t) => t.id).filter((other) => other !== id) : needs,
     model,
     size,
+    features,
   })),
 }));
+/**
+ * `features` is optional in the type only so hand-built tasks (tests) needn't spell it out; the
+ * schema always fills it.
+ */
+export type SpecTask = Omit<z.output<typeof SpecSchema>['tasks'][number], 'features'> & {
+  features?: string[];
+};
 /** A loaded spec; `loadSpec` falls back to the spec name for the title. */
-export type Spec = Omit<z.output<typeof SpecSchema>, 'title'> & { title: string };
-export type SpecTask = Spec['tasks'][number];
+export type Spec = Omit<z.output<typeof SpecSchema>, 'title' | 'tasks'> & {
+  title: string;
+  tasks: SpecTask[];
+};

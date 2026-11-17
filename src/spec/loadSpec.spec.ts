@@ -112,8 +112,24 @@ describe('loadSpec', () => {
     const { spec } = loadSpec(repo, config, 'room');
     expect(spec.title).toBe('room');
     expect(spec.tasks).toEqual([
-      { id: 'RM-1', title: 'Rules data', phase: 0, needs: [], model: 'strong', size: 'M' },
-      { id: 'RM-2', title: 'Module types', phase: 1, needs: ['RM-1'], model: 'default', size: 'M' },
+      {
+        id: 'RM-1',
+        title: 'Rules data',
+        phase: 0,
+        needs: [],
+        model: 'strong',
+        size: 'M',
+        features: [],
+      },
+      {
+        id: 'RM-2',
+        title: 'Module types',
+        phase: 1,
+        needs: ['RM-1'],
+        model: 'default',
+        size: 'M',
+        features: [],
+      },
       {
         id: 'RM-3',
         title: 'Integration',
@@ -121,6 +137,7 @@ describe('loadSpec', () => {
         needs: ['RM-1', 'RM-2'],
         model: 'default',
         size: 'M',
+        features: [],
       },
     ]);
   });
@@ -206,6 +223,27 @@ describe('loadSpec', () => {
       'dependency cycle: A-1 → A-2 → A-1',
       'A-3 has no brief: tasks/A-3.md is missing',
     ]);
+  });
+});
+
+describe('task features', () => {
+  it('passes features through, defaults to [] and does not check the ids', () => {
+    writeSpecFile(
+      'v1',
+      [
+        'tasks:',
+        '  - id: A-1',
+        '    title: One',
+        '    phase: 1',
+        '    features: [no/such-feature]',
+        '  - id: A-2',
+        '    title: Two',
+        '    phase: 1',
+        '',
+      ].join('\n'),
+    );
+    const { spec } = loadSpec(repo, config, 'v1');
+    expect(spec.tasks.map((t) => t.features)).toEqual([['no/such-feature'], []]);
   });
 });
 
