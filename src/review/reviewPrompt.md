@@ -33,11 +33,17 @@ the user's OK.
 Where rule fixes go, by kind:
 
 - `spec-bug`, `ambiguity` that recurs, `scope` → the write-spec skill (analysis, cutting and
-  Read-first rules) and, while the spec is still running, its `TASK_PROMPT.md` or briefs.
+  Read-first rules) and, while the spec is still running, its `TASK_PROMPT.md` or the briefs of
+  tasks that haven't started yet.
 - `test-trap` → the project's test docs (a recipe that avoids the trap).
 - `constraint` → the project's `CLAUDE.md` or `specrun.config.json`.
 
 A finding can have both a verdict and a rule fix. Be honest when the user's own spec caused it.
+
+**Every fix of work already done is a new task** — never a change to an existing task (its brief,
+`tasks.yaml` entry or status) and never a code edit in this session. The tasks, their commits and
+run analytics stay as they ran, so the fix shows up in tracking as its own task with its own
+commit and cost. This holds for every finding that needs code changed, not only overturned picks.
 
 ## 3. Ask with `AskUserQuestion`
 
@@ -61,12 +67,13 @@ Run another round only when answers open new questions. Never ask "Shall I conti
 
 ## 4. Apply what the user chose
 
-- **Rule fixes** — minimal edits to the named files.
+- **Rule fixes** — minimal edits to the named files. Briefs only of tasks that haven't started;
+  a done or running task gets a fix task instead.
 - **Spec README** — for each confirmed or overturned pick, a row in the decision log (the next
   free ID from the context, the README's format; mark it as decided in review with today's date)
   and a row in the resolved questions table. The context names the line of each table's last
   row: read just around it before editing. For an archived spec, `<specsDir>/archive/<spec>/README.md`.
-- **Fix tasks** for overturned picks — in the spec's `tasks.yaml`, plus one self-contained brief
+- **Fix tasks** for overturned picks and any other code fix — in the spec's `tasks.yaml`, plus one self-contained brief
   per task in `tasks/<ID>.md` (follow the write-spec skill when it is available): next free ID
   from the context, `needs` = the task whose choice is overturned, phase = that task's
   phase or the next one, a `size` and `model` like comparable tasks. Only add tasks — never edit
