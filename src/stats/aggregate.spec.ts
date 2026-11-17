@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SIZES } from '../config/configSchema.js';
-import { calibrate, groupStats, percentile, type TaskSample } from './aggregate.js';
+import type { SpecrunEvent } from '../events/eventSchema.js';
+import {
+  calibrate,
+  groupStats,
+  percentile,
+  planningSummary,
+  type TaskSample,
+} from './aggregate.js';
 
 const sample = (over: Partial<TaskSample>): TaskSample => ({
   spec: 'demo',
@@ -72,5 +79,60 @@ describe('calibrate', () => {
         suggestion: { turns: [10, 30], usd: 3 },
       },
     ]);
+  });
+});
+
+describe('planningSummary', () => {
+  const metrics = (over: Record<string, number>) => ({
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheRead: 100,
+    cacheWrite: 1,
+    peakContext: 1000,
+    models: ['m'],
+    subagents: { files: 1, turns: 1, inputTokens: 1, outputTokens: 2, cacheRead: 3, cacheWrite: 4 },
+    ...over,
+  });
+  const event = (sessionId: string, m: ReturnType<typeof metrics> | null): SpecrunEvent =>
+    ({
+      v: 1,
+      at: '2026-01-01T09:00:00.000Z',
+      runId: 'r1',
+      t: 'plan.session',
+      sessionId,
+      resumed: false,
+      exitCode: 0,
+      metrics: m,
+    }) as SpecrunEvent;
+
+  it('counts one session id once, with its later event', () => {
+    const s = planningSummary([
+      event('a', metrics({ turns: 2 })),
+      event('a', metrics({ turns: 7 })),
+    ]);
+    expect(s).toMatchObject({ sessions: 1, turns: 7 });
+  });
+
+  it('sums sessions and takes the max peak context', () => {
+    const s = planningSummary([
+      event('a', metrics({ peakContext: 500 })),
+      event('b', metrics({ peakContext: 900 })),
+    ]);
+    expect(s).toEqual({
+      sessions: 2,
+      turns: 2,
+      inputTokens: 20,
+      outputTokens: 10,
+      cacheRead: 200,
+      cacheWrite: 2,
+      peakContext: 900,
+      subagentTokens: 20,
+    });
+  });
+
+  it('skips null metrics and returns null without events', () => {
+    expect(planningSummary([event('a', null)])).toBeNull();
+    expect(planningSummary([])).toBeNull();
   });
 });

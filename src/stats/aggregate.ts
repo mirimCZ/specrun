@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Size, SizeName } from '../config/configSchema.js';
-import type { Deviation, SpecrunEvent } from '../events/eventSchema.js';
+import type { Deviation, PlanMetrics, SpecrunEvent } from '../events/eventSchema.js';
 import type { SpecState } from '../events/taskState.js';
+import type { PlanningSummary } from './jsonOutput.js';
 import type { Spec } from '../spec/specSchema.js';
 
 /** SRD-11: fewer samples than this give no suggestion. */
@@ -52,6 +53,38 @@ export function taskSamples(specs: readonly SpecInput[]): TaskSample[] {
       ];
     }),
   );
+}
+
+/** PLD-8: latest event per session id (a resumed session's transcript covers all of it). */
+export function planningSummary(events: readonly SpecrunEvent[]): PlanningSummary | null {
+  const latest = new Map<string, PlanMetrics>();
+  for (const e of events) {
+    if (e.t !== 'plan.session') continue;
+    if (e.metrics === null) latest.delete(e.sessionId);
+    else latest.set(e.sessionId, e.metrics);
+  }
+  if (latest.size === 0) return null;
+  const total: PlanningSummary = {
+    sessions: latest.size,
+    turns: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    peakContext: 0,
+    subagentTokens: 0,
+  };
+  for (const m of latest.values()) {
+    total.turns += m.turns;
+    total.inputTokens += m.inputTokens;
+    total.outputTokens += m.outputTokens;
+    total.cacheRead += m.cacheRead;
+    total.cacheWrite += m.cacheWrite;
+    total.peakContext = Math.max(total.peakContext, m.peakContext);
+    const s = m.subagents;
+    total.subagentTokens += s.inputTokens + s.outputTokens + s.cacheRead + s.cacheWrite;
+  }
+  return total;
 }
 
 export interface DeviationEntry {

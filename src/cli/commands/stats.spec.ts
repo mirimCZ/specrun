@@ -88,6 +88,48 @@ describe('specrun stats', () => {
     expect(StatsJsonSchema.parse(JSON.parse(await stats('demo', '--json'))).calibration).toBeNull();
   });
 
+  it('prints the Planning table only when there is planning data', async () => {
+    const specDir = writeDemoSpec(dir);
+    writeFileSync(join(specDir, 'events.jsonl'), doneTask('D-1', 12, 0.4));
+    expect(await stats()).not.toContain('Planning');
+    expect(StatsJsonSchema.parse(JSON.parse(await stats('--json'))).planning).toEqual([]);
+
+    writeFileSync(
+      join(specDir, 'events.jsonl'),
+      doneTask('D-1', 12, 0.4) +
+        eventLine({
+          t: 'plan.session',
+          sessionId: 's1',
+          resumed: false,
+          exitCode: 0,
+          metrics: {
+            turns: 4,
+            inputTokens: 100,
+            outputTokens: 50,
+            cacheRead: 2000,
+            cacheWrite: 10,
+            peakContext: 8000,
+            models: ['m'],
+            subagents: {
+              files: 0,
+              turns: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+            },
+          },
+        }),
+    );
+    const text = await stats();
+    expect(text).toContain('CACHE READ');
+    expect(text).toContain('PEAK CTX');
+    const json = StatsJsonSchema.parse(JSON.parse(await stats('--json')));
+    expect(json.planning).toEqual([
+      expect.objectContaining({ spec: 'demo', sessions: 1, turns: 4, peakContext: 8000 }),
+    ]);
+  });
+
   it('says so when nothing is finished and rejects an unknown dimension', async () => {
     const specDir = writeDemoSpec(dir);
     writeFileSync(join(specDir, 'events.jsonl'), '');

@@ -23,6 +23,19 @@ export const TaskSampleSchema = z.object({
   budgetExceeded: z.boolean(),
 });
 
+/** PLD-8: planning totals of one spec, from its latest `plan.session` event per session. */
+export const PlanningSummarySchema = z.object({
+  sessions: z.number(),
+  turns: z.number(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cacheRead: z.number(),
+  cacheWrite: z.number(),
+  peakContext: z.number(),
+  subagentTokens: z.number(),
+});
+export type PlanningSummary = z.infer<typeof PlanningSummarySchema>;
+
 export const DeviationEntrySchema = z.object({
   spec: z.string(),
   task: z.string(),
@@ -66,6 +79,8 @@ export const StatsJsonSchema = z.object({
       }),
     )
     .nullable(),
+  /** Specs with planning data (PLD-8); additive, `version` stays 1. */
+  planning: z.array(PlanningSummarySchema.extend({ spec: z.string() })),
 });
 export type StatsJson = z.infer<typeof StatsJsonSchema>;
 

@@ -4,7 +4,11 @@ import { z } from 'zod';
 import type { Config } from '../config/configSchema.js';
 import { formatIssues } from '../config/loadConfig.js';
 import { SpecrunError } from '../errors.js';
-import { DeviationEntrySchema, TaskSampleSchema } from '../stats/jsonOutput.js';
+import {
+  DeviationEntrySchema,
+  PlanningSummarySchema,
+  TaskSampleSchema,
+} from '../stats/jsonOutput.js';
 
 export const ARCHIVE_DIR = 'archive';
 export const HISTORY_FILE = 'history.json';
@@ -43,6 +47,8 @@ export const HistorySchema = z.object({
   commit: z.string().min(1),
   // Defaulted: history.json files written before shelving existed were all merged.
   outcome: OutcomeSchema.default({ kind: 'merged', shelved: null }),
+  // Defaulted: additive (PLD-8); older history.json files have no planning data.
+  planning: PlanningSummarySchema.nullable().default(null),
   samples: z.array(TaskSampleSchema),
   deviations: z.array(DeviationEntrySchema),
 });

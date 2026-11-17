@@ -14,10 +14,12 @@ import { readYamlFile, SPEC_FILE, specDir } from '../spec/loadSpec.js';
 import { SpecFileSchema, SpecSchema, type Spec } from '../spec/specSchema.js';
 import {
   deviationEntries,
+  planningSummary,
   taskSamples,
   type DeviationEntry,
   type TaskSample,
 } from '../stats/aggregate.js';
+import type { PlanningSummary } from '../stats/jsonOutput.js';
 import {
   ARCHIVE_DIR,
   archiveRoot,
@@ -132,6 +134,7 @@ export interface ArchiveSource {
   readme: string | null;
   samples: TaskSample[];
   deviations: DeviationEntry[];
+  planning: PlanningSummary | null;
   /** Tasks neither done in events nor `status: done` in tasks.yaml, as `<id> (<status>)`. */
   unfinished: string[];
 }
@@ -173,6 +176,7 @@ export function readArchiveSource(
     readme: existsSync(readmePath) ? readFileSync(readmePath, 'utf8') : null,
     samples: input === null ? [] : taskSamples([input]),
     deviations: input === null ? [] : deviationEntries([input]),
+    planning: planningSummary(events),
     unfinished,
   };
 }
@@ -214,7 +218,8 @@ export async function writeArchive(
   writeFileSync(join(archiveDir, 'README.md'), archivedReadme(source.readme, source.title, note));
   const counts = source.samples.length > 0 || source.deviations.length > 0;
   // A shelved spec always keeps it: unshelve reads where its work is from there.
-  const keepHistory = counts || outcome.kind === 'shelved' || outcome.shelved !== null;
+  const keepHistory =
+    counts || outcome.kind === 'shelved' || outcome.shelved !== null || source.planning !== null;
   if (keepHistory) {
     const history: History = {
       version: 1,
@@ -223,6 +228,7 @@ export async function writeArchive(
       archivedAt: archivedAt.toISOString(),
       commit: baseCommit,
       outcome,
+      planning: source.planning,
       samples: source.samples,
       deviations: source.deviations,
     };

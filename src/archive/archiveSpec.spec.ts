@@ -164,6 +164,65 @@ describe('archiveSpec', () => {
     expect(existsSync(join(repo, 'docs/archive/demo/README.md'))).toBe(true);
   });
 
+  it('keeps planning totals in history.json even without samples', async () => {
+    rmSync(join(specDir, 'tasks'), { recursive: true });
+    writeFileSync(
+      join(specDir, 'tasks.yaml'),
+      'tasks:\n  - { id: D-1, phase: 1, title: First, status: done }\n',
+    );
+    writeFileSync(
+      join(specDir, 'events.jsonl'),
+      eventLine({
+        t: 'plan.session',
+        sessionId: 's1',
+        resumed: false,
+        exitCode: 0,
+        metrics: {
+          turns: 5,
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheRead: 1000,
+          cacheWrite: 10,
+          peakContext: 7000,
+          models: ['m'],
+          subagents: {
+            files: 1,
+            turns: 2,
+            inputTokens: 1,
+            outputTokens: 2,
+            cacheRead: 3,
+            cacheWrite: 4,
+          },
+        },
+      }),
+    );
+    commitAll();
+
+    await archive();
+
+    const [history] = readArchivedHistories(repo, config);
+    expect(history?.planning).toMatchObject({ sessions: 1, turns: 5, subagentTokens: 10 });
+    expect(history?.samples).toEqual([]);
+  });
+
+  it('parses a history file without planning as null', () => {
+    const dir = join(repo, 'docs/archive/old');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, 'history.json'),
+      JSON.stringify({
+        version: 1,
+        spec: 'old',
+        title: 'Old',
+        archivedAt: '2026-01-01T09:00:00.000Z',
+        commit: 'abc',
+        samples: [],
+        deviations: [],
+      }),
+    );
+    expect(readArchivedHistories(repo, config)[0]?.planning).toBeNull();
+  });
+
   it('refuses unfinished tasks unless forced', async () => {
     writeEvents(doneTask('D-1', 10, 0.3));
     commitAll();

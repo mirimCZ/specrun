@@ -5,6 +5,7 @@ import { formatTokens, formatUsd } from '../../progress/renderProgress.js';
 import {
   calibrate,
   groupStats,
+  planningSummary,
   taskSamples,
   type CalibrationRow,
   type GroupDimension,
@@ -39,6 +40,21 @@ function calibrationTable(rows: CalibrationRow[]): string {
   ]);
 }
 
+function planningTable(rows: StatsJson['planning']): string {
+  return table([
+    ['SPEC', 'SESSIONS', 'TURNS', 'IN', 'OUT', 'CACHE READ', 'PEAK CTX'],
+    ...rows.map((r) => [
+      r.spec,
+      String(r.sessions),
+      String(r.turns),
+      formatTokens(r.inputTokens),
+      formatTokens(r.outputTokens),
+      formatTokens(r.cacheRead),
+      formatTokens(r.peakContext),
+    ]),
+  ]);
+}
+
 export function register(program: Command, deps: CliDeps): void {
   program
     .command('stats')
@@ -66,6 +82,15 @@ export function register(program: Command, deps: CliDeps): void {
           flags.all === true ? [] : names,
         );
         const samples = [...taskSamples(inputs), ...archived.flatMap((h) => h.samples)];
+        const planning = [
+          ...inputs.flatMap((i) => {
+            const summary = planningSummary(i.events);
+            return summary === null ? [] : [{ spec: i.name, ...summary }];
+          }),
+          ...archived.flatMap((h) =>
+            h.planning === null ? [] : [{ spec: h.spec, ...h.planning }],
+          ),
+        ];
         const shelved = shelvedSpecs({ inputs, archived });
         const groups = groupStats(samples, flags.by);
         const calibration = flags.calibrate === true ? calibrate(samples, config.sizes) : null;
@@ -80,12 +105,14 @@ export function register(program: Command, deps: CliDeps): void {
             samples,
             groups,
             calibration,
+            planning,
           });
           deps.stdout(`${JSON.stringify(output, null, 2)}\n`);
           return;
         }
         if (samples.length === 0) {
           deps.stdout('No finished tasks yet.\n');
+          if (planning.length > 0) deps.stdout(`\n${planningTable(planning)}\n`);
           return;
         }
         const rows = groups.map((g) => [
@@ -124,6 +151,7 @@ export function register(program: Command, deps: CliDeps): void {
           deps.stdout(`Includes shelved specs (not merged): ${counted.join(', ')}\n`);
         }
         if (calibration !== null) deps.stdout(`\n${calibrationTable(calibration)}\n`);
+        if (planning.length > 0) deps.stdout(`\n${planningTable(planning)}\n`);
       },
     );
 }
