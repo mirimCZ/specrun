@@ -1,0 +1,31 @@
+# Plan Command — tasks read by specrun (authored; specrun never writes this file, task status
+# lives in events.jsonl). Task ids PL-n, in dependency order.
+# needs: tasks that must be done first (their notes go into the prompt); `all` = every other task.
+# model: strong for tasks that need the stronger model, default otherwise (may be omitted).
+# size: S · M · L — the expected turns and cost (config `sizes`).
+# Strong tasks: PL-1 changes the event schema (append-only log, read by every command) and parses
+# an external transcript format.
+
+title: Plan Command
+tasks:
+  - id: PL-1
+    phase: 1
+    title: plan.session event and Claude Code transcript metrics
+    needs: []
+    model: strong
+    size: M
+  - id: PL-2
+    phase: 1
+    title: specrun plan command
+    needs: [PL-1]
+    size: M
+  - id: PL-3
+    phase: 1
+    title: Planning totals in history.json and stats
+    needs: [PL-1]
+    size: M
+  - id: PL-4
+    phase: 1
+    title: Plan skill, write-spec folder rule, docs
+    needs: [PL-2, PL-3]
+    size: M
