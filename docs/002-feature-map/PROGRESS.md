@@ -5,8 +5,8 @@
 | Phase | Task | Title                                               | Size | Model   | Status | Sessions | Turns | Peak ctx | Cost  | Commit  | Summary                                                                                                                                                                                                                                                        |
 | ----- | ---- | --------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | FM-1 | Feature map loader: config, schema, mermaid nodes   | M    | strong  | done   | 1        | 14    | 43k      | $0.74 | cd16bc6 | Added `featuresDir` to the config and a new `src/features/` module: a feature schema, a regex-based Mermaid node scanner and `loadFeatureMap`, which reads the map README and the feature docs into a typed model and reports what it can't parse as problems. |
-| 1     | FM-2 | specrun features check and task features field      | M    | default | done   | 1        | 10    | 44k      | $0.30 | —       | Added the task `features` field, `checkFeatureMap`, and the `specrun features check` command with tests.                                                                                                                                                       |
-| 1     | FM-3 | feature-map skill: standard and templates           | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                |
+| 1     | FM-2 | specrun features check and task features field      | M    | default | done   | 1        | 10    | 44k      | $0.30 | 19f46be | Added the task `features` field, `checkFeatureMap`, and the `specrun features check` command with tests.                                                                                                                                                       |
+| 1     | FM-3 | feature-map skill: standard and templates           | M    | default | done   | 1        | 9     | 32k      | $0.19 | —       | Added the feature-map skill with README and feature templates, a symlink in .claude/skills, a template validity test, and README sections.                                                                                                                     |
 | 1     | FM-4 | Map in planning, write-spec upkeep, review pitfalls | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                |
 
 ## Deviations
@@ -23,5 +23,5 @@
 
 ## Totals
 
-- Tasks: 4 (2 done · 0 blocked · 0 interrupted · 2 todo)
-- Sessions: 2 · Turns: 24 · Cost: $1.04 · Time: 5m
+- Tasks: 4 (3 done · 0 blocked · 0 interrupted · 1 todo)
+- Sessions: 3 · Turns: 33 · Cost: $1.23 · Time: 6m

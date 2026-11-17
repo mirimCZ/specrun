@@ -88,6 +88,17 @@ Each session gets specrun's protocol, the spec's `TASK_PROMPT.md`, the brief and
 finished dependencies left for it. The project's `CLAUDE.md` is loaded too. Agents only edit
 files: the runner owns git.
 
+## Feature map
+
+A repo can keep a map of what its product does at user level: `<featuresDir>/README.md` (an
+overview graph and an index) plus one doc per feature at `<featuresDir>/<area>/<name>.md`.
+`featuresDir` defaults to `docs/features`; without that folder every feature-map step is skipped.
+The format and how to update it are in the plugin's `feature-map` skill (templates included).
+
+`specrun features check` validates the map — index, graph, frontmatter, paths, sections and the
+`features:` of tasks — and exits 1 on errors. Add it to `verify` in `specrun.config.json`
+(`{ "name": "features", "command": "specrun features check" }`) to keep the map true.
+
 ## Planning
 
 `specrun plan -n <name>` creates the next numbered spec folder (`docs/<NNN>-<name>/`) and starts
