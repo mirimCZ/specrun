@@ -21,6 +21,7 @@ src/
   runner/     orchestration loop
   analytics/  per-session metrics from transcripts
   archive/    archiving finished specs (README + run history)
+  plan/        interactive planning sessions (specrun plan), Claude Code transcripts
   review/     `specrun review`: gathered context + instructions for the Claude Code session
   ui/         Ink dashboard
 plugin/       Claude Code plugin: skills refine, write-spec, feedback (.claude/skills links to them)

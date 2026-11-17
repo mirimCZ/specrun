@@ -221,6 +221,37 @@ export const AnalyticsSessionSchema = z.object({
   metrics: z.unknown(),
 });
 
+/** Token metrics of an interactive Claude Code session; tokens only, no USD (PLD-6). */
+export const PlanMetricsSchema = z.object({
+  turns: Count,
+  inputTokens: Count,
+  outputTokens: Count,
+  cacheRead: Count,
+  cacheWrite: Count,
+  peakContext: Count,
+  models: z.array(z.string()),
+  subagents: z.object({
+    files: Count,
+    turns: Count,
+    inputTokens: Count,
+    outputTokens: Count,
+    cacheRead: Count,
+    cacheWrite: Count,
+  }),
+});
+export type PlanMetrics = z.infer<typeof PlanMetricsSchema>;
+
+/** One `specrun plan` session; carries no `task`, so task state ignores it. */
+export const PlanSessionSchema = z.object({
+  ...EVENT_BASE,
+  t: z.literal('plan.session'),
+  sessionId: z.string(),
+  resumed: z.boolean(),
+  exitCode: z.number().int(),
+  // null when the transcript could not be found.
+  metrics: PlanMetricsSchema.nullable(),
+});
+
 export const EventSchema = z.discriminatedUnion('t', [
   RunStartedSchema,
   RunFinishedSchema,
@@ -237,6 +268,7 @@ export const EventSchema = z.discriminatedUnion('t', [
   ManualStatusSchema,
   DeviationsReviewedSchema,
   AnalyticsSessionSchema,
+  PlanSessionSchema,
 ]);
 export type SpecrunEvent = z.infer<typeof EventSchema>;
 export type EventType = SpecrunEvent['t'];

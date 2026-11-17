@@ -127,4 +127,43 @@ describe('event store', () => {
     expect(result.unknown).toBe(1);
     expect(result.events.map((e) => e.t)).toEqual(['task.committed', 'run.finished']);
   });
+
+  it('round-trips plan.session events with and without metrics', () => {
+    const store = createEventStore({ file, runId: 'r', clock });
+    const withoutMetrics: NewEvent = {
+      t: 'plan.session',
+      sessionId: 'p1',
+      resumed: false,
+      exitCode: 0,
+      metrics: null,
+    };
+    const withMetrics: NewEvent = {
+      t: 'plan.session',
+      sessionId: 'p1',
+      resumed: true,
+      exitCode: 1,
+      metrics: {
+        turns: 3,
+        inputTokens: 10,
+        outputTokens: 200,
+        cacheRead: 3_000,
+        cacheWrite: 400,
+        peakContext: 1_500,
+        models: ['claude-opus', 'claude-sonnet'],
+        subagents: {
+          files: 1,
+          turns: 2,
+          inputTokens: 5,
+          outputTokens: 60,
+          cacheRead: 700,
+          cacheWrite: 80,
+        },
+      },
+    };
+    const first = store.append(withoutMetrics);
+    const second = store.append(withMetrics);
+
+    expect(store.read()).toEqual({ events: [first, second], unknown: 0 });
+    expect(second).toMatchObject(withMetrics);
+  });
 });

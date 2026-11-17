@@ -243,6 +243,31 @@ describe('deriveState', () => {
   });
 });
 
+describe('deriveState with plan.session', () => {
+  it('leaves task state untouched', () => {
+    const base: NewEvent[] = [
+      started('A-1', null, 0),
+      finished('A-1', 's1', 0),
+      completed('A-1', 'did it'),
+      committed('A-1', 'c1'),
+      started('A-2', 's2', 0),
+    ];
+    const plan: NewEvent = {
+      t: 'plan.session',
+      sessionId: 'p1',
+      resumed: false,
+      exitCode: 0,
+      metrics: null,
+    };
+    const without = deriveState(spec, log(...base));
+    const withPlan = deriveState(spec, log(plan, ...base.slice(0, 2), plan, ...base.slice(2)));
+    expect(withPlan.tasks).toEqual(without.tasks);
+    expect(withPlan.sessions.map(({ at: _at, ...rest }) => rest)).toEqual(
+      without.sessions.map(({ at: _at, ...rest }) => rest),
+    );
+  });
+});
+
 describe('runnableTasks', () => {
   const ids = (events: SpecrunEvent[], retryBlocked = false): string[] =>
     runnableTasks(spec, deriveState(spec, events), { retryBlocked }).map((t) => t.id);
