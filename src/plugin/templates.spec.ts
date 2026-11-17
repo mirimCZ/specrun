@@ -42,8 +42,8 @@ describe('plugin skills', () => {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
-  it('ships refine and write-spec', () => {
-    expect(skills).toEqual(expect.arrayContaining(['refine', 'write-spec']));
+  it('ships refine, write-spec and plan', () => {
+    expect(skills).toEqual(expect.arrayContaining(['refine', 'write-spec', 'plan']));
   });
 
   it.each(skills)('%s has a SKILL.md with name and description frontmatter', (skill) => {

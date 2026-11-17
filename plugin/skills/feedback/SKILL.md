@@ -25,7 +25,7 @@ specrun analyze [spec] --json        # add --reindex if metrics look missing or 
 ```
 
 Shapes: `docs/json-output.md` in the specrun repository. `analyze` phase numbers are estimates;
-`stats` samples cover only tasks that reached `done`. With fewer than ~3 tasks, report the
+`stats` samples cover only tasks that reached `done`. `stats --json` `planning` (tokens of `specrun plan` sessions, no prices) is input too: compare planning tokens with the spec's deviations and task costs — a cheap plan with many `spec-bug` / `ambiguity` deviations suggests too little refinement. With fewer than ~3 tasks, report the
 numbers but propose little — outliers dominate.
 
 ## 2. Signals

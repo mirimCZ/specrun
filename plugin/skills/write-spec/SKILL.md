@@ -98,6 +98,8 @@ In §4 of the README, add one line on how the work was cut when it isn't obvious
   number in use plus one, zero-padded to three digits (folders without a number don't count; no
   output means `001`):
   `ls -1 <specsDir> <specsDir>/archive 2>/dev/null | grep -oE '^[0-9]+' | sort -n | tail -1`.
+- When the session context names the spec folder (`specrun plan`), use it as is — don't compute a
+  new number or rename it.
 - When one request becomes several specs that must run one after another, give them consecutive
   numbers in run order, and say in each later spec's README §1 which spec must be merged first.
 - Two prefixes: tasks `<PX>-n` and decisions `<PD>-n` (e.g. `ED-1` / `EDD-1`; task ids must

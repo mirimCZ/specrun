@@ -88,6 +88,19 @@ Each session gets specrun's protocol, the spec's `TASK_PROMPT.md`, the brief and
 finished dependencies left for it. The project's `CLAUDE.md` is loaded too. Agents only edit
 files: the runner owns git.
 
+## Planning
+
+`specrun plan -n <name>` creates the next numbered spec folder (`docs/<NNN>-<name>/`) and starts
+Claude Code on this terminal with `/specrun:plan <spec>`. `-f <file>` hands over a request file
+verbatim, `--resume` continues the spec's latest planning session, `--print` shows what Claude
+would get. The `plan` skill runs fixed phases: **context** (read only what the request touches),
+**refine** (checklist, then interactive questions), **gate** ("Write the spec now?"), **write**
+(write-spec into the prepared folder) and **validate** (`specrun status <spec>`).
+
+specrun logs each planning session in the spec's `events.jsonl` — turns and tokens only, no
+prices — and shows it in `specrun stats` (`planning` in `--json`); archiving keeps it. The plan
+never commits: when Claude exits, commit the new spec folder yourself.
+
 ## Running
 
 ```sh
@@ -202,6 +215,7 @@ existing file).
 
 | Command                                                                   | What it does                                                                                   |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `specrun plan -n <name> [-f <file>] [--resume] [--print]`                 | Plan a spec with Claude Code on this terminal (see Planning)                                   |
 | `specrun status [spec] [--json]`                                          | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
 | `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`         | Override a task's status by hand (recorded in the log)                                         |
 | `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]`    | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |

@@ -6,8 +6,8 @@
 | ----- | ---- | ----------------------------------------------------- | ---- | ------- | ------ | -------- | ----- | -------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | PL-1 | plan.session event and Claude Code transcript metrics | M    | strong  | done   | 1        | 12    | 45k      | $0.71 | 5b04f5e | Added the plan.session event (PlanMetricsSchema/PlanSessionSchema) and src/plan/claudeTranscript.ts, which finds Claude Code transcripts and reads token-only plan metrics from them, with tests; also set package.json to 0.1.0 to match plugin.json so the verify gate passes. |
 | 1     | PL-2 | specrun plan command                                  | M    | default | done   | 1        | 18    | 45k      | $0.33 | ff70db3 | Added `specrun plan` with spec-folder resolution, plan context rendering, launch args, and a `plan.session` event recorded after the session, plus tests.                                                                                                                        |
-| 1     | PL-3 | Planning totals in history.json and stats             | M    | default | done   | 1        | 9     | 37k      | $0.22 | —       | Added planning totals (planningSummary) to history.json, archive and specrun stats (text Planning table and JSON planning field).                                                                                                                                                |
-| 1     | PL-4 | Plan skill, write-spec folder rule, docs              | M    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                                  |
+| 1     | PL-3 | Planning totals in history.json and stats             | M    | default | done   | 1        | 9     | 37k      | $0.22 | abe8659 | Added planning totals (planningSummary) to history.json, archive and specrun stats (text Planning table and JSON planning field).                                                                                                                                                |
+| 1     | PL-4 | Plan skill, write-spec folder rule, docs              | M    | default | done   | 1        | 7     | 23k      | $0.12 | —       | Added the plan skill with its symlink, the write-spec folder rule, the templates test, and the README, plugin README and feedback docs.                                                                                                                                          |
 
 ## Deviations
 
@@ -18,5 +18,5 @@
 
 ## Totals
 
-- Tasks: 4 (3 done · 0 blocked · 0 interrupted · 1 todo)
-- Sessions: 3 · Turns: 39 · Cost: $1.26 · Time: 5m
+- Tasks: 4 (4 done · 0 blocked · 0 interrupted · 0 todo)
+- Sessions: 4 · Turns: 46 · Cost: $1.38 · Time: 6m
