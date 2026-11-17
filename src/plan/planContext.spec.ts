@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { planLaunchArgs, renderPlanContext } from './planContext.js';
 
-const base = { spec: '001-x', dir: 'spec/001-x', specsDir: 'spec', featureMap: null };
+const base = {
+  spec: '001-x',
+  dir: 'spec/001-x',
+  specsDir: 'spec',
+  featureMap: null,
+  commitMessageFile: '.specrun/plan/001-x.commit',
+};
 
 describe('renderPlanContext', () => {
   it('says new for an empty folder and quotes the request', () => {
     const text = renderPlanContext({ ...base, files: [], request: 'Build it\n' });
     expect(text).toContain('- State: new');
+    expect(text).toContain('- Commit message file: .specrun/plan/001-x.commit');
     expect(text).toContain('<request>\nBuild it\n\n</request>');
     expect(text).toContain("Write the spec into exactly this folder; don't compute a new number.");
   });

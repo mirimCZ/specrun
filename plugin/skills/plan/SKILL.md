@@ -5,10 +5,11 @@ description: Plan a spec end to end in one session — read the context, refine 
 
 # Plan
 
-The fixed planning sequence: context → refine → gate → write → validate. The user no longer
+The fixed planning sequence: context → refine → gate → write → validate → commit message. The user no longer
 types refine and write-spec one after another. Normally `specrun plan -n <name>` starts this
 session with the context file in the system prompt (spec name and folder, `new` or its existing
-files, `specsDir`, the request in `<request>` tags or "ask the user").
+files, `specsDir`, the feature map, the commit message file, the request in `<request>` tags or
+"ask the user").
 
 **Started by hand** (no spec context in the system prompt): tell the user that this session isn't
 logged — no planning tokens in `specrun stats` — and that `specrun plan -n <name>` does it
@@ -54,7 +55,16 @@ spec into that folder, don't compute a new number or rename it.
 
 Run `specrun status <spec>` until the spec loads cleanly; fix the files it reports.
 
+## 6. Commit message
+
+Write the commit message for the spec folder to the **Commit message file** from the context
+(overwrite it if it exists): a Conventional Commits subject `docs(<spec>): <what the spec
+plans>` (at most 72 characters), a blank line, and a short body — what the spec delivers and how
+the work is cut (phases, task count). No trailers; specrun adds them. When continuing an
+existing spec, describe what this session changed. Started by hand (no context) → skip this.
+
 ## Final message
 
 As in write-spec §8: the folder, the task list, how the work was cut, defaults and open
-decisions, and `specrun run <spec>`. Remind the user that the spec is not committed yet.
+decisions, and `specrun run <spec>`. Don't commit: once the user exits, `specrun plan` commits the
+spec folder on the current HEAD with that message if the spec loads.

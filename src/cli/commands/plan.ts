@@ -1,27 +1,36 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import type { Command } from 'commander';
+import type { Config } from '../../config/configSchema.js';
 import { findRepoRoot, loadConfig } from '../../config/loadConfig.js';
 import { SpecrunError } from '../../errors.js';
 import type { PlanMetrics } from '../../events/eventSchema.js';
 import { createEventStore, readEvents } from '../../events/eventStore.js';
+import { createGit } from '../../git/git.js';
 import {
   claudeConfigDir,
   findClaudeTranscript,
   readPlanMetrics,
 } from '../../plan/claudeTranscript.js';
+import { readPlanCommitMessage } from '../../plan/planCommit.js';
 import { planLaunchArgs, renderPlanContext } from '../../plan/planContext.js';
 import { createPlanFolder, resolvePlanFolder } from '../../plan/specFolder.js';
-import { runInteractive, type InteractiveRunner } from '../../process/run.js';
+import {
+  runCommand,
+  runInteractive,
+  type InteractiveRunner,
+  type ProcessRunner,
+} from '../../process/run.js';
 import { formatTokens } from '../../progress/renderProgress.js';
-import { SPEC_FILE } from '../../spec/loadSpec.js';
+import { loadSpec, SPEC_FILE } from '../../spec/loadSpec.js';
 import { activeSpecFiles, type CliDeps } from '../cliDeps.js';
 
-/** Seams for tests: the Claude Code process, the exit code, the session id and the config dir. */
+/** Seams for tests: the Claude Code process, git, the exit code, the session id and the config dir. */
 export interface PlanOverrides {
   launch?: InteractiveRunner;
+  run?: ProcessRunner;
   setExitCode?: (code: number) => void;
   newSessionId?: () => string;
   claudeConfigDir?: string;
@@ -61,6 +70,8 @@ export async function runPlan(
     : readdirSync(folder.dir, { withFileTypes: true })
         .map((entry) => (entry.isDirectory() ? `${entry.name}/` : entry.name))
         .sort();
+  const contextFile = join(repoRoot, '.specrun', 'plan', `${spec}.md`);
+  const commitMessageFile = join(repoRoot, '.specrun', 'plan', `${spec}.commit`);
   const context = renderPlanContext({
     spec,
     dir: relative(repoRoot, folder.dir),
@@ -70,8 +81,8 @@ export async function runPlan(
     featureMap: existsSync(join(repoRoot, config.featuresDir, 'README.md'))
       ? join(config.featuresDir, 'README.md')
       : null,
+    commitMessageFile: relative(repoRoot, commitMessageFile),
   });
-  const contextFile = join(repoRoot, '.specrun', 'plan', `${spec}.md`);
 
   const eventsFile = activeSpecFiles(repoRoot, config, spec).eventsFile;
   let sessionId: string;
@@ -107,6 +118,8 @@ export async function runPlan(
   if (folder.created) createPlanFolder(folder);
   mkdirSync(join(repoRoot, '.specrun', 'plan'), { recursive: true });
   writeFileSync(contextFile, context);
+  // A proposal left by an earlier session would describe an older state of the spec.
+  rmSync(commitMessageFile, { force: true });
   deps.stdout(`Planning ${spec} with Claude — context in ${relative(repoRoot, contextFile)}\n`);
 
   const result = await (overrides.launch ?? runInteractive)('claude', args, {
@@ -133,12 +146,76 @@ export async function runPlan(
     metrics,
   });
   deps.stdout(`${summaryLine(metrics)}\n`);
-  deps.stdout(
-    existsSync(join(folder.dir, SPEC_FILE))
-      ? `Next: specrun status ${spec} — commit the spec folder (incl. events.jsonl) before specrun run\n`
-      : `No tasks.yaml yet — specrun plan -n ${flags.name} continues\n`,
+  if (!existsSync(join(folder.dir, SPEC_FILE))) {
+    deps.stdout(`No tasks.yaml yet — specrun plan -n ${flags.name} continues\n`);
+    return result.code;
+  }
+  await commitSpec(
+    repoRoot,
+    config,
+    folder.dir,
+    spec,
+    sessionId,
+    commitMessageFile,
+    overrides.run ?? runCommand,
+    deps,
   );
   return result.code;
+}
+
+/**
+ * Commits only the spec folder (incl. the `plan.session` event) on the checked-out HEAD, so the
+ * run sees it and a later merge can't collide with an uncommitted events.jsonl. The message is the
+ * skill's proposal when it wrote one — the CLI commits because the event is written after Claude
+ * exits. An invalid spec stays uncommitted; a failing commit only warns — the session is done.
+ */
+async function commitSpec(
+  repoRoot: string,
+  config: Config,
+  dir: string,
+  spec: string,
+  sessionId: string,
+  commitMessageFile: string,
+  run: ProcessRunner,
+  deps: CliDeps,
+): Promise<void> {
+  try {
+    loadSpec(repoRoot, config, spec);
+  } catch (error) {
+    if (!(error instanceof SpecrunError)) throw error;
+    deps.stderr(`warning: ${error.message} — not committed\n`);
+    deps.stdout(
+      `Fix it (specrun status ${spec}), then commit the spec folder before specrun run\n`,
+    );
+    return;
+  }
+  const relDir = relative(repoRoot, dir);
+  const git = createGit(repoRoot, run);
+  try {
+    const proposed = readPlanCommitMessage(commitMessageFile);
+    const fallback = async (): Promise<string> =>
+      `docs(${spec}): ${(await git.hasPath('HEAD', relDir)) ? 'update' : 'plan'} spec`;
+    const commit = await git.commitPaths(
+      {
+        subject: proposed?.subject ?? (await fallback()),
+        body: proposed?.body ?? '',
+        trailers: [`Specrun-Plan-Session: ${sessionId}`, ...config.commitTrailers],
+      },
+      [relDir],
+    );
+    if (commit !== null) rmSync(commitMessageFile, { force: true });
+    deps.stdout(
+      commit === null
+        ? `Spec folder unchanged, nothing to commit — next: specrun run ${spec}\n`
+        : `Committed ${relDir} (commit ${commit.slice(0, 7)}) — next: specrun run ${spec}\n`,
+    );
+  } catch (error) {
+    if (!(error instanceof SpecrunError)) throw error;
+    deps.stderr(
+      `warning: could not commit ${relDir}: ${[error.message, ...error.details].join(' — ')}\n`,
+    );
+    deps.stdout(`Commit the spec folder (incl. events.jsonl) before specrun run\n`);
+  }
 }
 
 function readRequest(file: string, cwd: string): string {

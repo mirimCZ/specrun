@@ -9,11 +9,13 @@ export interface PlanContextInput {
   request: string | null;
   /** Repo-relative feature map README; null when the repo has no map. */
   featureMap: string | null;
+  /** Repo-relative file the skill writes its commit message proposal to. */
+  commitMessageFile: string;
 }
 
 /** Only facts the model cannot get cheaply (PLD-4). */
 export function renderPlanContext(input: PlanContextInput): string {
-  const { spec, dir, files, specsDir, request, featureMap } = input;
+  const { spec, dir, files, specsDir, request, featureMap, commitMessageFile } = input;
   const state =
     files.length === 0 ? 'new' : `existing, contains:\n${files.map((f) => `- ${f}`).join('\n')}`;
   return [
@@ -24,6 +26,7 @@ export function renderPlanContext(input: PlanContextInput): string {
     `- State: ${state}`,
     `- specsDir: ${specsDir}`,
     featureMap === null ? '- No feature map' : `- Feature map: ${featureMap}`,
+    `- Commit message file: ${commitMessageFile}`,
     '',
     request === null
       ? 'No request file — ask the user for the request.'

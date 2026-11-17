@@ -120,11 +120,15 @@ Claude Code on this terminal with `/specrun:plan <spec>`. `-f <file>` hands over
 verbatim, `--resume` continues the spec's latest planning session, `--print` shows what Claude
 would get. The `plan` skill runs fixed phases: **context** (read only what the request touches),
 **refine** (checklist, then interactive questions), **gate** ("Write the spec now?"), **write**
-(write-spec into the prepared folder) and **validate** (`specrun status <spec>`).
+(write-spec into the prepared folder), **validate** (`specrun status <spec>`) and **commit
+message** (a proposal for the spec's commit).
 
 specrun logs each planning session in the spec's `events.jsonl` — turns and tokens only, no
-prices — and shows it in `specrun stats` (`planning` in `--json`); archiving keeps it. The plan
-never commits: when Claude exits, commit the new spec folder yourself.
+prices — and shows it in `specrun stats` (`planning` in `--json`); archiving keeps it. When Claude
+exits and the spec loads, `specrun plan` commits the spec folder (incl. `events.jsonl`, nothing
+else) on the checked-out HEAD. The message is the one the skill proposed in
+`.specrun/plan/<spec>.commit`, else `docs(<spec>): plan spec` (`update spec` once it is committed),
+with a `Specrun-Plan-Session` trailer and `commitTrailers`. An invalid spec stays uncommitted.
 
 ## Running
 
