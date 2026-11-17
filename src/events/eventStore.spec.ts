@@ -25,7 +25,7 @@ describe('event store', () => {
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'specrun-'));
-    file = join(dir, 'docs', 'v1', 'events.jsonl');
+    file = join(dir, 'specrun', 'specs', 'v1', 'events.jsonl');
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });

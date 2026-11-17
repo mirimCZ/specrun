@@ -53,12 +53,12 @@ const context: ReviewContext = {
       title: 'Old',
       location: {
         kind: 'archived',
-        files: 'docs/archive/old',
+        files: 'specrun/specs/archive/old',
         commit: 'abcdef1234',
-        original: 'docs/old',
+        original: 'specrun/specs/old',
       },
       taskPrompt: null,
-      readmePath: 'docs/archive/old/README.md',
+      readmePath: 'specrun/specs/archive/old/README.md',
       decisions: [],
       lastRow: { decision: null, question: null },
       next: { task: null, decision: null, question: null },
@@ -67,7 +67,7 @@ const context: ReviewContext = {
           id: 'OLD-1',
           title: null,
           deviations: [],
-          briefPath: 'abcdef1:docs/old/tasks/OLD-1.md',
+          briefPath: 'abcdef1:specrun/specs/old/tasks/OLD-1.md',
           brief: null,
           commit: null,
         },
@@ -106,10 +106,10 @@ describe('buildReview', () => {
       'Files changed:\n  +7 −3 firestore.rules',
       '<diff path="firestore.rules">\n+allow write\n</diff>',
       '<brief path=".specrun/worktrees/traits/docs/traits/tasks/TR-6.md">\n# TR-6\n\n```ts\ncode\n```\n</brief>',
-      '- Archived in docs/archive/old; the full spec is at commit abcdef1 (docs/old).',
+      '- Archived in specrun/specs/archive/old; the full spec is at commit abcdef1 (specrun/specs/old).',
       '### OLD-1\n',
       'No commit (the task is not done).',
-      'Brief abcdef1:docs/old/tasks/OLD-1.md: not included',
+      'Brief abcdef1:specrun/specs/old/tasks/OLD-1.md: not included',
     ]) {
       expect(systemPrompt).toContain(part);
     }

@@ -36,7 +36,7 @@ const git = (cwd: string, ...args: string[]): string =>
   execFileSync('git', args, { cwd, env, encoding: 'utf8' });
 
 function setupRepo(tasks: TaskDef[]): void {
-  const specDir = join(repo, 'docs', 'demo');
+  const specDir = join(repo, 'specrun', 'specs', 'demo');
   mkdirSync(join(specDir, 'tasks'), { recursive: true });
   writeFileSync(join(repo, '.gitignore'), '.specrun/\n');
   const spec = {
@@ -112,7 +112,7 @@ async function start(h: Harness) {
 }
 
 function events(): SpecrunEvent[] {
-  return readEvents(join(worktree, 'docs', 'demo', 'events.jsonl')).events;
+  return readEvents(join(worktree, 'specrun', 'specs', 'demo', 'events.jsonl')).events;
 }
 
 function ofType<T extends EventType>(t: T): EventOf<T>[] {
@@ -168,8 +168,14 @@ describe('runSpec', () => {
     expect(git(repo, 'log', '-1', '--format=%B', first)).toContain(
       'Specrun-Task: A-1\nSpecrun-Session: session-1',
     );
-    expect(filesIn(first)).toEqual(['docs/demo/PROGRESS.md', 'docs/demo/events.jsonl', 'one.txt']);
-    expect(git(repo, 'show', `${first}:docs/demo/PROGRESS.md`)).toMatch(/\| A-1 +\|.*\| done /);
+    expect(filesIn(first)).toEqual([
+      'one.txt',
+      'specrun/specs/demo/PROGRESS.md',
+      'specrun/specs/demo/events.jsonl',
+    ]);
+    expect(git(repo, 'show', `${first}:specrun/specs/demo/PROGRESS.md`)).toMatch(
+      /\| A-1 +\|.*\| done /,
+    );
     expect(filesIn(commitOf('A-2'))).toContain('two.txt');
     expect(session.inputs[1]?.prompt).toContain('one.txt exports ONE');
     expect(session.inputs[1]?.resumeSessionId).toBeNull();

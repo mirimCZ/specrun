@@ -69,7 +69,7 @@ afterEach(() => {
 
 /** Work on the spec branch, then shelved; main moves on meanwhile. */
 async function shelved(events = doneTask('D-1', 5, 0.1, completed) + doneTask('D-2', 5, 0.1)) {
-  writeFileSync(join(worktree, 'docs', 'demo', 'events.jsonl'), events);
+  writeFileSync(join(worktree, 'specrun', 'specs', 'demo', 'events.jsonl'), events);
   writeFileSync(join(worktree, 'feature.txt'), 'feature\n');
   git(worktree, 'add', '-A');
   git(worktree, 'commit', '-q', '-m', 'feat: demo (D-1)');
@@ -94,7 +94,7 @@ async function unshelve(
 }
 
 const archiveReadme = (): string =>
-  readFileSync(join(repo, 'docs', 'archive', 'demo', 'README.md'), 'utf8');
+  readFileSync(join(repo, 'specrun', 'specs', 'archive', 'demo', 'README.md'), 'utf8');
 
 describe('unshelveSpec', () => {
   it('revives, merges and archives the spec as merged, deleting the local branch', async () => {
@@ -116,7 +116,7 @@ describe('unshelveSpec', () => {
       closed: { merge: 'merge-commit', deletedBranch: 'specrun/demo' },
     });
     expect(existsSync(join(repo, 'feature.txt'))).toBe(true);
-    expect(existsSync(join(repo, 'docs', 'demo'))).toBe(false);
+    expect(existsSync(join(repo, 'specrun', 'specs', 'demo'))).toBe(false);
     expect(git(repo, 'branch', '--list', 'specrun/demo')).toBe('');
     expect(git(repo, 'status', '--porcelain')).toBe('');
     expect(git(repo, 'log', '--first-parent', '--format=%s', '-4').split('\n')).toEqual([
@@ -155,8 +155,8 @@ describe('unshelveSpec', () => {
     const { result } = await unshelve({ merge: false });
     expect(result.closed).toBeNull();
     expect(git(repo, 'log', '-1', '--format=%s')).toBe('docs(demo): unshelve spec');
-    expect(existsSync(join(repo, 'docs', 'demo', 'tasks.yaml'))).toBe(true);
-    expect(existsSync(join(repo, 'docs', 'archive', 'demo'))).toBe(false);
+    expect(existsSync(join(repo, 'specrun', 'specs', 'demo', 'tasks.yaml'))).toBe(true);
+    expect(existsSync(join(repo, 'specrun', 'specs', 'archive', 'demo'))).toBe(false);
     expect(git(repo, 'branch', '--list', 'specrun/demo')).toContain('specrun/demo');
   });
 
@@ -165,7 +165,7 @@ describe('unshelveSpec', () => {
     await unshelve({ merge: false });
     git(repo, 'worktree', 'add', '-q', worktree, 'specrun/demo');
     writeFileSync(
-      join(worktree, 'docs', 'demo', 'events.jsonl'),
+      join(worktree, 'specrun', 'specs', 'demo', 'events.jsonl'),
       doneTask('D-1', 5, 0.1) + doneTask('D-2', 5, 0.1),
     );
     git(worktree, 'commit', '-q', '-am', 'feat: demo (D-2)');
@@ -180,7 +180,7 @@ describe('unshelveSpec', () => {
 
   it('carries review marks of history.json into the branch log and the new archive', async () => {
     await shelved();
-    const file = join(repo, 'docs', 'archive', 'demo', HISTORY_FILE);
+    const file = join(repo, 'specrun', 'specs', 'archive', 'demo', HISTORY_FILE);
     const history = JSON.parse(readFileSync(file, 'utf8')) as History;
     history.deviations = history.deviations.map((d) => ({ ...d, reviewed: true }));
     writeFileSync(file, JSON.stringify(history));
@@ -207,7 +207,7 @@ describe('unshelveSpec', () => {
     git(repo, 'switch', '-q', 'main');
 
     await expect(unshelve()).rejects.toThrow('specrun/demo and origin/specrun/demo have diverged');
-    expect(existsSync(join(repo, 'docs', 'archive', 'demo'))).toBe(true);
+    expect(existsSync(join(repo, 'specrun', 'specs', 'archive', 'demo'))).toBe(true);
   });
 
   it('refuses a spec that is not shelved', async () => {

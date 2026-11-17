@@ -41,7 +41,9 @@ describe('specrun archive', () => {
 
     const output = await archive('demo');
 
-    expect(output).toMatch(/^Archived demo → docs\/archive\/demo \(commit [0-9a-f]{7}\)\n/);
+    expect(output).toMatch(
+      /^Archived demo → specrun\/specs\/archive\/demo \(commit [0-9a-f]{7}\)\n/,
+    );
     expect(output).toContain('history.json: 2 task samples, 0 deviations');
     expect(existsSync(specDir)).toBe(false);
   });

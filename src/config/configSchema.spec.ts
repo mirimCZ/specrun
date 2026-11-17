@@ -6,8 +6,8 @@ const verify = [{ name: 'test', command: 'npm test' }];
 describe('ConfigSchema', () => {
   it('fills every default for a minimal config', () => {
     expect(ConfigSchema.parse({ verify })).toEqual({
-      specsDir: 'docs',
-      featuresDir: 'docs/features',
+      specsDir: 'specrun/specs',
+      featuresDir: 'specrun/features',
       verify,
       setup: null,
       worktree: true,

@@ -54,7 +54,7 @@ In the repository you want to work on:
 
 ## Specs
 
-A spec is a folder under `specsDir` (default `docs/`):
+A spec is a folder under `specsDir` (default `specrun/specs/`):
 
 ```
 docs/<spec>/
@@ -92,7 +92,7 @@ files: the runner owns git.
 
 A repo can keep a map of what its product does at user level: `<featuresDir>/README.md` (an
 overview graph and an index) plus one doc per feature at `<featuresDir>/<area>/<name>.md`.
-`featuresDir` defaults to `docs/features`; without that folder every feature-map step is skipped.
+`featuresDir` defaults to `specrun/features`; without that folder every feature-map step is skipped.
 The format and how to update it are in the plugin's `feature-map` skill (templates included).
 
 `specrun features check` validates the map — index, graph, frontmatter, paths, sections and the
@@ -228,7 +228,7 @@ existing file).
 | `setup`           | `null` (`init`: from the lockfile, e.g. `npm ci`)   | Runs once in a new worktree                                          |
 | `verify`          | required (`init`: `npm run check` or the scripts)   | `{ name, command }[]`, run in order after each task; first red stops |
 | `limits`          | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`      | % left of the 5-hour / weekly window below which a run waits / stops |
-| `specsDir`        | `"docs"` (`init`: `"spec"` for a new config)        | Folder with the specs                                                |
+| `specsDir`        | `"specrun/specs"`                                   | Folder with the specs                                                |
 | `models`          | `{ "default": "sonnet", "strong": "opus" }`         | Model per `model` value in `tasks.yaml`; `--model` overrides all     |
 | `maxTurns`        | `150`                                               | Turn limit of one session; reaching it blocks the task               |
 | `verifyFixRounds` | `2`                                                 | Fix attempts after a red check                                       |

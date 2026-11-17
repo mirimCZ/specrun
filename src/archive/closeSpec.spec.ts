@@ -41,7 +41,7 @@ function finishTasks(
   cwd: string,
   events = doneTask('D-1', 5, 0.1) + doneTask('D-2', 5, 0.1),
 ): void {
-  writeFileSync(join(cwd, 'docs', 'demo', 'events.jsonl'), events);
+  writeFileSync(join(cwd, 'specrun', 'specs', 'demo', 'events.jsonl'), events);
   writeFileSync(join(cwd, 'feature.txt'), 'feature\n');
   git(cwd, 'add', '-A');
   git(cwd, 'commit', '-q', '-m', 'feat: demo (D-1)');
@@ -66,7 +66,8 @@ async function close(
   return { result, steps };
 }
 
-const archived = (): boolean => existsSync(join(repo, 'docs', 'archive', 'demo', 'README.md'));
+const archived = (): boolean =>
+  existsSync(join(repo, 'specrun', 'specs', 'archive', 'demo', 'README.md'));
 const branches = (): string => git(repo, 'branch', '--list');
 
 describe('closeSpec', () => {

@@ -208,7 +208,7 @@ describe('specrun run', () => {
 
   it('asks the questions only after a complete run on a terminal', async () => {
     writeFileSync(
-      join(dir, 'docs', 'demo', 'events.jsonl'),
+      join(dir, 'specrun', 'specs', 'demo', 'events.jsonl'),
       doneTask('D-1', 1, 0) + doneTask('D-2', 1, 0),
     );
     const asked: string[][] = [];
@@ -239,7 +239,7 @@ describe('specrun run', () => {
     it('offers the wizard in a terminal, then runs', async () => {
       // Offer, then the wizard: the fixture's specs folder, no worktree, default check, default
       // limits, no check run.
-      const scripted = createScriptedPrompter(['', 'docs', 'n', '', '', '', 'n']);
+      const scripted = createScriptedPrompter(['', 'specrun', 'specs', 'n', '', '', '', 'n']);
       const cliDeps = { ...captureDeps(dir), interactive: true, prompter: () => scripted.prompter };
       const { exit } = await runCli(['demo'], { exitCode: 0, reason: 'done' }, {}, cliDeps);
       expect(scripted.prompts[0]).toMatch(

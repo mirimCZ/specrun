@@ -16,8 +16,9 @@ export const DEFAULT_SIZES: Readonly<Record<SizeName, Size>> = {
   L: { turns: [40, 70], usd: 2.5 },
 };
 
-/** The default of a config without `specsDir`; `specrun init` proposes `spec` for a new one. */
-export const DEFAULT_SPECS_DIR = 'docs';
+/** Kept under one `specrun/` folder so the feature map never sits among the specs (`run --all`). */
+export const DEFAULT_SPECS_DIR = 'specrun/specs';
+export const DEFAULT_FEATURES_DIR = 'specrun/features';
 
 const VerifyStepSchema = z.strictObject({
   name: z.string().min(1),
@@ -45,7 +46,7 @@ const SizesSchema = z.strictObject({
 export const ConfigSchema = z.strictObject({
   specsDir: z.string().min(1).default(DEFAULT_SPECS_DIR),
   /** Repo-relative feature map folder; when it doesn't exist every feature-map step is skipped. */
-  featuresDir: z.string().min(1).default('docs/features'),
+  featuresDir: z.string().min(1).default(DEFAULT_FEATURES_DIR),
   verify: z.array(VerifyStepSchema).min(1),
   setup: z.string().min(1).nullable().default(null),
   /** false: run in the main checkout on the spec branch (needs a clean tree, no setup). */

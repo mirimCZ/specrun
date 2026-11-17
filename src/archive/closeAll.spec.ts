@@ -46,7 +46,7 @@ beforeEach(() => {
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
 function ranShared(events: string): void {
-  writeFileSync(join(shared, 'docs', 'demo', 'events.jsonl'), sharedRun + events);
+  writeFileSync(join(shared, 'specrun', 'specs', 'demo', 'events.jsonl'), sharedRun + events);
   writeFileSync(join(shared, 'feature.txt'), 'feature\n');
   git(shared, 'add', '-A');
   git(shared, 'commit', '-q', '-m', 'feat: demo (D-1)');
@@ -71,7 +71,7 @@ describe('closeAll', () => {
       removedWorktree: '.specrun/worktrees/.all',
     });
     expect(result.archived.map((a) => a.spec)).toEqual(['demo']);
-    expect(existsSync(join(repo, 'docs', 'archive', 'demo', 'README.md'))).toBe(true);
+    expect(existsSync(join(repo, 'specrun', 'specs', 'archive', 'demo', 'README.md'))).toBe(true);
     expect(existsSync(join(repo, 'feature.txt'))).toBe(true);
     expect(existsSync(shared)).toBe(false);
     expect(git(repo, 'branch', '--list')).not.toContain('specrun/all');

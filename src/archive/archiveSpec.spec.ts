@@ -100,18 +100,18 @@ describe('archiveSpec', () => {
     const result = await archive();
 
     expect(result).toMatchObject({
-      archiveDir: 'docs/archive/demo',
+      archiveDir: 'specrun/specs/archive/demo',
       baseCommit: base,
       history: { samples: 2, deviations: 1 },
       removed: null,
       forced: [],
     });
     expect(existsSync(specDir)).toBe(false);
-    expect(readFileSync(join(repo, 'docs/archive/demo/README.md'), 'utf8')).toBe(
+    expect(readFileSync(join(repo, 'specrun/specs/archive/demo/README.md'), 'utf8')).toBe(
       [
         '# Demo',
         '',
-        `> Archived on 2026-11-13 by \`specrun archive\`. The full spec folder (briefs, prompts, run log) is in git at \`${base.slice(0, 7)}\`: \`git ls-tree -r --name-only ${base.slice(0, 7)} -- docs/demo\`.`,
+        `> Archived on 2026-11-13 by \`specrun archive\`. The full spec folder (briefs, prompts, run log) is in git at \`${base.slice(0, 7)}\`: \`git ls-tree -r --name-only ${base.slice(0, 7)} -- specrun/specs/demo\`.`,
         '',
         'What it does.',
         '',
@@ -119,7 +119,7 @@ describe('archiveSpec', () => {
         '',
       ].join('\n'),
     );
-    expect(readFileSync(join(repo, '.ignore'), 'utf8')).toBe('docs/archive/\n');
+    expect(readFileSync(join(repo, '.ignore'), 'utf8')).toBe('specrun/specs/archive/\n');
     expect(git(repo, 'log', '-1', '--format=%s')).toBe('docs(demo): archive spec\n');
     expect(result.commit).toBe(git(repo, 'rev-parse', 'HEAD').trim());
     expect(git(repo, 'status', '--porcelain').trim()).toBe('M other.txt');
@@ -160,8 +160,8 @@ describe('archiveSpec', () => {
     const result = await archive();
 
     expect(result.history).toBeNull();
-    expect(existsSync(join(repo, 'docs/archive/demo/history.json'))).toBe(false);
-    expect(existsSync(join(repo, 'docs/archive/demo/README.md'))).toBe(true);
+    expect(existsSync(join(repo, 'specrun/specs/archive/demo/history.json'))).toBe(false);
+    expect(existsSync(join(repo, 'specrun/specs/archive/demo/README.md'))).toBe(true);
   });
 
   it('keeps planning totals in history.json even without samples', async () => {
@@ -206,7 +206,7 @@ describe('archiveSpec', () => {
   });
 
   it('parses a history file without planning as null', () => {
-    const dir = join(repo, 'docs/archive/old');
+    const dir = join(repo, 'specrun/specs/archive/old');
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       join(dir, 'history.json'),
@@ -255,7 +255,7 @@ describe('archiveSpec', () => {
 
     await archive();
 
-    const readme = readFileSync(join(repo, 'docs/archive/demo/README.md'), 'utf8');
+    const readme = readFileSync(join(repo, 'specrun/specs/archive/demo/README.md'), 'utf8');
     expect(readme).toMatch(/^# Demo\n\n> Archived on 2026-11-13/);
   });
 
@@ -264,7 +264,7 @@ describe('archiveSpec', () => {
     commitAll();
     writeFileSync(join(specDir, 'notes.md'), 'untracked\n');
 
-    expect((await archiveError(true)).summary).toBe('docs/demo has uncommitted changes');
+    expect((await archiveError(true)).summary).toBe('specrun/specs/demo has uncommitted changes');
     expect(existsSync(join(specDir, 'notes.md'))).toBe(true);
   });
 
@@ -280,12 +280,12 @@ describe('archiveSpec', () => {
 
   it('refuses a spec that is already archived', async () => {
     bothDone();
-    mkdirSync(join(repo, 'docs/archive/demo'), { recursive: true });
-    writeFileSync(join(repo, 'docs/archive/demo/README.md'), '# Demo\n');
+    mkdirSync(join(repo, 'specrun/specs/archive/demo'), { recursive: true });
+    writeFileSync(join(repo, 'specrun/specs/archive/demo/README.md'), '# Demo\n');
     commitAll();
 
     expect((await archiveError()).summary).toBe(
-      'Spec "demo" is already archived in docs/archive/demo',
+      'Spec "demo" is already archived in specrun/specs/archive/demo',
     );
   });
 
@@ -296,7 +296,7 @@ describe('archiveSpec', () => {
       writeFileSync(join(repo, '.gitignore'), '.specrun/\n');
       commitAll('init');
       git(repo, 'worktree', 'add', '-q', '-b', 'specrun/demo', worktree());
-      writeFileSync(join(worktree(), 'docs/demo/events.jsonl'), readEventsFixture());
+      writeFileSync(join(worktree(), 'specrun/specs/demo/events.jsonl'), readEventsFixture());
       git(worktree(), 'add', '-A');
       git(worktree(), 'commit', '-q', '-m', 'run');
     });

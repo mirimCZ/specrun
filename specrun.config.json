@@ -1,4 +1,6 @@
 {
+  "specsDir": "docs",
+  "featuresDir": "docs/features",
   "setup": "npm ci",
   "verify": [
     { "name": "typecheck", "command": "npm run -s verify:typecheck" },

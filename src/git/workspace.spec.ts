@@ -41,9 +41,9 @@ describe('specWorkspace', () => {
 
   it('follows the checked-out log with "worktree": false', () => {
     const inPlace = { ...config, worktree: false };
-    writeFileSync(join(repo, 'docs', 'demo', 'events.jsonl'), started('specrun/all'));
+    writeFileSync(join(repo, 'specrun', 'specs', 'demo', 'events.jsonl'), started('specrun/all'));
     expect(runsShared(repo, inPlace, 'demo')).toBe(true);
-    writeFileSync(join(repo, 'docs', 'demo', 'events.jsonl'), started('specrun/demo'));
+    writeFileSync(join(repo, 'specrun', 'specs', 'demo', 'events.jsonl'), started('specrun/demo'));
     expect(runsShared(repo, inPlace, 'demo')).toBe(false);
   });
 });

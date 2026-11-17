@@ -18,7 +18,7 @@ afterEach(() => rmSync(repoRoot, { recursive: true, force: true }));
 
 function doc(id: string, overrides: Partial<FeatureDoc> = {}): FeatureDoc {
   return {
-    path: `docs/features/${id}.md`,
+    path: `specrun/features/${id}.md`,
     idFromPath: id,
     frontmatter: {
       id,
@@ -38,7 +38,7 @@ function doc(id: string, overrides: Partial<FeatureDoc> = {}): FeatureDoc {
 function validMap(): FeatureMap {
   return {
     readme: {
-      path: 'docs/features/README.md',
+      path: 'specrun/features/README.md',
       mermaidBlocks: 1,
       nodes: ['board_turns'],
       rows: [{ id: 'board/turns', link: 'board/turns.md', title: 'Turns' }],
@@ -69,7 +69,9 @@ describe('checkFeatureMap', () => {
 
   it('errors when the README is missing', () => {
     const map = { ...validMap(), readme: null };
-    expect(messages(map)).toEqual(['error|docs/features/README.md|feature map README is missing']);
+    expect(messages(map)).toEqual([
+      'error|specrun/features/README.md|feature map README is missing',
+    ]);
   });
 
   it('errors unless there is exactly one mermaid block', () => {
@@ -91,7 +93,7 @@ describe('checkFeatureMap', () => {
     const map = validMap();
     map.docs = [doc('board/turns', { sections: ['Purpose', 'Capabilities'] })];
     expect(messages(map)).toEqual([
-      'error|docs/features/board/turns.md|missing section "## Expectations"',
+      'error|specrun/features/board/turns.md|missing section "## Expectations"',
     ]);
   });
 
@@ -102,10 +104,10 @@ describe('checkFeatureMap', () => {
     }
     const out = messages(map);
     expect(out).toContain(
-      'error|docs/features/README.md|index row "board/ghost" has no feature doc',
+      'error|specrun/features/README.md|index row "board/ghost" has no feature doc',
     );
     expect(out).toContain(
-      'error|docs/features/board/turns.md|feature "board/turns" has no row in the index',
+      'error|specrun/features/board/turns.md|feature "board/turns" has no row in the index',
     );
   });
 
@@ -121,7 +123,7 @@ describe('checkFeatureMap', () => {
     const map = validMap();
     map.docs = [doc('a/b-c'), doc('a-b/c')];
     map.readme = {
-      path: 'docs/features/README.md',
+      path: 'specrun/features/README.md',
       mermaidBlocks: 1,
       nodes: ['a_b_c'],
       rows: [
@@ -137,7 +139,7 @@ describe('checkFeatureMap', () => {
     const fm = map.docs[0]?.frontmatter;
     if (fm) fm.depends_on = ['x/y'];
     expect(messages(map)).toEqual([
-      'error|docs/features/board/turns.md|depends_on: unknown feature "x/y"',
+      'error|specrun/features/board/turns.md|depends_on: unknown feature "x/y"',
     ]);
   });
 
@@ -149,8 +151,8 @@ describe('checkFeatureMap', () => {
       fm.tests = ['src/gone.spec.ts'];
     }
     expect(messages(map)).toEqual([
-      'error|docs/features/board/turns.md|code: "src/gone.ts" does not exist',
-      'error|docs/features/board/turns.md|tests: "src/gone.spec.ts" does not exist',
+      'error|specrun/features/board/turns.md|code: "src/gone.ts" does not exist',
+      'error|specrun/features/board/turns.md|tests: "src/gone.spec.ts" does not exist',
     ]);
   });
 
@@ -158,7 +160,7 @@ describe('checkFeatureMap', () => {
     const out = messages(validMap(), {
       specTaskFeatures: [{ spec: 'v1', task: 'V-1', features: ['board/turns', 'nope/x'] }],
     });
-    expect(out).toEqual(['error|docs/v1/tasks.yaml|task V-1: unknown feature "nope/x"']);
+    expect(out).toEqual(['error|specrun/specs/v1/tasks.yaml|task V-1: unknown feature "nope/x"']);
   });
 
   it('warns on capabilities outside 3–10', () => {
@@ -174,7 +176,7 @@ describe('checkFeatureMap', () => {
     const fm = map.docs[0]?.frontmatter;
     if (fm) fm.specs = ['001-old', '002-gone'];
     expect(messages(map, { knownSpecs: ['001-old'] })).toEqual([
-      'warning|docs/features/board/turns.md|specs: "002-gone" not found under docs/ or its archive',
+      'warning|specrun/features/board/turns.md|specs: "002-gone" not found under specrun/specs/ or its archive',
     ]);
   });
 });

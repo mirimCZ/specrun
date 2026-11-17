@@ -37,7 +37,7 @@ const config = (): ReturnType<typeof ConfigSchema.parse> =>
 
 /** A spec with one task `<PREFIX>-1`, committed on main. */
 function addSpec(name: string, prefix: string, extra: Record<string, unknown> = {}): void {
-  const specDir = join(repo, 'docs', name);
+  const specDir = join(repo, 'specrun', 'specs', name);
   mkdirSync(join(specDir, 'tasks'), { recursive: true });
   const task = {
     id: `${prefix}-1`,
@@ -69,7 +69,7 @@ function deps(segments: FakeSegment[], extra: Partial<RunAllDeps> = {}): RunAllD
 }
 
 const runStarted = (spec: string): EventOf<'run.started'>[] =>
-  readEvents(join(shared, 'docs', spec, 'events.jsonl')).events.filter(
+  readEvents(join(shared, 'specrun', 'specs', spec, 'events.jsonl')).events.filter(
     (e): e is EventOf<'run.started'> => e.t === 'run.started',
   );
 

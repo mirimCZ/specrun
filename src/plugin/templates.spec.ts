@@ -70,9 +70,9 @@ describe('feature-map templates', () => {
           .replaceAll('<area>', 'example')
           .replaceAll('<name>', 'sample')
           .replaceAll(/<[^>\n]+>/g, 'Sample');
-      mkdirSync(join(repo, 'docs/features/example'), { recursive: true });
-      writeFileSync(join(repo, 'docs/features/README.md'), fill('README.md'));
-      writeFileSync(join(repo, 'docs/features/example/sample.md'), fill('feature.md'));
+      mkdirSync(join(repo, 'specrun/features/example'), { recursive: true });
+      writeFileSync(join(repo, 'specrun/features/README.md'), fill('README.md'));
+      writeFileSync(join(repo, 'specrun/features/example/sample.md'), fill('feature.md'));
 
       const map = loadFeatureMap(repo, config);
       expect(map).not.toBeNull();

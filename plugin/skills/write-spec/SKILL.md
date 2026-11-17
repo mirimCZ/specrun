@@ -96,7 +96,7 @@ In §4 of the README, add one line on how the work was cut when it isn't obvious
 ## 4. Name the spec
 
 - Folder `<specsDir>/<NNN>-<kebab-name>/` (`specsDir` from `specrun.config.json`, default
-  `docs`), e.g. `docs/014-export-dialog/`. `NNN` is one number series across all specs, active
+  `specrun/specs`), e.g. `specrun/specs/014-export-dialog/`. `NNN` is one number series across all specs, active
   and archived (`specrun archive` and `specrun shelve` keep the folder name under
   `<specsDir>/archive/`), so the folders sort in the order they were written. Take the highest
   number in use plus one, zero-padded to three digits (folders without a number don't count; no

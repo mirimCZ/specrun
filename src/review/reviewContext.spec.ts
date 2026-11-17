@@ -95,13 +95,13 @@ describe('gatherReviewContext', () => {
       title: 'Demo',
       location: {
         kind: 'live',
-        files: 'docs/demo',
+        files: 'specrun/specs/demo',
         worktree: null,
         branch: 'specrun/demo',
         merged: null,
       },
       taskPrompt: 'Run {TASK} carefully.\n',
-      readmePath: 'docs/demo/README.md',
+      readmePath: 'specrun/specs/demo/README.md',
       decisions: ['| DMD-1 | Rules | Never touch X.  |'],
       lastRow: { decision: 6, question: 10 },
       next: { task: 'D-3', decision: 'DMD-3', question: 'Q2' },
@@ -110,7 +110,7 @@ describe('gatherReviewContext', () => {
     expect(task).toMatchObject({
       id: 'D-1',
       title: 'First',
-      briefPath: 'docs/demo/tasks/D-1.md',
+      briefPath: 'specrun/specs/demo/tasks/D-1.md',
       brief: '# D-1\n',
     });
     expect(task?.commit?.message).toBe('feat: rules (D-1)\n\nChanged the rules.');

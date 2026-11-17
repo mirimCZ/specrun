@@ -59,7 +59,7 @@ describe('specrun status', () => {
 
   it('lists shelved specs after the live ones', async () => {
     writeDemoSpec(dir);
-    const archived = join(dir, 'docs', 'archive', 'old');
+    const archived = join(dir, 'specrun', 'specs', 'archive', 'old');
     mkdirSync(archived, { recursive: true });
     const outcome = {
       kind: 'shelved',

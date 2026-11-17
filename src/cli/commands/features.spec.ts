@@ -23,7 +23,7 @@ function write(path: string, content: string): void {
 function writeMap(opts: { node?: string } = {}): void {
   write('src/a.ts', '');
   write(
-    'docs/features/README.md',
+    'specrun/features/README.md',
     [
       '# Features',
       '',
@@ -41,7 +41,7 @@ function writeMap(opts: { node?: string } = {}): void {
     ].join('\n'),
   );
   write(
-    'docs/features/board/turns.md',
+    'specrun/features/board/turns.md',
     [
       '---',
       'id: board/turns',
@@ -80,8 +80,8 @@ describe('specrun features check', () => {
     writeDemoSpec(dir);
     writeMap({ node: 'stray' });
     const out = await check();
-    expect(out).toContain('docs/features/board/turns.md: feature has no node "board_turns"');
-    expect(out).toContain('docs/features/README.md: mermaid node "stray" has no feature doc');
+    expect(out).toContain('specrun/features/board/turns.md: feature has no node "board_turns"');
+    expect(out).toContain('specrun/features/README.md: mermaid node "stray" has no feature doc');
     expect(out).toContain('2 errors, 0 warnings');
     expect(process.exitCode).toBe(1);
   });
@@ -102,7 +102,7 @@ describe('specrun features check', () => {
       }),
     );
     const out = await check();
-    expect(out).toContain('docs/demo/tasks.yaml: task D-1: unknown feature "no/such"');
+    expect(out).toContain('specrun/specs/demo/tasks.yaml: task D-1: unknown feature "no/such"');
     expect(process.exitCode).toBe(1);
   });
 });

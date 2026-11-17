@@ -36,7 +36,10 @@ beforeEach(() => {
   git(repo, 'remote', 'add', 'origin', remote);
   const worktree = join(repo, '.specrun', 'worktrees', 'demo');
   git(repo, 'worktree', 'add', '-q', '-b', 'specrun/demo', worktree);
-  writeFileSync(join(worktree, 'docs', 'demo', 'events.jsonl'), doneTask('D-1', 5, 0.1));
+  writeFileSync(
+    join(worktree, 'specrun', 'specs', 'demo', 'events.jsonl'),
+    doneTask('D-1', 5, 0.1),
+  );
   git(worktree, 'add', '-A');
   git(worktree, 'commit', '-q', '-m', 'feat: demo');
 });

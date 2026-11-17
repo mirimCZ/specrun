@@ -97,7 +97,9 @@ describe('specrun review', () => {
     const systemPrompt = readFileSync(file, 'utf8');
     expect(systemPrompt).toContain('# Deviation review');
     expect(systemPrompt).toContain('## Spec demo — Demo');
-    expect(systemPrompt).toContain('<brief path="docs/demo/tasks/D-1.md">\n# D-1\n</brief>');
+    expect(systemPrompt).toContain(
+      '<brief path="specrun/specs/demo/tasks/D-1.md">\n# D-1\n</brief>',
+    );
     expect(systemPrompt).toContain('No commit');
     const message = launch?.args[2] ?? '';
     expect(message).toContain('(`specrun review demo --kind scope`)');
@@ -124,8 +126,8 @@ describe('specrun review', () => {
   it('marks the reviewed deviations on yes, so the next review skips them', async () => {
     const first = await review(['demo', '--kind', 'scope'], { answers: [''] });
     expect(first.prompts).toEqual(['Mark the 1 deviation(s) as reviewed? [Y/n] ']);
-    expect(first.out).toContain('Marked as reviewed in docs/demo/events.jsonl');
-    const { events } = readEvents(join(dir, 'docs', 'demo', 'events.jsonl'));
+    expect(first.out).toContain('Marked as reviewed in specrun/specs/demo/events.jsonl');
+    const { events } = readEvents(join(dir, 'specrun', 'specs', 'demo', 'events.jsonl'));
     expect(events.at(-1)).toMatchObject({
       t: 'deviations.reviewed',
       deviations: [{ task: 'D-1', id: expect.stringMatching(/^[0-9a-f]{12}$/) }],
@@ -160,7 +162,7 @@ describe('specrun review', () => {
       },
     ]);
     const { out } = await review(['old'], { answers: [''] });
-    expect(out).toContain('Marked as reviewed in docs/archive/old/history.json');
+    expect(out).toContain('Marked as reviewed in specrun/specs/archive/old/history.json');
     const config = ConfigSchema.parse({ verify: [{ name: 'ok', command: 'true' }] });
     expect(readArchivedHistories(dir, config)[0]?.deviations[0]?.reviewed).toBe(true);
   });

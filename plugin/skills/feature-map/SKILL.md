@@ -12,7 +12,7 @@ touches behaviour updates it.
 
 ## Layout and ids
 
-`featuresDir` in `specrun.config.json` (default `docs/features`):
+`featuresDir` in `specrun.config.json` (default `specrun/features`):
 
 ```
 <featuresDir>/README.md              the map: overview graph + index

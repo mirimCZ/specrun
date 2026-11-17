@@ -31,7 +31,7 @@ beforeEach(() => {
   const worktree = join(repo, '.specrun', 'worktrees', 'demo');
   git(repo, 'worktree', 'add', '-q', '-b', 'specrun/demo', worktree);
   writeFileSync(
-    join(worktree, 'docs', 'demo', 'events.jsonl'),
+    join(worktree, 'specrun', 'specs', 'demo', 'events.jsonl'),
     doneTask('D-1', 5, 0.1) + doneTask('D-2', 5, 0.1),
   );
   git(worktree, 'add', '-A');
@@ -51,7 +51,7 @@ describe('specrun close', () => {
       'merging specrun/demo into main: 1 commit(s), fast-forward\narchiving demo …\n',
     );
     expect(out).toContain('Closed demo: merged specrun/demo into main (fast-forward, 1 commit(s))');
-    expect(out).toContain('Archived demo → docs/archive/demo');
+    expect(out).toContain('Archived demo → specrun/specs/archive/demo');
     expect(out).toContain('removed worktree .specrun/worktrees/demo and branch specrun/demo');
     expect(out).toContain('Nothing was pushed');
   });

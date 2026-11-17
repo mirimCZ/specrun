@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 function write(relative: string, content: string): void {
-  const path = join(repo, 'docs', 'features', relative);
+  const path = join(repo, 'specrun', 'features', relative);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
 }
@@ -94,7 +94,7 @@ describe('loadFeatureMap', () => {
 
     expect(map?.problems).toEqual([]);
     expect(map?.readme).toEqual({
-      path: 'docs/features/README.md',
+      path: 'specrun/features/README.md',
       mermaidBlocks: 1,
       nodes: ['board_fog_cells', 'board_turns'],
       rows: [
@@ -104,7 +104,7 @@ describe('loadFeatureMap', () => {
     });
     expect(map?.docs).toEqual([
       {
-        path: 'docs/features/board/fog-cells.md',
+        path: 'specrun/features/board/fog-cells.md',
         idFromPath: 'board/fog-cells',
         frontmatter: {
           id: 'board/fog-cells',
@@ -141,7 +141,7 @@ describe('loadFeatureMap', () => {
     const map = loadFeatureMap(repo, config);
     expect(map?.readme).toMatchObject({ mermaidBlocks: 2, nodes: ['a', 'b'], rows: [] });
     expect(map?.problems).toEqual([
-      { path: 'docs/features/README.md', message: 'no "## Features" section', level: 'error' },
+      { path: 'specrun/features/README.md', message: 'no "## Features" section', level: 'error' },
     ]);
   });
 
@@ -162,7 +162,7 @@ describe('loadFeatureMap', () => {
     expect(map?.docs[0]?.sections).toContain('Capabilities');
     expect(map?.problems).toEqual([
       {
-        path: 'docs/features/board/turns.md',
+        path: 'specrun/features/board/turns.md',
         message: expect.stringMatching(/^frontmatter is not valid YAML/) as unknown,
         level: 'error',
       },
@@ -176,7 +176,7 @@ describe('loadFeatureMap', () => {
     expect(map?.docs[0]?.frontmatter).toBeNull();
     expect(map?.problems).toHaveLength(1);
     expect(map?.problems[0]).toMatchObject({
-      path: 'docs/features/board/turns.md',
+      path: 'specrun/features/board/turns.md',
       level: 'error',
     });
     expect(map?.problems[0]?.message).toMatch(/^invalid frontmatter: .*status.*code/);
@@ -185,7 +185,7 @@ describe('loadFeatureMap', () => {
   it('reports a doc without frontmatter', () => {
     write('board/turns.md', '# Turns\n\n## Purpose\n');
     expect(loadFeatureMap(repo, config)?.problems).toEqual([
-      expect.objectContaining({ path: 'docs/features/board/turns.md', level: 'error' }),
+      expect.objectContaining({ path: 'specrun/features/board/turns.md', level: 'error' }),
     ]);
   });
 
@@ -201,8 +201,8 @@ describe('loadFeatureMap', () => {
 
     expect(map?.docs.map((d) => d.idFromPath)).toEqual(['board/turns', 'ui/menu']);
     expect(map?.problems.map((p) => [p.path, p.level])).toEqual([
-      ['docs/features/board/deep/cells.md', 'warning'],
-      ['docs/features/notes.md', 'warning'],
+      ['specrun/features/board/deep/cells.md', 'warning'],
+      ['specrun/features/notes.md', 'warning'],
     ]);
   });
 });

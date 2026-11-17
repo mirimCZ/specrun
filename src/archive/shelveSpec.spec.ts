@@ -39,7 +39,7 @@ beforeEach(() => {
   rmSync(join(repo, '.git'), { recursive: true });
   git(repo, 'init', '-q', '-b', 'main');
   writeDemoSpec(repo);
-  writeFileSync(join(repo, 'docs', 'demo', 'README.md'), '# Demo\n\nWhat it does.\n');
+  writeFileSync(join(repo, 'specrun', 'specs', 'demo', 'README.md'), '# Demo\n\nWhat it does.\n');
   writeFileSync(join(repo, '.gitignore'), '.specrun/\n');
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'spec');
@@ -56,7 +56,7 @@ afterEach(() => {
 
 /** D-1 done on the spec branch with a code change; D-2 stays todo. */
 function workOnBranch(cwd: string): void {
-  writeFileSync(join(cwd, 'docs', 'demo', 'events.jsonl'), doneTask('D-1', 5, 0.1));
+  writeFileSync(join(cwd, 'specrun', 'specs', 'demo', 'events.jsonl'), doneTask('D-1', 5, 0.1));
   writeFileSync(join(cwd, 'feature.txt'), 'feature\n');
   git(cwd, 'add', '-A');
   git(cwd, 'commit', '-q', '-m', 'feat: demo (D-1)');
@@ -107,12 +107,15 @@ describe('shelveSpec', () => {
     expect(git(remote, 'rev-parse', 'specrun/demo')).toBe(tip);
     expect(git(repo, 'branch', '--list', 'specrun/demo')).toContain('specrun/demo');
     expect(existsSync(worktree)).toBe(false);
-    expect(existsSync(join(repo, 'docs', 'demo'))).toBe(false);
+    expect(existsSync(join(repo, 'specrun', 'specs', 'demo'))).toBe(false);
     expect(existsSync(join(repo, 'feature.txt'))).toBe(false);
     expect(git(repo, 'log', '-1', '--format=%s')).toBe('docs(demo): shelve spec');
     expect(git(repo, 'status', '--porcelain')).toBe('');
 
-    const readme = readFileSync(join(repo, 'docs', 'archive', 'demo', 'README.md'), 'utf8');
+    const readme = readFileSync(
+      join(repo, 'specrun', 'specs', 'archive', 'demo', 'README.md'),
+      'utf8',
+    );
     expect(readme).toContain(
       '> Shelved on 2026-11-16 by `specrun shelve` — not merged. Reason: wrong approach. The work ' +
         `is on branch \`specrun/demo\` at \`${tip.slice(0, 7)}\` (pushed to origin); ` +
@@ -148,7 +151,10 @@ describe('shelveSpec', () => {
 
     expect(steps.map((s) => s.step)).toEqual(['archive']);
     expect(result.remote).toBeNull();
-    const readme = readFileSync(join(repo, 'docs', 'archive', 'demo', 'README.md'), 'utf8');
+    const readme = readFileSync(
+      join(repo, 'specrun', 'specs', 'archive', 'demo', 'README.md'),
+      'utf8',
+    );
     expect(readme).toContain('(local only)');
   });
 

@@ -18,7 +18,7 @@ export function writeDemoSpec(root: string, specsRoot: string = root): string {
     join(root, 'specrun.config.json'),
     JSON.stringify({ verify: [{ name: 'ok', command: 'true' }] }),
   );
-  const dir = join(specsRoot, 'docs', 'demo');
+  const dir = join(specsRoot, 'specrun', 'specs', 'demo');
   mkdirSync(join(dir, 'tasks'), { recursive: true });
   writeFileSync(
     join(dir, 'tasks.yaml'),

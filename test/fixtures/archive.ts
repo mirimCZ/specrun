@@ -13,7 +13,7 @@ export const SHELVED = {
   tip: 'abcdef1234',
 } as const;
 
-/** `docs/archive/<spec>/history.json` with one done task `OLD-1`, the given deviations and outcome. */
+/** `specrun/specs/archive/<spec>/history.json` with one done task `OLD-1`, the given deviations and outcome. */
 export function writeArchivedHistory(
   root: string,
   spec: string,
@@ -21,7 +21,7 @@ export function writeArchivedHistory(
   deviations: z.input<typeof HistorySchema>['deviations'] = [],
   outcome?: z.input<typeof HistorySchema>['outcome'],
 ): void {
-  const dir = join(root, 'docs', 'archive', spec);
+  const dir = join(root, 'specrun', 'specs', 'archive', spec);
   mkdirSync(dir, { recursive: true });
   const history: z.input<typeof HistorySchema> = {
     version: 1,

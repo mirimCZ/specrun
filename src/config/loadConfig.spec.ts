@@ -35,7 +35,7 @@ describe('loadConfig', () => {
   it('loads a minimal config and expands ~/ in transcriptsDir', () => {
     writeConfig({ verify: [{ name: 'test', command: 'npm test' }] });
     const config = loadConfig(dir, { homedir });
-    expect(config.specsDir).toBe('docs');
+    expect(config.specsDir).toBe('specrun/specs');
     expect(config.transcriptsDir).toBe('/home/tester/.specrun/runs');
   });
 

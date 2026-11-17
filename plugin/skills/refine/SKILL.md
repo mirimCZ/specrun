@@ -15,7 +15,7 @@ user decide quickly through well-designed choices.
 Before asking anything, learn what the codebase already answers:
 
 - Read the relevant code, `CLAUDE.md`, and related specs in the project's specs folder
-  (`specsDir` in `specrun.config.json`, default `docs/`). Decision logs and resolved questions
+  (`specsDir` in `specrun.config.json`, default `specrun/specs/`). Decision logs and resolved questions
   of earlier specs are binding unless the user reopens them.
 - Find existing patterns the solution should reuse (modules, components, data shapes, naming,
   error handling, translations) and the exact files it would touch.

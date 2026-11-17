@@ -32,14 +32,14 @@ function task(id: string, overrides: Partial<SpecTask> = {}): SpecTask {
   };
 }
 
-/** Writes `docs/<name>/tasks.yaml` and a brief for every task unless listed in `withoutBrief`. */
+/** Writes `specrun/specs/<name>/tasks.yaml` and a brief for every task unless listed in `withoutBrief`. */
 function writeSpec(name: string, tasks: SpecTask[], withoutBrief: string[] = []): string {
   return writeSpecFile(name, stringify({ title: 'Demo', tasks }), withoutBrief);
 }
 
-/** Writes `yaml` as `docs/<name>/tasks.yaml` with briefs for every `- id:` it lists. */
+/** Writes `yaml` as `specrun/specs/<name>/tasks.yaml` with briefs for every `- id:` it lists. */
 function writeSpecFile(name: string, yaml: string, withoutBrief: string[] = []): string {
-  const dir = join(repo, 'docs', name);
+  const dir = join(repo, 'specrun', 'specs', name);
   mkdirSync(join(dir, 'tasks'), { recursive: true });
   writeFileSync(join(dir, 'tasks.yaml'), yaml);
   for (const [, id] of yaml.matchAll(/^\s*- id: (\S+)$/gm)) {
@@ -251,8 +251,8 @@ describe('listSpecs', () => {
   it('lists folders with a tasks.yaml, ignoring the others', () => {
     writeSpec('v2', [task('A-1')]);
     writeSpec('v1', [task('A-1')]);
-    mkdirSync(join(repo, 'docs', 'notes'));
-    writeFileSync(join(repo, 'docs', 'README.md'), '');
+    mkdirSync(join(repo, 'specrun', 'specs', 'notes'));
+    writeFileSync(join(repo, 'specrun', 'specs', 'README.md'), '');
     expect(listSpecs(repo, config)).toEqual(['v1', 'v2']);
   });
 

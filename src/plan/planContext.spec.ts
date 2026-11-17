@@ -25,9 +25,9 @@ describe('renderPlanContext feature map', () => {
       ...base,
       files: [],
       request: null,
-      featureMap: 'docs/features/README.md',
+      featureMap: 'specrun/features/README.md',
     });
-    expect(text).toContain('- Feature map: docs/features/README.md');
+    expect(text).toContain('- Feature map: specrun/features/README.md');
     expect(text).not.toContain('No feature map');
   });
 

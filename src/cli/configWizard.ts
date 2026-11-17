@@ -11,8 +11,6 @@ const GUESSED_SCRIPTS = ['typecheck', 'lint', 'test'] as const;
 // Exits 1 on purpose: a run with unconfigured verification must not pass silently.
 export const PLACEHOLDER_CHECK = 'echo "configure the check command" && exit 1';
 const CHECK_TAIL_LINES = 15;
-/** Proposed for a new config only: an existing one without `specsDir` keeps the schema default. */
-export const NEW_SPECS_DIR = 'spec';
 
 /** Lockfile → package manager and its reproducible install, first match wins. */
 const LOCKFILES: readonly { file: string; pm: string; setup: string }[] = [
@@ -106,14 +104,13 @@ export async function detectDefaults(
 export function parseExisting(raw: unknown): Existing {
   const parsed = ExistingSchema.safeParse(raw);
   if (!parsed.success) return {};
-  // Its specs live in the schema default, so prefilling `spec` would lose them on Enter.
-  return { ...parsed.data, specsDir: parsed.data.specsDir ?? DEFAULT_SPECS_DIR };
+  return parsed.data;
 }
 
 /** `--yes`, and the prefill of every question. */
 export function defaultAnswers(defaults: ProjectDefaults, existing: Existing): WizardAnswers {
   return {
-    specsDir: existing.specsDir ?? NEW_SPECS_DIR,
+    specsDir: existing.specsDir ?? DEFAULT_SPECS_DIR,
     worktree: existing.worktree ?? true,
     worktreeFiles: existing.worktreeFiles ?? [],
     setup: existing.setup === undefined ? defaults.setup : existing.setup,

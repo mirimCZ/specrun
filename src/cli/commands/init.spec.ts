@@ -49,7 +49,7 @@ describe('specrun init --yes', () => {
     writeFileSync(join(dir, 'pnpm-lock.yaml'), '');
     await init('--yes');
     expect(config()).toEqual({
-      specsDir: 'spec',
+      specsDir: 'specrun/specs',
       worktree: true,
       setup: 'pnpm install --frozen-lockfile',
       verify: [{ name: 'check', command: 'pnpm run typecheck && pnpm run test' }],
@@ -86,7 +86,7 @@ describe('specrun init --yes', () => {
     expect(read('specrun.config.json')).toBe('{"custom":true}');
     await init('--yes', '--force');
     // An existing config without the key keeps its specs where the schema default puts them.
-    expect(config()).toMatchObject({ custom: true, specsDir: 'docs', worktree: true });
+    expect(config()).toMatchObject({ custom: true, specsDir: 'specrun/specs', worktree: true });
   });
 });
 
@@ -109,7 +109,7 @@ describe('specrun init in a terminal', () => {
     ]);
 
     expect(prompts).toEqual([
-      'Folder with the specs [spec]: ',
+      'Folder with the specs [specrun/specs]: ',
       'Use a worktree [Y/n] ',
       'Copy ignored files into new worktrees (.env)? [Y/n] ',
       'Setup command for a new worktree (- for none) [npm ci]: ',
