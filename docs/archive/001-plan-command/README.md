@@ -1,5 +1,7 @@
 # Plan Command
 
+> Archived on 2026-11-17 by `specrun archive`. The full spec folder (briefs, prompts, run log) is in git at `de85a1c`: `git ls-tree -r --name-only de85a1c -- docs/001-plan-command`.
+
 `specrun plan -n <name>` starts an interactive Claude Code planning session for a new or existing
 spec. The session follows a fixed sequence: context, refine with a checklist, a gate, write-spec,
 validation. specrun records the session's token usage in the spec's run log, so planning costs

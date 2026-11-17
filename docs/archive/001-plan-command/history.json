@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "spec": "001-plan-command",
+  "title": "Plan Command",
+  "archivedAt": "2026-11-17T19:49:50.630Z",
+  "commit": "de85a1c2226fb53fe84149376ac509e1628945cf",
+  "outcome": {
+    "kind": "merged",
+    "shelved": null
+  },
+  "samples": [
+    {
+      "spec": "001-plan-command",
+      "task": "PL-1",
+      "model": "strong",
+      "size": "M",
+      "turns": 12,
+      "costUsd": 0.7059032000000001,
+      "peakContext": 45333,
+      "sessions": 1,
+      "verifyRounds": 2,
+      "deviations": 1,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "001-plan-command",
+      "task": "PL-2",
+      "model": "default",
+      "size": "M",
+      "turns": 18,
+      "costUsd": 0.3337349,
+      "peakContext": 44717,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 1,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "001-plan-command",
+      "task": "PL-3",
+      "model": "default",
+      "size": "M",
+      "turns": 9,
+      "costUsd": 0.22039859999999997,
+      "peakContext": 36894,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 1,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "001-plan-command",
+      "task": "PL-4",
+      "model": "default",
+      "size": "M",
+      "turns": 7,
+      "costUsd": 0.1236216,
+      "peakContext": 23336,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "001-plan-command",
+      "task": "PL-5",
+      "model": "default",
+      "size": "S",
+      "turns": 6,
+      "costUsd": 0.09447470000000001,
+      "peakContext": 17337,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    }
+  ],
+  "deviations": [
+    {
+      "spec": "001-plan-command",
+      "task": "PL-1",
+      "kind": "scope",
+      "decision": null,
+      "what": "Changed the version in package.json and package-lock.json from 0.0.0 to 0.1.0.",
+      "why": "src/plugin/templates.spec.ts ('plugin.json carries the package version') was already failing before this task. Commit df61f24 'chore(plugin): bump version to 0.1.0' changed plugin.json only. The verify gate stayed red until the two matched, so I followed the deliberate bump instead of reverting it.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "001-plan-command",
+      "task": "PL-2",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "--resume with an existing spec but no folder yet resolves a new number; resume then errors as no earlier session. --file is read relative to deps.cwd; unreadable file throws spec-invalid.",
+      "why": "The brief does not say how relative paths or unreadable request files behave.",
+      "question": {
+        "text": "How should --file be resolved and what if unreadable?",
+        "options": [
+          "relative to cwd, error spec-invalid",
+          "relative to repo root"
+        ],
+        "chosen": "relative to cwd, error spec-invalid"
+      },
+      "reviewed": true
+    },
+    {
+      "spec": "001-plan-command",
+      "task": "PL-3",
+      "kind": "scope",
+      "decision": null,
+      "what": "With planning data but no finished tasks, stats text prints 'No finished tasks yet.' followed by the Planning table.",
+      "why": "Planning data should stay visible for specs with no samples.",
+      "question": null,
+      "reviewed": true
+    }
+  ]
+}
