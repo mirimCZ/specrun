@@ -1,0 +1,24 @@
+# Feature Map Bootstrap — tasks read by specrun (authored; specrun never writes this file, task
+# status lives in events.jsonl). Task ids FB-n, in dependency order.
+# needs: tasks that must be done first (their notes go into the prompt); `all` = every other task.
+# model: strong for tasks that need the stronger model, default otherwise (may be omitted).
+# size: S · M · L — the expected turns and cost (config `sizes`).
+# Strong tasks: none — skill text and docs only.
+
+title: Feature Map Bootstrap
+tasks:
+  - id: FB-1
+    phase: 1
+    title: Bootstrap mode of the feature-map skill
+    needs: []
+    size: S
+  - id: FB-2
+    phase: 1
+    title: 'specrun feature map: run, specs, setup areas'
+    needs: [FB-1]
+    size: M
+  - id: FB-3
+    phase: 1
+    title: 'specrun feature map: insights, knowledge, README, verify'
+    needs: [FB-2]
+    size: M
