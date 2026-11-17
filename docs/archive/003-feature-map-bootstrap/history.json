@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "spec": "003-feature-map-bootstrap",
+  "title": "Feature Map Bootstrap",
+  "archivedAt": "2026-11-17T19:49:50.729Z",
+  "commit": "5ca9f06f7e6a2b431a1182112866b87aa7f9e905",
+  "outcome": {
+    "kind": "merged",
+    "shelved": null
+  },
+  "samples": [
+    {
+      "spec": "003-feature-map-bootstrap",
+      "task": "FB-1",
+      "model": "default",
+      "size": "S",
+      "turns": 6,
+      "costUsd": 0.0855288,
+      "peakContext": 17617,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "003-feature-map-bootstrap",
+      "task": "FB-2",
+      "model": "default",
+      "size": "M",
+      "turns": 20,
+      "costUsd": 0.29453779999999996,
+      "peakContext": 41877,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "003-feature-map-bootstrap",
+      "task": "FB-3",
+      "model": "default",
+      "size": "M",
+      "turns": 8,
+      "costUsd": 0.1850946,
+      "peakContext": 32212,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    }
+  ],
+  "deviations": []
+}

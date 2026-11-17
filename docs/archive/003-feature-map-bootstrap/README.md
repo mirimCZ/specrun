@@ -1,5 +1,7 @@
 # Feature Map Bootstrap
 
+> Archived on 2026-11-17 by `specrun archive`. The full spec folder (briefs, prompts, run log) is in git at `5ca9f06`: `git ls-tree -r --name-only 5ca9f06 -- docs/003-feature-map-bootstrap`.
+
 Creates a feature map for an existing repository. The `feature-map` skill gets a bootstrap mode:
 an inventory of cheap signals, then a proposed feature list that the user approves, then draft docs
 per area, assembly and `specrun features check`. specrun's own map is created unattended as
