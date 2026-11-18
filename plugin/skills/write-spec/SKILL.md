@@ -60,16 +60,21 @@ Each session pays a fixed cost (system prompt, CLAUDE.md, protocol, plus reading
 files), and then every turn re-reads the whole growing context. Tasks with many new files and
 their tests run long and cost several times more — mostly fixing tests late in the session.
 
-Every task gets a **size** `S`, `M` or `L`. The expected turn range of each size is in the
-project's `specrun.config.json` under `sizes` (defaults: S 10–25, M 20–45, L 40–70 turns;
-`specrun stats --calibrate` tunes them from real runs). Read the configured ranges before sizing.
+Every task gets a **size** `XS`, `S`, `M`, `L` or `XL`. The expected turn range of each size is
+in the project's `specrun.config.json` under `sizes` (defaults: XS 5–15, S 10–25, M 20–45,
+L 40–70, XL 60–110 turns; `specrun stats --calibrate` tunes them from real runs). Read the
+configured ranges before sizing.
 
+- **XS** — a one-spot change in a file or two, nothing new to test (a copy fix, a moved prop, a
+  config value); typical for fix tasks from a review.
 - **S** — 1–3 changed files in one folder, no new test suite of its own (a small module, wiring,
   docs).
 - **M** (the target) — one coherent commit of **3–8 changed files incl. tests**, in one layer.
   A medium feature (~15–25 files) is typically **3–5 tasks**.
 - **L** — only when splitting would make two tasks share almost all of their Read-first list
-  (e.g. a component with several states and its test suite). Anything bigger is split.
+  (e.g. a component with several states and its test suite).
+- **XL** — rare: work that must land in one commit and can't be split, such as a mechanical
+  rename or migration across many files. Anything bigger is split.
 - **Merge** tasks that would each be S and share most of their Read-first list (same folder or
   layer) — e.g. two pure-logic modules in one folder, a module and its wiring into the caller,
   a follow-up that only adds translations / docs.
@@ -119,7 +124,7 @@ every `<placeholder>`; delete optional comment blocks you don't use. Don't autho
 — specrun generates it from its run events.
 
 **tasks.yaml** — the machine-readable plan: `title`, optional `branch`, and one entry per task
-`{ id, title, phase, needs, model: default | strong, size: S | M | L }` in dependency order.
+`{ id, title, phase, needs, model: default | strong, size: XS | S | M | L | XL }` in dependency order.
 `needs` lists task ids of this spec (`[]` when none, `all` = every other task); no cycles.
 `model` may be omitted for `default`; the header comment says why the strong tasks were picked
 (see **Model** above). No task status — specrun keeps it in `events.jsonl`.

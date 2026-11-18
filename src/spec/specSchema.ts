@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SIZE_NAMES } from '../config/configSchema.js';
 
 export const TASK_ID_PATTERN = /^[A-Z][A-Z0-9]*-[0-9]+$/;
 
@@ -30,7 +31,7 @@ export const TaskSchema = z.strictObject({
   /** `all` = every other task of the spec. */
   needs: z.union([z.array(TaskIdSchema), z.literal('all')]).default([]),
   model: ModelSchema,
-  size: z.enum(['S', 'M', 'L']).default('M'),
+  size: z.enum(SIZE_NAMES).default('M'),
   /** Feature ids the task touches; only `specrun features check` validates them (FMD-7). */
   features: z.array(z.string().min(1)).default([]),
   ...IgnoredStateFields,

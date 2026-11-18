@@ -182,6 +182,29 @@ tasks:
     expect(git(repo, 'log', '-1', '--format=%s')).toBe('docs(demo): review deviations');
   });
 
+  it('neither commits nor runs a spec the review left invalid', async () => {
+    finish(true);
+    const review = (): Promise<number> => {
+      writeFileSync(
+        join(specDir, 'tasks.yaml'),
+        `title: Demo
+tasks:
+  - { id: D-1, title: First, phase: 1, needs: [], model: default, size: S }
+  - { id: D-2, title: Second, phase: 1, needs: [D-1], model: strong, size: M }
+  - { id: D-3, title: Fix, phase: 2, needs: [], model: default, size: XXS }
+`,
+      );
+      writeFileSync(join(specDir, 'tasks', 'D-3.md'), '# D-3\n');
+      return Promise.resolve(0);
+    };
+    const { calls, prompts } = await answer([''], { review });
+
+    expect(prompts).toEqual(['Run specrun review on the finished specs? [Y/n] ']);
+    expect(calls.join('')).toContain('Not committing: the review left an invalid spec');
+    expect(calls.join('')).toContain('tasks.2.size: ');
+    expect(git(repo, 'log', '-1', '--format=%s')).toBe('done');
+  });
+
   it('does not offer the close over changes that were there before', async () => {
     finish(false);
     writeFileSync(join(repo, 'scratch.txt'), 'mine\n');

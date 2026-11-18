@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-export type SizeName = 'S' | 'M' | 'L';
+/** Smallest to largest; stats list sizes in this order. */
+export const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL'] as const;
+export type SizeName = (typeof SIZE_NAMES)[number];
 
 const TurnsSchema = z.tuple([z.number().int().nonnegative(), z.number().int().positive()]);
 
@@ -11,9 +13,11 @@ export const SizeSchema = z.strictObject({
 export type Size = z.infer<typeof SizeSchema>;
 
 export const DEFAULT_SIZES: Readonly<Record<SizeName, Size>> = {
+  XS: { turns: [5, 15], usd: 0.3 },
   S: { turns: [10, 25], usd: 0.6 },
   M: { turns: [20, 45], usd: 1.2 },
   L: { turns: [40, 70], usd: 2.5 },
+  XL: { turns: [60, 110], usd: 4.5 },
 };
 
 /** Kept under one `specrun/` folder so the feature map never sits among the specs (`run --all`). */
@@ -36,9 +40,11 @@ const LimitsSchema = z.strictObject({
 });
 
 const SizesSchema = z.strictObject({
+  XS: SizeSchema.default(DEFAULT_SIZES.XS),
   S: SizeSchema.default(DEFAULT_SIZES.S),
   M: SizeSchema.default(DEFAULT_SIZES.M),
   L: SizeSchema.default(DEFAULT_SIZES.L),
+  XL: SizeSchema.default(DEFAULT_SIZES.XL),
 });
 
 // Nested objects use `prefault({})` so a partial override (e.g. only `models.strong`) keeps the

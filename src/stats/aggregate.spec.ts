@@ -60,6 +60,11 @@ describe('groupStats', () => {
       ['other', 1],
     ]);
   });
+
+  it('groups by size smallest first', () => {
+    const sizes = ['L', 'XS', 'M'].map((size) => sample({ task: `A-${size}`, size }));
+    expect(groupStats(sizes, 'size').map((g) => g.key)).toEqual(['XS', 'M', 'L']);
+  });
 });
 
 describe('calibrate', () => {
@@ -70,7 +75,6 @@ describe('calibrate', () => {
       sample({ task: 'B-2', size: 'M' }),
     ];
     expect(calibrate(samples, DEFAULT_SIZES)).toEqual([
-      { model: 'default', size: 'M', n: 2, current: DEFAULT_SIZES.M, suggestion: null },
       {
         model: 'default',
         size: 'S',
@@ -78,6 +82,18 @@ describe('calibrate', () => {
         current: DEFAULT_SIZES.S,
         suggestion: { turns: [10, 30], usd: 3 },
       },
+      { model: 'default', size: 'M', n: 2, current: DEFAULT_SIZES.M, suggestion: null },
+    ]);
+  });
+
+  it('lists sizes smallest first', () => {
+    const sizes = ['XL', 'L', 'S', 'XS', 'M'].map((size) => sample({ task: `A-${size}`, size }));
+    expect(calibrate(sizes, DEFAULT_SIZES).map((row) => row.size)).toEqual([
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
     ]);
   });
 });

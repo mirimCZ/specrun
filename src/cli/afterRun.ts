@@ -1,5 +1,6 @@
 import { relative } from 'node:path';
 import type { Config } from '../config/configSchema.js';
+import { SpecrunError } from '../errors.js';
 import { readEvents } from '../events/eventStore.js';
 import { deriveState } from '../events/taskState.js';
 import { createGit } from '../git/git.js';
@@ -36,6 +37,20 @@ export function openTasks(repoRoot: string, config: Config, specs: readonly stri
   return open;
 }
 
+/** Load errors of `specs`' live copies — a review can leave a tasks.yaml the next run rejects. */
+function specProblems(repoRoot: string, config: Config, specs: readonly string[]): string[] {
+  const problems: string[] = [];
+  for (const name of specs) {
+    try {
+      loadSpec(activeSpecFiles(repoRoot, config, name).base, config, name);
+    } catch (error) {
+      if (!(error instanceof SpecrunError)) throw error;
+      problems.push(error.message);
+    }
+  }
+  return problems;
+}
+
 function ask(deps: CliDeps, question: string): Promise<boolean> {
   return askYes(deps.prompter, question);
 }
@@ -62,6 +77,15 @@ export async function afterRun(input: AfterRunInput, deps: CliDeps): Promise<voi
     if (!(await ask(deps, 'Run specrun review on the finished specs?'))) return;
     const dirtyBefore = new Set(await dirty());
     await input.review();
+
+    const problems = specProblems(repoRoot, config, specs);
+    if (problems.length > 0) {
+      deps.stdout(
+        `Not committing: the review left an invalid spec — fix it, then commit and run again.\n` +
+          `${problems.join('\n')}\n`,
+      );
+      return;
+    }
 
     // Only what the review changed is offered; earlier changes are the user's own.
     for (const path of await dirty()) {

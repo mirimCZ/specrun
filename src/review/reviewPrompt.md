@@ -79,7 +79,8 @@ Run another round only when answers open new questions. Never ask "Shall I conti
 - **Fix tasks** for overturned picks and any other code fix — in the spec's `tasks.yaml`, plus one self-contained brief
   per task in `tasks/<ID>.md` (follow the write-spec skill when it is available): next free ID
   from the context, `needs` = the task whose choice is overturned, phase = that task's
-  phase or the next one, a `size` and `model` like comparable tasks. Only add tasks — never edit
+  phase or the next one, a `size` (`XS` | `S` | `M` | `L` | `XL`) and
+  `model` (`default` | `strong`) like comparable tasks. Only add tasks — never edit
   existing ones or `events.jsonl`; statuses change only through `specrun set`.
   Where the next `specrun run` will see them:
   - **Spec has a worktree** — edit the spec files there (the run reads that copy) and offer to

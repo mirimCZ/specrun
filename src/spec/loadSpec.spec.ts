@@ -154,6 +154,13 @@ describe('loadSpec', () => {
     expect(loadError('v1').details).toEqual([expect.stringMatching(/^tasks\.0\.status: /)]);
   });
 
+  it('accepts sizes XS to XL and rejects others', () => {
+    writeSpec('v1', [task('A-1', { size: 'XS' }), task('A-2', { size: 'XL' })]);
+    expect(loadSpec(repo, config, 'v1').spec.tasks.map((t) => t.size)).toEqual(['XS', 'XL']);
+    writeSpecFile('v2', 'tasks:\n  - { id: A-1, title: A, phase: 1, size: XXL }\n');
+    expect(loadError('v2').details).toEqual([expect.stringMatching(/^tasks\.0\.size: /)]);
+  });
+
   it('reports schema issues with their path', () => {
     writeSpec('v1', [task('a-1'), task('A-2', { phase: -1 })]);
     const error = loadError('v1');

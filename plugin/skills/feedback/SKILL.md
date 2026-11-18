@@ -42,7 +42,7 @@ Compare each task against its size group's p50/p90 (`stats` groups) before calli
 | `ambiguity` deviations — each has the agent's `question`, `options` and `chosen`                  | The user confirms each pick (section 3); a question that recurs → decide it up front in write-spec          |
 | `scope` deviations                                                                                | write-spec cutting rules                                                                                    |
 | `constraint` deviations (permissions, missing tools)                                              | The project's CLAUDE.md / config                                                                            |
-| Task turns outside its size range, `budgetExceeded`, or a `calibration` entry with a `suggestion` | Config `sizes` and write-spec's sizing guidance (S/M/L definitions)                                         |
+| Task turns outside its size range, `budgetExceeded`, or a `calibration` entry with a `suggestion` | Config `sizes` and write-spec's sizing guidance (XS–XL definitions)                                         |
 | `peakContext` far above the p90 of its group                                                      | Split rules in write-spec (Read-first > ~10 entries, > 8 changed files)                                     |
 
 Read the actual brief or deviation text before proposing a wording change; don't propose from

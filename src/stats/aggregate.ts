@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { Size, SizeName } from '../config/configSchema.js';
+import { SIZE_NAMES, type Size, type SizeName } from '../config/configSchema.js';
 import type { Deviation, PlanMetrics, SpecrunEvent } from '../events/eventSchema.js';
 import type { SpecState } from '../events/taskState.js';
 import type { PlanningSummary } from './jsonOutput.js';
@@ -180,6 +180,15 @@ function distribution(values: number[]): Distribution {
   };
 }
 
+/** Sizes smallest first, unknown ones (an archived spec's) after them alphabetically. */
+function compareSizes(a: string, b: string): number {
+  const rank = (size: string): number => {
+    const index = (SIZE_NAMES as readonly string[]).indexOf(size);
+    return index === -1 ? SIZE_NAMES.length : index;
+  };
+  return rank(a) - rank(b) || a.localeCompare(b);
+}
+
 function keyOf(sample: TaskSample, by: GroupDimension): string {
   return by === 'task' ? `${sample.spec}/${sample.task}` : sample[by];
 }
@@ -191,7 +200,7 @@ export function groupStats(samples: readonly TaskSample[], by: GroupDimension): 
     groups.set(key, [...(groups.get(key) ?? []), sample]);
   }
   return [...groups]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (by === 'size' ? compareSizes(a, b) : a.localeCompare(b)))
     .map(([key, items]) => ({
       key,
       count: items.length,
@@ -241,5 +250,5 @@ export function calibrate(
               },
       };
     })
-    .sort((a, b) => a.model.localeCompare(b.model) || a.size.localeCompare(b.size));
+    .sort((a, b) => a.model.localeCompare(b.model) || compareSizes(a.size, b.size));
 }
