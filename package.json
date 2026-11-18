@@ -1,6 +1,6 @@
 {
   "name": "@rebel-industry/specrun",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Runs implementation specs task by task with Claude, unattended",
   "type": "module",
   "license": "MIT",

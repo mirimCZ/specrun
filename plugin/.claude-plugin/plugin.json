@@ -1,6 +1,6 @@
 {
   "name": "specrun",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Skills to refine requests and write implementation specs that specrun runs unattended",
   "author": {
     "name": "rebel-industry"
