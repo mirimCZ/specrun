@@ -14,7 +14,7 @@ Run: `specrun run <spec>` (branch `specrun/<spec>`, tasks with model `strong` in
 [tasks.yaml](tasks.yaml)).
 
 <!-- Optional, only when the spec depends on another spec's tasks:
-> **Precondition:** run this spec only **after** `docs/<other>` <TASK-IDS> are `done`.
+> **Precondition:** run this spec only **after** `<specsDir>/<other>` <TASK-IDS> are `done`.
 -->
 
 ---

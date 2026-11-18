@@ -32,18 +32,18 @@ numbers but propose little — outliers dominate.
 
 Compare each task against its size group's p50/p90 (`stats` groups) before calling it an outlier.
 
-| Signal (threshold)                                                                                | Suggests                                                                                                    |
-| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `unreadFirst` non-empty in ≥ 2 tasks, or many reads outside the Read-first list                   | Brief Read-first lists are off → write-spec's Read-first rules (or the briefs of that spec)                 |
-| `topFiles` dominated by whole-file reads (> ~30k chars), `rereads` ≥ 3 in a task                  | Reading guidance (`sed -n`, `grep -n`, read once) in the project's CLAUDE.md or the spec's `TASK_PROMPT.md` |
-| Large Bash results from test / verify commands in `topFiles` / transcripts                        | Quieter commands, or a verify summary script, in the test docs / `TASK_PROMPT.md`                           |
-| phases `test` + `fix` > 40 % of tokens, or `verifyRounds` ≥ 3                                     | Test docs: turn recurring `test-trap` deviations into recipes                                               |
-| Deviations by kind: `spec-bug` / `ambiguity` ≥ 2 in a spec                                        | write-spec analysis rules (check code claims, quote decisions, name signatures)                             |
-| `ambiguity` deviations — each has the agent's `question`, `options` and `chosen`                  | The user confirms each pick (section 3); a question that recurs → decide it up front in write-spec          |
-| `scope` deviations                                                                                | write-spec cutting rules                                                                                    |
-| `constraint` deviations (permissions, missing tools)                                              | The project's CLAUDE.md / config                                                                            |
-| Task turns outside its size range, `budgetExceeded`, or a `calibration` entry with a `suggestion` | Config `sizes` and write-spec's sizing guidance (XS–XL definitions)                                         |
-| `peakContext` far above the p90 of its group                                                      | Split rules in write-spec (Read-first > ~10 entries, > 8 changed files)                                     |
+| Signal (threshold)                                                                                | Suggests                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unreadFirst` non-empty in ≥ 2 tasks, or many reads outside the Read-first list                   | Brief Read-first lists are off → write-spec's Read-first rules (or the briefs of that spec)                                                                    |
+| `topFiles` dominated by whole-file reads (> ~30k chars), `rereads` ≥ 3 in a task                  | Reading guidance (`sed -n`, `grep -n`, read once) in the project's CLAUDE.md or the spec's `TASK_PROMPT.md`                                                    |
+| Large Bash results from test / verify commands in `topFiles` / transcripts                        | Quieter commands, or a verify summary script, in the test docs / `TASK_PROMPT.md`                                                                              |
+| phases `test` + `fix` > 40 % of tokens, or `verifyRounds` ≥ 3                                     | Test docs: fold `test-trap` deviations that recur across specs or cost a lot into short recipes (`specrun deviations --kind test-trap` lists all specs' traps) |
+| Deviations by kind: `spec-bug` / `ambiguity` ≥ 2 in a spec                                        | write-spec analysis rules (check code claims, quote decisions, name signatures)                                                                                |
+| `ambiguity` deviations — each has the agent's `question`, `options` and `chosen`                  | The user confirms each pick (section 3); a question that recurs → decide it up front in write-spec                                                             |
+| `scope` deviations                                                                                | write-spec cutting rules                                                                                                                                       |
+| `constraint` deviations (permissions, missing tools)                                              | The project's CLAUDE.md / config                                                                                                                               |
+| Task turns outside its size range, `budgetExceeded`, or a `calibration` entry with a `suggestion` | Config `sizes` and write-spec's sizing guidance (XS–XL definitions)                                                                                            |
+| `peakContext` far above the p90 of its group                                                      | Split rules in write-spec (Read-first > ~10 entries, > 8 changed files)                                                                                        |
 
 Read the actual brief or deviation text before proposing a wording change; don't propose from
 numbers alone.
@@ -61,7 +61,7 @@ deviation with a `question`), one per line: `<spec>/<task> — <text> → <chose
 Ask the user to confirm or overturn each pick; an overturned pick becomes a follow-up (a fix
 task or a decision in the spec's README §3), never a silent edit.
 
-Target files are real paths (`docs/<spec>/TASK_PROMPT.md`, `plugin/skills/write-spec/SKILL.md`,
+Target files are real paths (`<specsDir>/<spec>/TASK_PROMPT.md`, `plugin/skills/write-spec/SKILL.md`,
 the project's test docs, `CLAUDE.md`, `specrun.config.json`). Merge proposals that touch the
 same place. Leave out signals that did not fire; end with one line on what looked healthy.
 

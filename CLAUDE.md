@@ -18,14 +18,16 @@ src/
   git/        worktree, commit, parking of blocked work
   verify/     verify steps runner + failure summary
   limits/     plan usage windows, pause policy, waiting
+  process/    child-process runner (spawn with timeout)
   session/    Agent SDK session (AgentSession), specrun MCP tools, prompt, transcripts
   runner/     orchestration loop
   analytics/  per-session metrics from transcripts
+  stats/      aggregation and size calibration behind `specrun stats`
   archive/    archiving finished specs (README + run history)
   plan/        interactive planning sessions (specrun plan), Claude Code transcripts
   review/     `specrun review`: gathered context + instructions for the Claude Code session
   ui/         Ink dashboard
-plugin/       Claude Code plugin: skills refine, write-spec, feedback (.claude/skills links to them)
+plugin/       Claude Code plugin: skills refine, write-spec, plan, feature-map, feedback (loaded as specrun:*)
 spikes/       throwaway experiments — don't import from src/
 ```
 
@@ -41,7 +43,8 @@ spikes/       throwaway experiments — don't import from src/
   message, `src/errors.ts`) for user-facing failures.
 - Naming: `camelCase.ts` modules, `PascalCase.tsx` Ink components, `SCREAMING_CASE` constants.
 - All code, comments and docs in English. Comments explain why, not what.
-- Commits: Conventional Commits, scope = `src/` folder (`events`, `runner`, …) or `plugin`.
+- Commits: Conventional Commits, scope = `src/` folder (`events`, `runner`, …) or `plugin`; docs
+  commits use the docs folder or spec they touch (`docs(v1)`, `docs(003-feature-map-bootstrap)`).
 
 ## Commands
 

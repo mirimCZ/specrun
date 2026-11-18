@@ -5,9 +5,8 @@ description: Plan a spec end to end in one session — read the context, refine 
 
 # Plan
 
-The fixed planning sequence: context → refine → gate → write → validate → commit message. The user no longer
-types refine and write-spec one after another. Normally `specrun plan -n <name>` starts this
-session with the context file in the system prompt (spec name and folder, `new` or its existing
+The fixed planning sequence: context → refine → gate → write → validate → commit message.
+Normally `specrun plan -n <name>` starts this session with the context file in the system prompt (spec name and folder, `new` or its existing
 files, `specsDir`, the feature map, the commit message file, the request in `<request>` tags or
 "ask the user").
 
@@ -65,6 +64,6 @@ existing spec, describe what this session changed. Started by hand (no context) 
 
 ## Final message
 
-As in write-spec §8: the folder, the task list, how the work was cut, defaults and open
+As in write-spec §7: the folder, the task list, how the work was cut, defaults and open
 decisions, and `specrun run <spec>`. Don't commit: once the user exits, `specrun plan` commits the
 spec folder on the current HEAD with that message if the spec loads.

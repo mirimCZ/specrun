@@ -1,6 +1,6 @@
 ---
 name: write-spec
-description: Write an implementation spec that specrun runs unattended — docs/<spec>/ with tasks.yaml (tasks with phase, needs, model and size), README.md (request, analysis, decision log, task overview), a spec-specific TASK_PROMPT.md and one self-contained brief per task in tasks/. Use when the user asks to write something up as a spec, plan or task list for implementation — e.g. "write this up as a spec", "turn this into a spec for specrun", "new spec in docs", "sepiš to jako spec", "zapiš to do docs".
+description: Write an implementation spec that specrun runs unattended — <specsDir>/<spec>/ with tasks.yaml (tasks with phase, needs, model and size), README.md (request, analysis, decision log, task overview), a spec-specific TASK_PROMPT.md and one self-contained brief per task in tasks/. Use when the user asks to write something up as a spec, plan or task list for implementation — e.g. "write this up as a spec", "turn this into a spec for specrun", "new spec in docs", "sepiš to jako spec", "zapiš to do docs".
 ---
 
 # Write spec
@@ -192,13 +192,7 @@ nothing is left.
    the attribution trailer from the system prompt — only when the user asked to commit;
    otherwise tell them it's ready to commit.
 
-## 7. Curate test traps
-
-Before writing a new spec, run `specrun deviations --kind test-trap` — the traps earlier runs
-recorded. Fold the ones that recur (or that cost a lot) into the project's test docs as a short
-recipe, and tell the user which ones you added.
-
-## 8. Final message
+## 7. Final message
 
 Short, in the user's language: the folder, the task list (ID, one line, size, model), how the
 work was cut, which decisions were defaults or still need confirmation, and the run command

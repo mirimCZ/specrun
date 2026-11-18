@@ -1,5 +1,5 @@
-Spec **<Spec Title>** (`docs/<spec>/`), task **{TASK}**. Decision IDs `<PD>-n` refer to the
-decision log in `docs/<spec>/README.md` — open it only for a decision the brief cites but
+Spec **<Spec Title>** (`<spec dir>/`), task **{TASK}**. Decision IDs `<PD>-n` refer to the
+decision log in `<spec dir>/README.md` — open it only for a decision the brief cites but
 doesn't quote.
 
 ## Rules of this spec

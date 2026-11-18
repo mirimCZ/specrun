@@ -2,13 +2,13 @@
 
 Claude Code skills for authoring the specs that `specrun run <spec>` implements task by task:
 
-| Skill         | Use it to                                                                         |
-| ------------- | --------------------------------------------------------------------------------- |
-| `refine`      | Stress-test a request or plan and resolve open decisions with the user            |
-| `write-spec`  | Write `docs/<spec>/` — `tasks.yaml`, README, `TASK_PROMPT.md`, one brief a task   |
-| `plan`        | Run the whole planning sequence in one session (started by `specrun plan`)        |
-| `feature-map` | Create and update the feature docs and overview graph in `featuresDir`            |
-| `feedback`    | Turn `specrun stats` / `deviations` / `analyze` data into reviewed edit proposals |
+| Skill         | Use it to                                                                             |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `refine`      | Stress-test a request or plan and resolve open decisions with the user                |
+| `write-spec`  | Write `<specsDir>/<spec>/` — `tasks.yaml`, README, `TASK_PROMPT.md`, one brief a task |
+| `plan`        | Run the whole planning sequence in one session (started by `specrun plan`)            |
+| `feature-map` | Create and update the feature docs and overview graph in `featuresDir`                |
+| `feedback`    | Turn `specrun stats` / `deviations` / `analyze` data into reviewed edit proposals     |
 
 Project specifics (commit scopes, terminology, test commands) stay in each project's CLAUDE.md;
 the skills read them from there.

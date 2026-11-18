@@ -24,7 +24,7 @@ to look at (symbol or line range) and why. Paths only — never pasted code. -->
 
 - <Concrete change with the real file path, names of new modules / functions / props.>
 - <Translation keys if new UI text is added.>
-- <Docs to annotate: `docs/<other>/<file>.md` — "superseded by <PX>-n".>
+- <Docs to annotate: `<specsDir>/<other>/<file>.md` — "superseded by <PX>-n".>
 
 ## Done when
 
