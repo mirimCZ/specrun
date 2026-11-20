@@ -42,15 +42,24 @@ async function plan(
     id = 'sid-1',
     writeSpec = false,
     message = null as string | null,
+    env = {} as Record<string, string>,
   } = {},
-): Promise<{ launches: (readonly string[])[]; exit: number[]; out: string; err: string }> {
-  const deps = { ...captureDeps(dir), interactive };
+): Promise<{
+  launches: (readonly string[])[];
+  envs: unknown[];
+  exit: number[];
+  out: string;
+  err: string;
+}> {
+  const deps = { ...captureDeps(dir), interactive, env };
+  const envs: unknown[] = [];
   const launches: (readonly string[])[] = [];
   const exit: number[] = [];
   const program = new Command('specrun');
   register(program, deps, {
-    launch: (_cmd, launchArgs) => {
+    launch: (_cmd, launchArgs, opts) => {
       launches.push(launchArgs);
+      envs.push(opts.env);
       if (writeSpec) writeValidSpec();
       if (message !== null) writeFileSync(commitFile(), message);
       return Promise.resolve(result);
@@ -61,8 +70,24 @@ async function plan(
     claudeConfigDir: claude,
   });
   await program.parseAsync(['node', 'specrun', 'plan', ...args]);
-  return { launches, exit, out: deps.out.join(''), err: deps.err.join('') };
+  return { launches, envs, exit, out: deps.out.join(''), err: deps.err.join('') };
 }
+
+function writeAccounts(): void {
+  const home = join(dir, '.test-home', '.specrun');
+  mkdirSync(home, { recursive: true });
+  writeFileSync(
+    join(home, 'config.json'),
+    JSON.stringify({
+      accounts: [
+        { name: 'lorem', token: { env: 'LOREM_TOKEN' } },
+        { name: 'ipsum', token: { env: 'IPSUM_TOKEN' } },
+      ],
+    }),
+  );
+}
+
+const TOKEN_ENV = { LOREM_TOKEN: 'lorem-token', IPSUM_TOKEN: 'ipsum-token' };
 
 const eventsFile = (): string => join(dir, 'spec', '001-demo', 'events.jsonl');
 
@@ -238,5 +263,37 @@ describe('specrun plan', () => {
     await expect(
       plan(['-n', 'demo'], { result: { code: -1, error: 'spawn claude ENOENT' } }),
     ).rejects.toThrow('Could not start claude');
+  });
+
+  describe('accounts', () => {
+    const tokenOf = (env: unknown): unknown =>
+      (env as Record<string, string | undefined>)['CLAUDE_CODE_OAUTH_TOKEN'];
+
+    it('launches on the priority account', async () => {
+      writeAccounts();
+      const { envs } = await plan(['-n', 'demo'], { env: TOKEN_ENV });
+      expect(tokenOf(envs[0])).toBe('lorem-token');
+    });
+
+    it('--account picks another one', async () => {
+      writeAccounts();
+      const { envs } = await plan(['-n', 'demo', '--account', 'ipsum'], { env: TOKEN_ENV });
+      expect(tokenOf(envs[0])).toBe('ipsum-token');
+    });
+
+    it('fails on an unknown account without launching or writing', async () => {
+      writeAccounts();
+      await expect(
+        plan(['-n', 'demo', '--account', 'dolor'], { env: TOKEN_ENV }),
+      ).rejects.toMatchObject({ code: 'account-unknown' });
+      expect(existsSync(join(dir, '.specrun', 'plan'))).toBe(false);
+    });
+
+    it('--print resolves no token', async () => {
+      writeAccounts();
+      const { out, launches } = await plan(['-n', 'demo', '--print', '--account', 'dolor']);
+      expect(launches).toEqual([]);
+      expect(out).not.toContain('token');
+    });
   });
 });

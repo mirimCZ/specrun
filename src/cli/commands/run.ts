@@ -16,8 +16,6 @@ import {
   type RunSpecDeps,
   type RunSpecOptions,
 } from '../../runner/runSpec.js';
-import { prepareAccounts } from '../../accounts/prepare.js';
-import { loadGlobalConfig } from '../../config/globalConfig.js';
 import { probeUsage } from '../../session/probeUsage.js';
 import { createSdkSession } from '../../session/sdkSession.js';
 import type { RunReporter } from '../../runner/reporter.js';
@@ -38,6 +36,7 @@ import { createRunControls, type RunControls } from '../runControls.js';
 import { table } from '../table.js';
 import { runClose } from './close.js';
 import { setupConfig } from './init.js';
+import { accountsFor } from '../accountsFor.js';
 import { runReview } from './review.js';
 
 // Same relative path from src/cli/commands (tsx, vitest) and dist/cli/commands (build).
@@ -194,23 +193,17 @@ export function register(
         return;
       }
       // MAD-15: tokens are resolved once, before any work starts; a failure ends the command here.
-      const prepared = await prepareAccounts(
-        {
-          config,
-          global: loadGlobalConfig({ homedir: deps.homedir }),
-          selection:
-            flags.account === undefined ? { kind: 'all' } : { kind: 'pinned', name: flags.account },
-        },
-        { env: deps.env, run: runCommand, platform: process.platform, cwd: repoRoot },
+      const accounts = await accountsFor(
+        repoRoot,
+        config,
+        flags.account === undefined ? { kind: 'all' } : { kind: 'pinned', name: flags.account },
+        deps,
       );
-      for (const warning of prepared.warnings) deps.stderr(`warning: ${warning}\n`);
-      const [firstAccount, ...otherAccounts] = prepared.accounts.map(
-        ({ env, ...account }): RunAccount => ({
-          ...account,
-          env,
-          probe: () => probeUsage({ cwd: repoRoot, ...(env === null ? {} : { env }) }),
-        }),
-      );
+      const [firstAccount, ...otherAccounts] = accounts.map(({ env, ...account }): RunAccount => ({
+        ...account,
+        env,
+        probe: () => probeUsage({ cwd: repoRoot, ...(env === null ? {} : { env }) }),
+      }));
       if (firstAccount === undefined) throw new SpecrunError('account-unknown', 'no account');
       const isTTY = overrides.isTTY ?? process.stdout.isTTY === true;
 

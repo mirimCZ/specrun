@@ -25,6 +25,7 @@ import {
 } from '../../process/run.js';
 import { formatTokens } from '../../progress/renderProgress.js';
 import { loadSpec, SPEC_FILE } from '../../spec/loadSpec.js';
+import { accountForSession } from '../accountsFor.js';
 import { activeSpecFiles, type CliDeps } from '../cliDeps.js';
 
 /** Seams for tests: the Claude Code process, git, the exit code, the session id and the config dir. */
@@ -41,6 +42,7 @@ export interface PlanFlags {
   file?: string;
   resume?: boolean;
   print?: boolean;
+  account?: string;
 }
 
 function summaryLine(metrics: PlanMetrics | null): string {
@@ -115,6 +117,9 @@ export async function runPlan(
     ]);
   }
 
+  // MAD-15: the token is resolved before anything is written; an error ends the command here.
+  const account = await accountForSession(repoRoot, config, flags.account, deps);
+
   if (folder.created) createPlanFolder(folder);
   mkdirSync(join(repoRoot, '.specrun', 'plan'), { recursive: true });
   writeFileSync(contextFile, context);
@@ -124,7 +129,7 @@ export async function runPlan(
 
   const result = await (overrides.launch ?? runInteractive)('claude', args, {
     cwd: repoRoot,
-    env: deps.env,
+    env: account.env ?? deps.env,
   });
   if (result.error !== null) {
     throw new SpecrunError('claude-missing', 'Could not start claude', [
@@ -256,6 +261,7 @@ export function register(program: Command, deps: CliDeps, overrides: PlanOverrid
     .option('-f, --file <request.md>', 'file with the request, handed to Claude verbatim')
     .option('--resume', 'continue the spec’s latest planning session')
     .option('--print', 'print what Claude would get instead of starting it')
+    .option('--account <name>', 'start Claude on this account (default: the priority account)')
     .action(async (flags: PlanFlags) => {
       const repoRoot = findRepoRoot(deps.cwd);
       const code = await runPlan(flags, repoRoot, deps, overrides);

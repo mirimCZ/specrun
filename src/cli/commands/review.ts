@@ -14,6 +14,7 @@ import {
 import { buildReview } from '../../review/buildReview.js';
 import { markReviewed } from '../../review/markReviewed.js';
 import { gatherReviewContext } from '../../review/reviewContext.js';
+import { accountForSession } from '../accountsFor.js';
 import type { CliDeps } from '../cliDeps.js';
 import { formatListing, selectDeviations } from '../deviationListing.js';
 import { askYes } from '../prompter.js';
@@ -29,6 +30,7 @@ export interface ReviewFlags {
   kind?: string;
   print?: boolean;
   includeReviewed?: boolean;
+  account?: string;
 }
 
 /**
@@ -89,6 +91,9 @@ export async function runReview(
     ]);
   }
 
+  // MAD-15: the token is resolved before anything is written; an error ends the command here.
+  const account = await accountForSession(repoRoot, config, flags.account, deps);
+
   // A file, not an argument: the context outgrows the per-argument limit of some systems.
   const dir = join(repoRoot, '.specrun', 'review');
   mkdirSync(dir, { recursive: true });
@@ -100,7 +105,7 @@ export async function runReview(
   const result = await (overrides.launch ?? runInteractive)(
     'claude',
     ['--append-system-prompt-file', file, review.message],
-    { cwd: repoRoot, env: deps.env },
+    { cwd: repoRoot, env: account.env ?? deps.env },
   );
   if (result.error !== null) {
     throw new SpecrunError('claude-missing', 'Could not start claude', [
@@ -139,6 +144,7 @@ export function register(program: Command, deps: CliDeps, overrides: ReviewOverr
     .option('--kind <kind>', `only one kind: ${DEVIATION_KINDS.join(' | ')}`)
     .option('--print', 'print what Claude would get instead of starting it')
     .option('--include-reviewed', 'also the deviations an earlier review marked')
+    .option('--account <name>', 'start Claude on this account (default: the priority account)')
     .action(async (names: string[], flags: ReviewFlags) => {
       const repoRoot = findRepoRoot(deps.cwd);
       const config = loadConfig(repoRoot);

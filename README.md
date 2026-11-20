@@ -118,7 +118,8 @@ Only you flip `draft` to `verified` — do it gradually, e.g. when a spec touche
 `specrun plan -n <name>` creates the next numbered spec folder (`docs/<NNN>-<name>/`) and starts
 Claude Code on this terminal with `/specrun:plan <spec>`. `-f <file>` hands over a request file
 verbatim, `--resume` continues the spec's latest planning session, `--print` shows what Claude
-would get. The `plan` skill runs fixed phases: **context** (read only what the request touches),
+would get. `--account <name>` starts Claude on that account instead of the priority account
+(see [Global config](#global-config)). The `plan` skill runs fixed phases: **context** (read only what the request touches),
 **refine** (checklist, then interactive questions), **gate** ("Write the spec now?"), **write**
 (write-spec into the prepared folder), **validate** (`specrun status <spec>`) and **commit
 message** (a proposal for the spec's commit).
@@ -277,21 +278,21 @@ config doesn't define, you get a warning, not an error.
 
 ## Other commands
 
-| Command                                                                   | What it does                                                                                   |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `specrun plan -n <name> [-f <file>] [--resume] [--print]`                 | Plan a spec with Claude Code on this terminal (see Planning)                                   |
-| `specrun accounts`                                                        | List the Claude accounts in priority order with token source, limits and a usage probe         |
-| `specrun status [spec] [--json]`                                          | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
-| `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`         | Override a task's status by hand (recorded in the log)                                         |
-| `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]`    | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |
-| `specrun deviations [spec...] [--kind <kind>]`                            | What agents reported as spec bugs, ambiguities, constraints, test traps, scope                 |
-| `specrun review [spec...] [--kind <kind>] [--include-reviewed] [--print]` | Review those deviations with Claude Code on this terminal (below)                              |
-| `specrun analyze [spec] [--task <id>] [--reindex]`                        | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
-| `specrun archive <spec> [--force]`                                        | Archive a finished spec, remove its merged worktree and branch                                 |
-| `specrun close <spec> [--into <branch>] [--force]`                        | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
-| `specrun close --all [--into <branch>] [--force]`                         | The same for `specrun/all`: one merge, then archive every spec that ran there                  |
-| `specrun shelve <spec> --reason <text> [--remote <name>] [--no-push]`     | Push the spec branch, archive the spec without merging it, remove the worktree                 |
-| `specrun unshelve <spec> [--into <branch>] [--force] [--no-merge]`        | Bring a shelved spec back, merge it like `close` and archive it as merged                      |
+| Command                                                                      | What it does                                                                                   |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `specrun plan -n <name> [-f <file>] [--resume] [--print] [--account <name>]` | Plan a spec with Claude Code on this terminal (see Planning)                                   |
+| `specrun accounts`                                                           | List the Claude accounts in priority order with token source, limits and a usage probe         |
+| `specrun status [spec] [--json]`                                             | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
+| `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`            | Override a task's status by hand (recorded in the log)                                         |
+| `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]`       | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |
+| `specrun deviations [spec...] [--kind <kind>]`                               | What agents reported as spec bugs, ambiguities, constraints, test traps, scope                 |
+| `specrun review [spec...] [--kind <kind>] [--include-reviewed] [--print]`    | Review those deviations with Claude Code on this terminal (below)                              |
+| `specrun analyze [spec] [--task <id>] [--reindex]`                           | Per-session analytics from the transcripts: file reads and edits, rereads, tool and Bash calls |
+| `specrun archive <spec> [--force]`                                           | Archive a finished spec, remove its merged worktree and branch                                 |
+| `specrun close <spec> [--into <branch>] [--force]`                           | Merge the spec branch (fast-forward, else a merge commit + verify) and archive the spec        |
+| `specrun close --all [--into <branch>] [--force]`                            | The same for `specrun/all`: one merge, then archive every spec that ran there                  |
+| `specrun shelve <spec> --reason <text> [--remote <name>] [--no-push]`        | Push the spec branch, archive the spec without merging it, remove the worktree                 |
+| `specrun unshelve <spec> [--into <branch>] [--force] [--no-merge]`           | Bring a shelved spec back, merge it like `close` and archive it as merged                      |
 
 `status`, `stats`, `deviations` and `analyze` work from another terminal during a run, and all
 of them take `--json` (format in [`docs/json-output.md`](docs/json-output.md)).
@@ -326,7 +327,8 @@ spec's README and adds fix tasks (with briefs) for overturned picks, so `specrun
 apply them. When Claude exits, specrun asks whether to mark the deviations as reviewed (in
 `events.jsonl`, or `history.json` of an archived spec — commit it with the review's edits); the
 next `specrun review` then shows only new ones, `--include-reviewed` all of them. `--print` shows
-what Claude would get.
+what Claude would get. `--account <name>` starts Claude on that account instead of the priority
+account.
 
 ## Development
 

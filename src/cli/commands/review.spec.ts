@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -50,7 +50,24 @@ interface Launch {
   cmd: string;
   args: readonly string[];
   cwd: string;
+  env: unknown;
 }
+
+function writeAccounts(): void {
+  const home = join(dir, '.test-home', '.specrun');
+  mkdirSync(home, { recursive: true });
+  writeFileSync(
+    join(home, 'config.json'),
+    JSON.stringify({
+      accounts: [
+        { name: 'lorem', token: { env: 'LOREM_TOKEN' } },
+        { name: 'ipsum', token: { env: 'IPSUM_TOKEN' } },
+      ],
+    }),
+  );
+}
+
+const TOKEN_ENV = { LOREM_TOKEN: 'lorem-token', IPSUM_TOKEN: 'ipsum-token' };
 
 async function review(
   args: string[],
@@ -58,10 +75,11 @@ async function review(
     interactive = true,
     result = { code: 0, error: null } as InteractiveResult,
     answers = [] as string[],
+    env = {} as Record<string, string>,
   } = {},
 ): Promise<{ launches: Launch[]; exit: number[]; out: string; prompts: string[] }> {
   const scripted = createScriptedPrompter(answers);
-  const deps = { ...captureDeps(dir), interactive, prompter: () => scripted.prompter };
+  const deps = { ...captureDeps(dir), interactive, env, prompter: () => scripted.prompter };
   const launches: Launch[] = [];
   const exit: number[] = [];
   const program = new Command('specrun');
@@ -69,7 +87,7 @@ async function review(
     // No git here: every git call fails, so commits and branches are simply unknown.
     run: () => Promise.resolve({ code: 128, stdout: '', stderr: 'no git', durationMs: 0 }),
     launch: (cmd, launchArgs, opts) => {
-      launches.push({ cmd, args: launchArgs, cwd: opts.cwd });
+      launches.push({ cmd, args: launchArgs, cwd: opts.cwd, env: opts.env });
       return Promise.resolve(result);
     },
     setExitCode: (code) => void exit.push(code),
@@ -179,5 +197,36 @@ describe('specrun review', () => {
     await expect(
       review([], { result: { code: -1, error: 'spawn claude ENOENT' } }),
     ).rejects.toThrow('Could not start claude');
+  });
+
+  describe('accounts', () => {
+    const tokenOf = (env: unknown): unknown =>
+      (env as Record<string, string | undefined>)['CLAUDE_CODE_OAUTH_TOKEN'];
+
+    it('launches on the priority account', async () => {
+      writeAccounts();
+      const { launches } = await review([], { env: TOKEN_ENV, answers: ['n'] });
+      expect(tokenOf(launches[0]?.env)).toBe('lorem-token');
+    });
+
+    it('--account picks another one', async () => {
+      writeAccounts();
+      const { launches } = await review(['--account', 'ipsum'], { env: TOKEN_ENV, answers: ['n'] });
+      expect(tokenOf(launches[0]?.env)).toBe('ipsum-token');
+    });
+
+    it('fails on an unknown account without launching', async () => {
+      writeAccounts();
+      await expect(review(['--account', 'dolor'], { env: TOKEN_ENV })).rejects.toMatchObject({
+        code: 'account-unknown',
+      });
+    });
+
+    it('--print resolves no token', async () => {
+      writeAccounts();
+      const { launches, out } = await review(['--print', '--account', 'dolor']);
+      expect(launches).toEqual([]);
+      expect(out).not.toContain('token');
+    });
   });
 });
