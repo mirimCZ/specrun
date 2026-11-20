@@ -27,6 +27,14 @@ describe('probeUsage', () => {
     const call = fake.calls[0];
     expect(typeof call?.prompt).not.toBe('string');
     expect(call?.options).toMatchObject({ cwd: '/work', tools: [] });
+    expect(call?.options && 'env' in call.options).toBe(false);
+  });
+
+  it('passes the given env to query()', async () => {
+    const fake = createFakeQuery([[{ control: 'hang' }]], { usage: USAGE });
+    const env = { CLAUDE_CODE_OAUTH_TOKEN: 'lorem-token' };
+    await probeUsage({ query: fake.query, cwd: '/work', clock: systemClock, env });
+    expect(fake.calls[0]?.options.env).toEqual(env);
   });
 
   it('returns null when the SDK does not answer in time', async () => {

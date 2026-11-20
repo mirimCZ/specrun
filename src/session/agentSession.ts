@@ -42,6 +42,8 @@ export type SegmentInput = {
   /** Transcript path for this segment; called once the session id is known. */
   transcriptFile: (sessionId: string) => string;
   signal: AbortSignal;
+  /** Complete child env for the SDK process (never merged here); null inherits `process.env`. */
+  env: Readonly<Record<string, string | undefined>> | null;
 };
 
 export type SessionObserver = {

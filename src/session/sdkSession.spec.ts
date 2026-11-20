@@ -50,6 +50,7 @@ function segmentInput(overrides: Partial<SegmentInput> = {}): SegmentInput {
     previous: null,
     transcriptFile: (sessionId) => join(dir, 'repo', 'v1', 'SR-6', `${sessionId}-1.jsonl.gz`),
     signal: new AbortController().signal,
+    env: null,
     ...overrides,
   };
 }
@@ -83,7 +84,15 @@ describe('createSdkSession options', () => {
     });
     expect(options?.mcpServers?.['specrun']).toBeDefined();
     expect(options && 'resume' in options).toBe(false);
+    expect(options && 'env' in options).toBe(false);
     expect(fake.closed).toBe(1);
+  });
+
+  it('passes a copy of the given env to query()', async () => {
+    const env = { LOREM: 'ipsum', CLAUDE_CODE_OAUTH_TOKEN: 'lorem-token', UNSET: undefined };
+    const { fake } = await runScript([initMessage(), resultSuccess()], { env });
+    expect(fake.calls[0]?.options.env).toEqual(env);
+    expect(fake.calls[0]?.options.env).not.toBe(env);
   });
 
   it('resumes the given session', async () => {

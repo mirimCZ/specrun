@@ -9,6 +9,8 @@ export type ProbeUsageDeps = {
   cwd: string;
   clock?: Clock;
   timeoutMs?: number;
+  /** Complete child env (e.g. an account token); left out to inherit `process.env`. */
+  env?: Readonly<Record<string, string | undefined>>;
 };
 
 /**
@@ -32,7 +34,13 @@ export async function probeUsage(deps: ProbeUsageDeps): Promise<UsageSnapshot | 
   async function probe(): Promise<UsageSnapshot | null> {
     const q = query({
       prompt: idle(),
-      options: { cwd: deps.cwd, tools: [], settingSources: [], persistSession: false },
+      options: {
+        cwd: deps.cwd,
+        tools: [],
+        settingSources: [],
+        persistSession: false,
+        ...(deps.env === undefined ? {} : { env: { ...deps.env } }),
+      },
     });
     session.q = q;
     await q.initializationResult();

@@ -166,6 +166,7 @@ export function createSdkSession(deps: SdkSessionDeps = {}): AgentSession {
       settingSources: ['project'],
       mcpServers: { [SPECRUN_SERVER]: tools.server },
       abortController: controller,
+      ...(input.env === null ? {} : { env: { ...input.env } }),
       ...(input.resumeSessionId === null ? {} : { resume: input.resumeSessionId }),
     };
 

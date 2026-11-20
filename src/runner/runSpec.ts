@@ -487,6 +487,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
             previous,
             transcriptFile,
             signal,
+            env: null,
           },
           observer,
         );
