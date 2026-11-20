@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { SIZE_NAMES, type Size, type SizeName } from '../config/configSchema.js';
 import type { Deviation, EventOf, PlanMetrics, SpecrunEvent } from '../events/eventSchema.js';
 import type { SpecState } from '../events/taskState.js';
-import type { PlanningSummary, VerifySummary } from './jsonOutput.js';
+import { IMPLICIT_ACCOUNT } from '../accounts/accounts.js';
+import type { AccountSummary, PlanningSummary, VerifySummary } from './jsonOutput.js';
 import type { Spec } from '../spec/specSchema.js';
 
 /** SRD-11: fewer samples than this give no suggestion. */
@@ -185,6 +186,21 @@ export function verifySummary(events: readonly SpecrunEvent[]): VerifySummary | 
     sessionMs,
     steps: [...steps].map(([name, s]) => ({ name, ...timing(s.durations, s.failed) })),
   };
+}
+
+/** MAD-12: what each account did in one spec, in the order accounts first appear in the log. */
+export function accountSummary(events: readonly SpecrunEvent[]): AccountSummary[] {
+  const accounts = new Map<string, AccountSummary>();
+  for (const e of events) {
+    if (e.t !== 'session.finished') continue;
+    const name = e.account ?? IMPLICIT_ACCOUNT;
+    const entry = accounts.get(name) ?? { account: name, segments: 0, turns: 0, costUsd: 0 };
+    entry.segments += 1;
+    entry.turns += e.turns;
+    entry.costUsd += e.costUsd;
+    accounts.set(name, entry);
+  }
+  return [...accounts.values()];
 }
 
 /** Nearest-rank percentile, p in 0..100; 0 for no values. */

@@ -18,6 +18,9 @@ order steps first ran (a step skipped after an earlier failure has fewer `runs`)
 the agent session time, so `sumMs / (sumMs + sessionMs)` is verify's share of the task time.
 Archived specs take it from `history.json`, or from their run log in git at `history.commit` when
 the archive predates it.
+`accounts` has one entry per spec and Claude account (`account`, `segments`, `turns`, `costUsd`),
+summed over the `session.finished` events of the run log in the order accounts first appear; events
+without `account` count as `default` (MAD-12). Archived specs contribute nothing.
 
 ```json
 {
@@ -61,6 +64,9 @@ the archive predates it.
     }
   ],
   "planning": [],
+  "accounts": [
+    { "spec": "demo", "account": "default", "segments": 1, "turns": 12, "costUsd": 0.4 }
+  ],
   "verify": [
     {
       "spec": "demo",

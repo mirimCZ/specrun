@@ -5,7 +5,9 @@ import { SpecrunError } from '../../errors.js';
 import { createGit } from '../../git/git.js';
 import { runCommand } from '../../process/run.js';
 import { formatDuration, formatTokens, formatUsd } from '../../progress/renderProgress.js';
+import { IMPLICIT_ACCOUNT } from '../../accounts/accounts.js';
 import {
+  accountSummary,
   calibrate,
   groupStats,
   planningSummary,
@@ -55,6 +57,19 @@ function planningTable(rows: StatsJson['planning']): string {
       formatTokens(r.outputTokens),
       formatTokens(r.cacheRead),
       formatTokens(r.peakContext),
+    ]),
+  ]);
+}
+
+function accountsTable(rows: StatsJson['accounts']): string {
+  return table([
+    ['SPEC', 'ACCOUNT', 'SEGMENTS', 'TURNS', 'COST'],
+    ...rows.map((r) => [
+      r.spec,
+      r.account,
+      String(r.segments),
+      String(r.turns),
+      formatUsd(r.costUsd),
     ]),
   ]);
 }
@@ -142,6 +157,10 @@ export function register(program: Command, deps: CliDeps): void {
             )
           ).flat(),
         ];
+        const accounts = inputs.flatMap((i) =>
+          accountSummary(i.events).map((a) => ({ spec: i.name, ...a })),
+        );
+        const showAccounts = accounts.some((a) => a.account !== IMPLICIT_ACCOUNT);
         const shelved = shelvedSpecs({ inputs, archived });
         const groups = groupStats(samples, flags.by);
         const calibration = flags.calibrate === true ? calibrate(samples, config.sizes) : null;
@@ -158,6 +177,7 @@ export function register(program: Command, deps: CliDeps): void {
             calibration,
             planning,
             verify,
+            accounts,
           });
           deps.stdout(`${JSON.stringify(output, null, 2)}\n`);
           return;
@@ -166,6 +186,7 @@ export function register(program: Command, deps: CliDeps): void {
           deps.stdout('No finished tasks yet.\n');
           if (planning.length > 0) deps.stdout(`\n${planningTable(planning)}\n`);
           if (verify.length > 0) deps.stdout(`\n${verifyTable(verify, shelved)}\n`);
+          if (showAccounts) deps.stdout(`\n${accountsTable(accounts)}\n`);
           return;
         }
         const rows = groups.map((g) => [
@@ -206,6 +227,7 @@ export function register(program: Command, deps: CliDeps): void {
         if (calibration !== null) deps.stdout(`\n${calibrationTable(calibration)}\n`);
         if (planning.length > 0) deps.stdout(`\n${planningTable(planning)}\n`);
         if (verify.length > 0) deps.stdout(`\n${verifyTable(verify, shelved)}\n`);
+        if (showAccounts) deps.stdout(`\n${accountsTable(accounts)}\n`);
       },
     );
 }

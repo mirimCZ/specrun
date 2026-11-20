@@ -79,6 +79,40 @@ describe('specrun stats', () => {
     expect(out).toMatch(/\s+lorem\s+2\s+0\s+1s/);
   });
 
+  it('shows the accounts table only when a non-default account ran', async () => {
+    const specDir = writeDemoSpec(dir);
+    writeFileSync(join(specDir, 'events.jsonl'), doneTask('D-1', 12, 0.4));
+    expect(await stats()).not.toContain('ACCOUNT');
+    const plain = StatsJsonSchema.parse(JSON.parse(await stats('--json')));
+    expect(plain.accounts).toEqual([
+      { spec: 'demo', account: 'default', segments: 1, turns: 12, costUsd: 0.4 },
+    ]);
+
+    const finished = (account: string) =>
+      eventLine({
+        t: 'session.finished',
+        task: 'D-1',
+        sessionId: null,
+        segment: 1,
+        outcome: 'completed',
+        turns: 5,
+        peakContext: 1,
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheRead: 1,
+        cacheWrite: 1,
+        costUsd: 0.1,
+        durationMs: 1,
+        account,
+      });
+    writeFileSync(join(specDir, 'events.jsonl'), doneTask('D-1', 12, 0.4, finished('lorem')));
+    expect(await stats()).toMatch(
+      /ACCOUNT[\s\S]*demo\s+default\s+1\s+12[\s\S]*demo\s+lorem\s+1\s+5/,
+    );
+    const json = StatsJsonSchema.parse(JSON.parse(await stats('--json')));
+    expect(json.accounts.map((a) => a.account)).toEqual(['default', 'lorem']);
+  });
+
   it('prints a table grouped by the chosen dimension', async () => {
     const specDir = writeDemoSpec(dir);
     writeFileSync(

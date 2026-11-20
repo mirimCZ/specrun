@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SIZES } from '../config/configSchema.js';
 import type { SpecrunEvent } from '../events/eventSchema.js';
 import {
+  accountSummary,
   calibrate,
   groupStats,
   percentile,
@@ -219,5 +220,51 @@ describe('verifySummary', () => {
 
   it('returns null without verify rounds', () => {
     expect(verifySummary([session(1000)])).toBeNull();
+  });
+});
+
+describe('accountSummary', () => {
+  const finished = (account: string | undefined, turns: number, costUsd: number): SpecrunEvent =>
+    ({
+      v: 1,
+      at: '2026-01-01T09:00:00.000Z',
+      runId: 'r1',
+      t: 'session.finished',
+      task: 'D-1',
+      sessionId: 's1',
+      segment: 0,
+      outcome: 'completed',
+      turns,
+      peakContext: 1,
+      inputTokens: 1,
+      outputTokens: 1,
+      cacheRead: 1,
+      cacheWrite: 1,
+      costUsd,
+      durationMs: 1,
+      ...(account === undefined ? {} : { account }),
+    }) as SpecrunEvent;
+
+  it('sums per account in order of first appearance', () => {
+    expect(
+      accountSummary([
+        finished('lorem', 2, 0.5),
+        finished('ipsum', 3, 1),
+        finished('lorem', 4, 0.25),
+      ]),
+    ).toEqual([
+      { account: 'lorem', segments: 2, turns: 6, costUsd: 0.75 },
+      { account: 'ipsum', segments: 1, turns: 3, costUsd: 1 },
+    ]);
+  });
+
+  it('counts events without account as default', () => {
+    expect(accountSummary([finished(undefined, 2, 0.5), finished('default', 1, 0.5)])).toEqual([
+      { account: 'default', segments: 2, turns: 3, costUsd: 1 },
+    ]);
+  });
+
+  it('is empty without session.finished', () => {
+    expect(accountSummary([])).toEqual([]);
   });
 });

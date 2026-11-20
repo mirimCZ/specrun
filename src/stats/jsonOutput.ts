@@ -55,6 +55,15 @@ export const VerifySummarySchema = TimingSchema.extend({
 });
 export type VerifySummary = z.infer<typeof VerifySummarySchema>;
 
+/** Segments (`session.finished`) one account ran in a spec (MAD-12). */
+export const AccountSummarySchema = z.object({
+  account: z.string(),
+  segments: z.number(),
+  turns: z.number(),
+  costUsd: z.number(),
+});
+export type AccountSummary = z.infer<typeof AccountSummarySchema>;
+
 export const DeviationEntrySchema = z.object({
   spec: z.string(),
   task: z.string(),
@@ -102,6 +111,8 @@ export const StatsJsonSchema = z.object({
   planning: z.array(PlanningSummarySchema.extend({ spec: z.string() })),
   /** Specs with verify rounds; additive, `version` stays 1. */
   verify: z.array(VerifySummarySchema.extend({ spec: z.string() })),
+  /** Per spec and account; additive, `version` stays 1. Archived specs contribute nothing. */
+  accounts: z.array(AccountSummarySchema.extend({ spec: z.string() })),
 });
 export type StatsJson = z.infer<typeof StatsJsonSchema>;
 
