@@ -248,6 +248,21 @@ describe('runSpec', () => {
     ]);
   });
 
+  it('adds the verifyFinal steps only to the last task', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2', needs: ['A-1'] }]);
+    const { result } = await start({
+      config: makeConfig({ verifyFinal: [{ name: 'all', command: 'true' }] }),
+      segments: [{ edits: { 'one.txt': '1' } }, { edits: { 'two.txt': '2' } }],
+    });
+    expect(result.reason).toBe('done');
+    expect(
+      ofType('verify.finished').map((e) => [e.task, e.steps.map((step) => step.name)]),
+    ).toEqual([
+      ['A-1', ['check']],
+      ['A-2', ['check', 'all']],
+    ]);
+  });
+
   it('resumes the same session with the failure summary when verify is red, then commits', async () => {
     setupRepo([{ id: 'A-1' }]);
     const counter = join(dir, 'count');

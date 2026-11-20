@@ -14,7 +14,7 @@ import {
 } from '../git/worktree.js';
 import type { ProcessRunner } from '../process/run.js';
 import { listSpecs, loadSpec, SPEC_FILE, specDir, type LoadedSpec } from '../spec/loadSpec.js';
-import { runVerify } from '../verify/verify.js';
+import { runVerify, verifySteps } from '../verify/verify.js';
 import { acquireLock, isProcessAlive, lockFile, type Lock } from './lock.js';
 import type { RunReporter } from './reporter.js';
 import {
@@ -135,7 +135,7 @@ async function mergeBase(
   // A fast-forward lands on a tree the base already had; only a real merge is new.
   if (!fastForward) {
     const verify = await runVerify({
-      steps: deps.config.verify,
+      steps: verifySteps(deps.config, true),
       cwd: workspace,
       logFile: join(deps.repoRoot, '.specrun', 'logs', 'all', 'merge-verify.log'),
       run: deps.run,

@@ -204,3 +204,10 @@ export function lowestOpenPhase(spec: Spec, state: SpecState): number | null {
   }
   return lowest;
 }
+
+/** True when every task except `taskId` is `done`: committing it finishes the spec. */
+export function isLastOpenTask(spec: Spec, state: SpecState, taskId: string): boolean {
+  return spec.tasks.every(
+    (task) => task.id === taskId || state.tasks.get(task.id)?.status === 'done',
+  );
+}

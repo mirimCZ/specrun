@@ -54,6 +54,8 @@ export const ConfigSchema = z.strictObject({
   /** Repo-relative feature map folder; when it doesn't exist every feature-map step is skipped. */
   featuresDir: z.string().min(1).default(DEFAULT_FEATURES_DIR),
   verify: z.array(VerifyStepSchema).min(1),
+  /** Extra steps (e.g. the full test suite) after the spec's last task and after a merge. */
+  verifyFinal: z.array(VerifyStepSchema).default([]),
   setup: z.string().min(1).nullable().default(null),
   /** false: run in the main checkout on the spec branch (needs a clean tree, no setup). */
   worktree: z.boolean().default(true),

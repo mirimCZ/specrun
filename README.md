@@ -145,7 +145,9 @@ For each runnable task (dependencies done, lowest open phase first):
    for dependent tasks, deviations) or `block_task` (reason). Hitting a usage limit mid-session
    waits for the reset and resumes the same session.
 3. **Verify** — the configured check runs. Red: the same session gets the failure summary and
-   tries again, up to `verifyFixRounds` times; still red → the task is blocked.
+   tries again, up to `verifyFixRounds` times; still red → the task is blocked. The spec's last
+   task (every other task done) also runs the `verifyFinal` steps, e.g. the full test suite when
+   `verify` tests only what the change touches.
 4. **Commit** — green: one commit on the spec branch, message from the agent plus
    `Specrun-Task` / `Specrun-Session` trailers.
 
@@ -225,20 +227,21 @@ order — prefilled from the existing file, whose other keys it keeps — and ca
 away; `specrun init --yes` writes the detected defaults without asking (`--force` to change an
 existing file).
 
-| Key               | Default                                                                               | Meaning                                                              |
-| ----------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `worktree`        | `true`                                                                                | Run each spec in its own worktree (see [Workspace](#workspace))      |
-| `worktreeFiles`   | `[]`                                                                                  | Ignored files copied from the checkout into a new worktree           |
-| `setup`           | `null` (`init`: from the lockfile, e.g. `npm ci`)                                     | Runs once in a new worktree                                          |
-| `verify`          | required (`init`: `npm run check` or the scripts)                                     | `{ name, command }[]`, run in order after each task; first red stops |
-| `limits`          | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`                                        | % left of the 5-hour / weekly window below which a run waits / stops |
-| `specsDir`        | `"specrun/specs"`                                                                     | Folder with the specs                                                |
-| `models`          | `{ "default": "sonnet", "strong": "opus" }`                                           | Model per `model` value in `tasks.yaml`; `--model` overrides all     |
-| `maxTurns`        | `150`                                                                                 | Turn limit of one session; reaching it blocks the task               |
-| `verifyFixRounds` | `2`                                                                                   | Fix attempts after a red check                                       |
-| `sizes`           | XS 5–15 turns $0.30 · S 10–25 $0.60 · M 20–45 $1.20 · L 40–70 $2.50 · XL 60–110 $4.50 | Expected range per size; exceeding it is recorded, never enforced    |
-| `transcriptsDir`  | `"~/.specrun/runs"`                                                                   | Session transcripts (outside the repository)                         |
-| `commitTrailers`  | `[]`                                                                                  | Extra trailer lines for every task commit                            |
+| Key               | Default                                                                               | Meaning                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `worktree`        | `true`                                                                                | Run each spec in its own worktree (see [Workspace](#workspace))                              |
+| `worktreeFiles`   | `[]`                                                                                  | Ignored files copied from the checkout into a new worktree                                   |
+| `setup`           | `null` (`init`: from the lockfile, e.g. `npm ci`)                                     | Runs once in a new worktree                                                                  |
+| `verify`          | required (`init`: `npm run check` or the scripts)                                     | `{ name, command }[]`, run in order after each task; first red stops                         |
+| `verifyFinal`     | `[]`                                                                                  | Steps added after `verify` for the spec's last task and after a merge (`close`, `run --all`) |
+| `limits`          | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`                                        | % left of the 5-hour / weekly window below which a run waits / stops                         |
+| `specsDir`        | `"specrun/specs"`                                                                     | Folder with the specs                                                                        |
+| `models`          | `{ "default": "sonnet", "strong": "opus" }`                                           | Model per `model` value in `tasks.yaml`; `--model` overrides all                             |
+| `maxTurns`        | `150`                                                                                 | Turn limit of one session; reaching it blocks the task                                       |
+| `verifyFixRounds` | `2`                                                                                   | Fix attempts after a red check                                                               |
+| `sizes`           | XS 5–15 turns $0.30 · S 10–25 $0.60 · M 20–45 $1.20 · L 40–70 $2.50 · XL 60–110 $4.50 | Expected range per size; exceeding it is recorded, never enforced                            |
+| `transcriptsDir`  | `"~/.specrun/runs"`                                                                   | Session transcripts (outside the repository)                                                 |
+| `commitTrailers`  | `[]`                                                                                  | Extra trailer lines for every task commit                                                    |
 
 ## Other commands
 

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runCommand } from '../process/run.js';
-import { runVerify, summarizeFailure } from './verify.js';
+import { runVerify, summarizeFailure, verifySteps } from './verify.js';
 
 let dir: string;
 let logFile: string;
@@ -125,5 +125,17 @@ describe('summarizeFailure', () => {
   it('caps the summary at 80 lines', () => {
     const output = Array.from({ length: 200 }, (_, i) => `error TS${1000 + i}: x`).join('\n');
     expect(summarizeFailure('tsc', output).split('\n').length).toBeLessThanOrEqual(79);
+  });
+});
+
+describe('verifySteps', () => {
+  const config = {
+    verify: [{ name: 'fast', command: 'true' }],
+    verifyFinal: [{ name: 'all', command: 'true' }],
+  };
+
+  it('adds the verifyFinal steps only for a final verify', () => {
+    expect(verifySteps(config, false).map((s) => s.name)).toEqual(['fast']);
+    expect(verifySteps(config, true).map((s) => s.name)).toEqual(['fast', 'all']);
   });
 });

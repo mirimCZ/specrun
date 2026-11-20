@@ -8,7 +8,12 @@ import { runsShared, SHARED_BRANCH } from '../git/workspace.js';
 import { PROTECTED_BRANCHES, worktreePath } from '../git/worktree.js';
 import { lockFile, readLockPid } from '../runner/lock.js';
 import { loadSpec } from '../spec/loadSpec.js';
-import { runVerify, type VerifyResult, type VerifyStepResult } from '../verify/verify.js';
+import {
+  runVerify,
+  verifySteps,
+  type VerifyResult,
+  type VerifyStepResult,
+} from '../verify/verify.js';
 import { archiveSpec, type ArchiveDeps, type ArchiveResult } from './archiveSpec.js';
 import { refuseShelved } from './history.js';
 
@@ -171,9 +176,10 @@ export async function mergeInto(
 
     // Only a real merge makes a tree no task verified.
     if (!fastForward) {
-      deps.onProgress?.({ step: 'verify', steps: config.verify.map((step) => step.name) });
+      const steps = verifySteps(config, true);
+      deps.onProgress?.({ step: 'verify', steps: steps.map((step) => step.name) });
       verify = await runVerify({
-        steps: config.verify,
+        steps,
         cwd: repoRoot,
         logFile: join(repoRoot, '.specrun', 'logs', logName, 'close-verify.log'),
         run: deps.run,

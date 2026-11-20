@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Spec, SpecTask } from '../spec/specSchema.js';
 import type { CompleteTaskPayload, EventOf, NewEvent, SpecrunEvent } from './eventSchema.js';
-import { deriveState, lowestOpenPhase, runnableTasks } from './taskState.js';
+import { deriveState, isLastOpenTask, lowestOpenPhase, runnableTasks } from './taskState.js';
 
 function task(id: string, phase: number, needs: string[] = []): SpecTask {
   return { id, title: id, phase, needs, model: 'default', size: 'S' };
@@ -297,5 +297,19 @@ describe('lowestOpenPhase', () => {
     expect(
       phase(log(committed('A-1', 'c1'), committed('A-2', 'c2'), committed('A-3', 'c3'))),
     ).toBeNull();
+  });
+});
+
+describe('isLastOpenTask', () => {
+  const isLast = (events: SpecrunEvent[], id: string): boolean =>
+    isLastOpenTask(spec, deriveState(spec, events), id);
+
+  it('is true only when every other task is done', () => {
+    expect(isLast(log(committed('A-1', 'c1'), committed('A-2', 'c2')), 'A-3')).toBe(true);
+    expect(isLast(log(committed('A-1', 'c1')), 'A-2')).toBe(false);
+  });
+
+  it('is false while another task is blocked', () => {
+    expect(isLast(log(committed('A-1', 'c1'), blocked('A-2', 'red')), 'A-3')).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ describe('ConfigSchema', () => {
       specsDir: 'specrun/specs',
       featuresDir: 'specrun/features',
       verify,
+      verifyFinal: [],
       setup: null,
       worktree: true,
       worktreeFiles: [],

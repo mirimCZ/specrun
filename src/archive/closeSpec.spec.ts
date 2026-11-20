@@ -100,6 +100,20 @@ describe('closeSpec', () => {
     expect(git(repo, 'log', '-1', '--format=%P', 'HEAD~1').split(' ')).toHaveLength(2);
   });
 
+  it('adds the verifyFinal steps after a real merge', async () => {
+    finishTasks(worktree);
+    writeFileSync(join(repo, 'other.txt'), 'meanwhile\n');
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '-q', '-m', 'meanwhile');
+
+    const config = ConfigSchema.parse({
+      verify: [{ name: 'ok', command: 'true' }],
+      verifyFinal: [{ name: 'all', command: 'true' }],
+    });
+    const { result } = await close({}, config);
+    expect(result.verify?.steps.map((s) => s.name)).toEqual(['ok', 'all']);
+  });
+
   it('keeps the merge but does not archive when verify is red', async () => {
     finishTasks(worktree);
     writeFileSync(join(repo, 'other.txt'), 'meanwhile\n');

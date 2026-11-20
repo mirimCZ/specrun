@@ -5,6 +5,17 @@ import { runShell, type ProcessRunner } from '../process/run.js';
 
 export type VerifyStep = Config['verify'][number];
 
+/**
+ * The per-task steps, plus `verifyFinal` when the tree is about to be the spec's result (its last
+ * task, a merge) — the fast per-task steps may cover only what the change touches.
+ */
+export function verifySteps(
+  config: Pick<Config, 'verify' | 'verifyFinal'>,
+  final: boolean,
+): VerifyStep[] {
+  return final ? [...config.verify, ...config.verifyFinal] : [...config.verify];
+}
+
 export interface VerifyStepResult {
   name: string;
   ok: boolean;

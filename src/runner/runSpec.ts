@@ -13,6 +13,7 @@ import type {
 import { EVENTS_FILE, createEventStore } from '../events/eventStore.js';
 import {
   deriveState,
+  isLastOpenTask,
   lowestOpenPhase,
   runnableTasks,
   type SpecState,
@@ -37,7 +38,7 @@ import {
 } from '../session/followUps.js';
 import { loadSpec } from '../spec/loadSpec.js';
 import type { SpecTask } from '../spec/specSchema.js';
-import { runVerify } from '../verify/verify.js';
+import { runVerify, verifySteps } from '../verify/verify.js';
 import { acquireLock, isProcessAlive, lockFile, type Lock } from './lock.js';
 import type { RunPhase, RunReporter, WaitingUpdate } from './reporter.js';
 import { NO_STOP, type StopRequest } from './stopRequest.js';
@@ -576,14 +577,15 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         const { payload } = result.toolCall;
         append({ t: 'task.completed', task: task.id, sessionId, payload });
         const logFile = join(logDir, `${task.id}-verify-${verifyRound}.log`);
+        const steps = verifySteps(config, isLastOpenTask(spec, currentState(), task.id));
         reporter.phase({
           kind: 'verify',
           task: task.id,
           round: verifyRound,
-          steps: config.verify.map((step) => step.name),
+          steps: steps.map((step) => step.name),
         });
         const verify = await runVerify({
-          steps: config.verify,
+          steps,
           cwd: worktree,
           logFile,
           run: deps.run,
