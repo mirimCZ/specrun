@@ -1,0 +1,72 @@
+# Multiple Claude accounts — tasks read by specrun (authored; specrun never writes this file, task
+# status lives in events.jsonl). Task ids MA-n, in dependency order.
+# needs: tasks that must be done first (their notes go into the prompt); `all` = every other task.
+# model: strong for tasks that need the stronger model, default otherwise (may be omitted).
+# size: XS · S · M · L · XL — the expected turns and cost (config `sizes`).
+# Strong tasks: MA-1 (config data model and precedence), MA-4 (account choice policy and event
+# shapes), MA-5 (runner state across accounts, waits and resumes).
+
+title: Multiple Claude accounts
+tasks:
+  - id: MA-1
+    phase: 1
+    title: Global config, accounts and merged limits
+    needs: []
+    model: strong
+    size: M
+    features: [setup/config, run/limits]
+  - id: MA-2
+    phase: 1
+    title: Token sources, account env and preparation
+    needs: [MA-1]
+    size: M
+    features: [setup/config]
+  - id: MA-3
+    phase: 1
+    title: Account env for task sessions and the probe
+    needs: []
+    size: S
+    features: [run/limits, run/orchestration]
+  - id: MA-4
+    phase: 1
+    title: Account choice policy and account events
+    needs: [MA-1]
+    model: strong
+    size: M
+    features: [run/limits, insights/run-log]
+  - id: MA-5
+    phase: 1
+    title: 'Runner: accounts, switching and burn'
+    needs: [MA-2, MA-3, MA-4]
+    model: strong
+    size: L
+    features: [run/orchestration, run/limits]
+  - id: MA-6
+    phase: 1
+    title: 'CLI: run flags and specrun accounts'
+    needs: [MA-5]
+    size: M
+    features: [run/orchestration, setup/config]
+  - id: MA-7
+    phase: 1
+    title: --account for plan and review
+    needs: [MA-6]
+    size: S
+    features: [specs/authoring, insights/review]
+  - id: MA-8
+    phase: 1
+    title: Dashboard and log lines per account
+    needs: [MA-5]
+    size: M
+    features: [run/dashboard]
+  - id: MA-9
+    phase: 1
+    title: Stats per account
+    needs: [MA-4]
+    size: M
+    features: [insights/stats]
+  - id: MA-10
+    phase: 1
+    title: Update the feature map
+    needs: all
+    size: S
