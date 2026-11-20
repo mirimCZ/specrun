@@ -52,6 +52,33 @@ describe('specrun stats', () => {
     expect(await stats()).toContain('Includes shelved specs (not merged): old\n');
   });
 
+  it('times the verify rounds and steps of each spec', async () => {
+    const specDir = writeDemoSpec(dir);
+    const round = (durationMs: number) =>
+      eventLine({
+        t: 'verify.finished',
+        task: 'D-1',
+        round: 0,
+        ok: true,
+        durationMs,
+        steps: [{ name: 'lorem', ok: true, durationMs }],
+        log: 'verify.log',
+      });
+    // Session 1000 ms, verify 3000 ms: verify takes 75 % of the task time.
+    writeFileSync(
+      join(specDir, 'events.jsonl'),
+      doneTask('D-1', 12, 0.4, round(1000) + round(2000)),
+    );
+
+    const json = StatsJsonSchema.parse(JSON.parse(await stats('--json')));
+    expect(json.verify).toEqual([
+      expect.objectContaining({ spec: 'demo', runs: 2, sumMs: 3000, sessionMs: 1000 }),
+    ]);
+    const out = await stats();
+    expect(out).toMatch(/demo\s+round\s+2\s+0\s+1s\s+2s\s+2s\s+3s\s+75%/);
+    expect(out).toMatch(/\s+lorem\s+2\s+0\s+1s/);
+  });
+
   it('prints a table grouped by the chosen dimension', async () => {
     const specDir = writeDemoSpec(dir);
     writeFileSync(

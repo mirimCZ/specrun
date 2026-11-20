@@ -6,6 +6,7 @@ import {
   groupStats,
   percentile,
   planningSummary,
+  verifySummary,
   type TaskSample,
 } from './aggregate.js';
 
@@ -150,5 +151,73 @@ describe('planningSummary', () => {
   it('skips null metrics and returns null without events', () => {
     expect(planningSummary([event('a', null)])).toBeNull();
     expect(planningSummary([])).toBeNull();
+  });
+});
+
+describe('verifySummary', () => {
+  const base = { v: 1, at: '2026-01-01T09:00:00.000Z', runId: 'r1' };
+  const round = (ok: boolean, steps: [string, boolean, number][]): SpecrunEvent =>
+    ({
+      ...base,
+      t: 'verify.finished',
+      task: 'D-1',
+      round: 0,
+      ok,
+      durationMs: steps.reduce((sum, [, , ms]) => sum + ms, 0),
+      steps: steps.map(([name, stepOk, durationMs]) => ({ name, ok: stepOk, durationMs })),
+      log: 'verify.log',
+    }) as SpecrunEvent;
+  const session = (durationMs: number): SpecrunEvent =>
+    ({
+      ...base,
+      t: 'session.finished',
+      task: 'D-1',
+      sessionId: 's1',
+      segment: 0,
+      outcome: 'completed',
+      turns: 1,
+      peakContext: 1,
+      inputTokens: 1,
+      outputTokens: 1,
+      cacheRead: 1,
+      cacheWrite: 1,
+      costUsd: 0,
+      durationMs,
+    }) as SpecrunEvent;
+
+  it('times rounds and steps, counting failures and steps a failure skipped', () => {
+    const s = verifySummary([
+      session(9000),
+      round(false, [['typecheck', false, 1000]]),
+      round(true, [
+        ['typecheck', true, 3000],
+        ['test', true, 5000],
+      ]),
+    ]);
+    expect(s).toEqual({
+      runs: 2,
+      failed: 1,
+      sumMs: 9000,
+      p50Ms: 1000,
+      p90Ms: 8000,
+      maxMs: 8000,
+      sessionMs: 9000,
+      steps: [
+        {
+          name: 'typecheck',
+          runs: 2,
+          failed: 1,
+          sumMs: 4000,
+          p50Ms: 1000,
+          p90Ms: 3000,
+          maxMs: 3000,
+        },
+        { name: 'test', runs: 1, failed: 0, sumMs: 5000, p50Ms: 5000, p90Ms: 5000, maxMs: 5000 },
+      ],
+    });
+  });
+
+  it('returns null without verify rounds', () => {
+    expect(verifySummary([session(1000)])).toBeNull();
   });
 });

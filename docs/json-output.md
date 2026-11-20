@@ -12,6 +12,12 @@ One sample per task that reached `done` (totals over all its segments), archived
 (their `history.json`, see `specrun archive`). `shelved` names those of `specs` shelved without a
 merge (`specrun shelve`); their samples are included. `by` defaults to `model`;
 `calibration` is `null` without `--calibrate`, and `suggestion` is `null` below 3 samples.
+`verify` has one entry per spec with verify rounds (`verify.finished`): wall time of the rounds
+(`runs`, `failed`, `sumMs`, nearest-rank `p50Ms` / `p90Ms`, `maxMs`) and of each step in the
+order steps first ran (a step skipped after an earlier failure has fewer `runs`), plus `sessionMs`,
+the agent session time, so `sumMs / (sumMs + sessionMs)` is verify's share of the task time.
+Archived specs take it from `history.json`, or from their run log in git at `history.commit` when
+the archive predates it.
 
 ```json
 {
@@ -52,6 +58,39 @@ merge (`specrun shelve`); their samples are included. `by` defaults to `model`;
       "n": 1,
       "current": { "turns": [10, 25], "usd": 0.6 },
       "suggestion": null
+    }
+  ],
+  "planning": [],
+  "verify": [
+    {
+      "spec": "demo",
+      "runs": 2,
+      "failed": 1,
+      "sumMs": 9000,
+      "p50Ms": 1000,
+      "p90Ms": 8000,
+      "maxMs": 8000,
+      "sessionMs": 60000,
+      "steps": [
+        {
+          "name": "typecheck",
+          "runs": 2,
+          "failed": 1,
+          "sumMs": 4000,
+          "p50Ms": 1000,
+          "p90Ms": 3000,
+          "maxMs": 3000
+        },
+        {
+          "name": "test",
+          "runs": 1,
+          "failed": 0,
+          "sumMs": 5000,
+          "p50Ms": 5000,
+          "p90Ms": 5000,
+          "maxMs": 5000
+        }
+      ]
     }
   ]
 }

@@ -36,6 +36,25 @@ export const PlanningSummarySchema = z.object({
 });
 export type PlanningSummary = z.infer<typeof PlanningSummarySchema>;
 
+/** Wall time of verify rounds or of one verify step, over all rounds of a spec. */
+const TimingSchema = z.object({
+  runs: z.number(),
+  failed: z.number(),
+  sumMs: z.number(),
+  p50Ms: z.number(),
+  p90Ms: z.number(),
+  maxMs: z.number(),
+});
+
+/** Verify rounds of one spec (`verify.finished`); also kept in `history.json`. */
+export const VerifySummarySchema = TimingSchema.extend({
+  /** Agent session time, so verify's share of the task time can be told. */
+  sessionMs: z.number(),
+  /** In the order the steps first ran. */
+  steps: z.array(TimingSchema.extend({ name: z.string() })),
+});
+export type VerifySummary = z.infer<typeof VerifySummarySchema>;
+
 export const DeviationEntrySchema = z.object({
   spec: z.string(),
   task: z.string(),
@@ -81,6 +100,8 @@ export const StatsJsonSchema = z.object({
     .nullable(),
   /** Specs with planning data (PLD-8); additive, `version` stays 1. */
   planning: z.array(PlanningSummarySchema.extend({ spec: z.string() })),
+  /** Specs with verify rounds; additive, `version` stays 1. */
+  verify: z.array(VerifySummarySchema.extend({ spec: z.string() })),
 });
 export type StatsJson = z.infer<typeof StatsJsonSchema>;
 

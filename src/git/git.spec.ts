@@ -200,6 +200,8 @@ describe('createGit', () => {
     expect(await git.showFile('HEAD~1', 'docs/x.md')).toBe('x\n');
     expect(await git.showFile('HEAD', 'docs/x.md')).toBeNull();
     expect(await git.hasPath(first, 'docs')).toBe(false);
+    expect(await git.listFiles('HEAD~1')).toContain('docs/x.md');
+    expect(await git.listFiles('HEAD')).not.toContain('docs/x.md');
     await git.restorePaths('HEAD~1', ['docs']);
     expect(sh(dir, 'status', '--porcelain')).toBe('A  docs/x.md\n');
   });

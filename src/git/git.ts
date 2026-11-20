@@ -65,6 +65,8 @@ export interface Git {
   /** Content of `path` (relative to the repo root) at `ref`; null when it isn't there. */
   showFile(ref: string, path: string): Promise<string | null>;
   hasPath(ref: string, path: string): Promise<boolean>;
+  /** Every file path in the tree of `ref`. */
+  listFiles(ref: string): Promise<string[]>;
   /** `git checkout <ref> -- <paths>`: the working tree and index get the paths as at `ref`. */
   restorePaths(ref: string, paths: readonly string[]): Promise<void>;
   /**
@@ -294,6 +296,10 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
     async hasPath(ref, path) {
       const result = await run('git', ['cat-file', '-e', `${ref}:${path}`], { cwd });
       return result.code === 0;
+    },
+
+    async listFiles(ref) {
+      return (await git(['ls-tree', '-r', '-z', '--name-only', ref])).split('\0').filter(Boolean);
     },
 
     async restorePaths(ref, paths) {

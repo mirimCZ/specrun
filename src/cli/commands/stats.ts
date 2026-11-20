@@ -1,12 +1,16 @@
 import type { Command } from 'commander';
+import { archivedVerify } from '../../archive/history.js';
 import { findRepoRoot, loadConfig } from '../../config/loadConfig.js';
 import { SpecrunError } from '../../errors.js';
-import { formatTokens, formatUsd } from '../../progress/renderProgress.js';
+import { createGit } from '../../git/git.js';
+import { runCommand } from '../../process/run.js';
+import { formatDuration, formatTokens, formatUsd } from '../../progress/renderProgress.js';
 import {
   calibrate,
   groupStats,
   planningSummary,
   taskSamples,
+  verifySummary,
   type CalibrationRow,
   type GroupDimension,
 } from '../../stats/aggregate.js';
@@ -55,6 +59,38 @@ function planningTable(rows: StatsJson['planning']): string {
   ]);
 }
 
+/** Seconds below ten minutes: verify steps take seconds, a spec's verify total takes minutes. */
+function formatElapsed(ms: number): string {
+  return ms < 600_000 ? `${Math.round(ms / 1000)}s` : formatDuration(ms);
+}
+
+function verifyTable(rows: StatsJson['verify'], shelved: readonly string[]): string {
+  const cells = rows.flatMap((r) => {
+    const share = r.sumMs + r.sessionMs === 0 ? 0 : r.sumMs / (r.sumMs + r.sessionMs);
+    const timing = (t: Omit<StatsJson['verify'][number], 'spec' | 'sessionMs' | 'steps'>) => [
+      String(t.runs),
+      String(t.failed),
+      formatElapsed(t.p50Ms),
+      formatElapsed(t.p90Ms),
+      formatElapsed(t.maxMs),
+      formatElapsed(t.sumMs),
+    ];
+    return [
+      [
+        shelved.includes(r.spec) ? `${r.spec} (shelved)` : r.spec,
+        'round',
+        ...timing(r),
+        `${Math.round(share * 100)}%`,
+      ],
+      ...r.steps.map((s) => ['', s.name, ...timing(s), '']),
+    ];
+  });
+  return table([
+    ['VERIFY', 'STEP', 'RUNS', 'FAILED', 'P50', 'P90', 'MAX', 'TOTAL', 'OF TASK TIME'],
+    ...cells,
+  ]);
+}
+
 export function register(program: Command, deps: CliDeps): void {
   program
     .command('stats')
@@ -65,7 +101,7 @@ export function register(program: Command, deps: CliDeps): void {
     .option('--calibrate', 'suggest turn and cost ranges per model × size')
     .option('--json', 'machine-readable output')
     .action(
-      (
+      async (
         names: string[],
         flags: { all?: boolean; by: string; calibrate?: boolean; json?: boolean },
       ) => {
@@ -91,6 +127,21 @@ export function register(program: Command, deps: CliDeps): void {
             h.planning === null ? [] : [{ spec: h.spec, ...h.planning }],
           ),
         ];
+        const git = createGit(repoRoot, runCommand);
+        const verify = [
+          ...inputs.flatMap((i) => {
+            const summary = verifySummary(i.events);
+            return summary === null ? [] : [{ spec: i.name, ...summary }];
+          }),
+          ...(
+            await Promise.all(
+              archived.map(async (h) => {
+                const summary = await archivedVerify(h, git);
+                return summary === null ? [] : [{ spec: h.spec, ...summary }];
+              }),
+            )
+          ).flat(),
+        ];
         const shelved = shelvedSpecs({ inputs, archived });
         const groups = groupStats(samples, flags.by);
         const calibration = flags.calibrate === true ? calibrate(samples, config.sizes) : null;
@@ -106,6 +157,7 @@ export function register(program: Command, deps: CliDeps): void {
             groups,
             calibration,
             planning,
+            verify,
           });
           deps.stdout(`${JSON.stringify(output, null, 2)}\n`);
           return;
@@ -113,6 +165,7 @@ export function register(program: Command, deps: CliDeps): void {
         if (samples.length === 0) {
           deps.stdout('No finished tasks yet.\n');
           if (planning.length > 0) deps.stdout(`\n${planningTable(planning)}\n`);
+          if (verify.length > 0) deps.stdout(`\n${verifyTable(verify, shelved)}\n`);
           return;
         }
         const rows = groups.map((g) => [
@@ -152,6 +205,7 @@ export function register(program: Command, deps: CliDeps): void {
         }
         if (calibration !== null) deps.stdout(`\n${calibrationTable(calibration)}\n`);
         if (planning.length > 0) deps.stdout(`\n${planningTable(planning)}\n`);
+        if (verify.length > 0) deps.stdout(`\n${verifyTable(verify, shelved)}\n`);
       },
     );
 }

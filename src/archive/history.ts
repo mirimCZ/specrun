@@ -4,10 +4,15 @@ import { z } from 'zod';
 import type { Config } from '../config/configSchema.js';
 import { formatIssues } from '../config/loadConfig.js';
 import { SpecrunError } from '../errors.js';
+import { EVENTS_FILE, parseEvents } from '../events/eventStore.js';
+import type { Git } from '../git/git.js';
+import { verifySummary } from '../stats/aggregate.js';
 import {
   DeviationEntrySchema,
   PlanningSummarySchema,
   TaskSampleSchema,
+  VerifySummarySchema,
+  type VerifySummary,
 } from '../stats/jsonOutput.js';
 
 export const ARCHIVE_DIR = 'archive';
@@ -49,6 +54,8 @@ export const HistorySchema = z.object({
   outcome: OutcomeSchema.default({ kind: 'merged', shelved: null }),
   // Defaulted: additive (PLD-8); older history.json files have no planning data.
   planning: PlanningSummarySchema.nullable().default(null),
+  // Defaulted: older history.json files have none; `archivedVerify` reads it from git instead.
+  verify: VerifySummarySchema.nullable().default(null),
   samples: z.array(TaskSampleSchema),
   deviations: z.array(DeviationEntrySchema),
 });
@@ -106,4 +113,28 @@ export function refuseShelved(repoRoot: string, config: Config, spec: string): v
     `Spec "${spec}" is shelved since ${shelvedAt.slice(0, 10)} — ${branch} is not merged`,
     [`reason: ${reason}`, `specrun unshelve ${spec} merges it`],
   );
+}
+
+/**
+ * The verify summary of an archived spec: from `history.json`, else from the run log still in git
+ * at `history.commit` (archives from before it was kept). Null when git does not have it.
+ */
+export async function archivedVerify(
+  history: History,
+  git: Pick<Git, 'listFiles' | 'showFile'>,
+): Promise<VerifySummary | null> {
+  if (history.verify !== null) return history.verify;
+  const suffix = `/${history.spec}/${EVENTS_FILE}`;
+  try {
+    // The spec folder may have lived elsewhere then (a specsDir moved since).
+    const path = (await git.listFiles(history.commit)).find(
+      (p) => p.endsWith(suffix) && !p.includes(`/${ARCHIVE_DIR}/`),
+    );
+    if (path === undefined) return null;
+    const text = await git.showFile(history.commit, path);
+    return text === null ? null : verifySummary(parseEvents(text, path).events);
+  } catch {
+    // A shallow clone or a rewritten history only loses the timings.
+    return null;
+  }
 }

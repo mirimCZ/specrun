@@ -16,10 +16,11 @@ import {
   deviationEntries,
   planningSummary,
   taskSamples,
+  verifySummary,
   type DeviationEntry,
   type TaskSample,
 } from '../stats/aggregate.js';
-import type { PlanningSummary } from '../stats/jsonOutput.js';
+import type { PlanningSummary, VerifySummary } from '../stats/jsonOutput.js';
 import {
   ARCHIVE_DIR,
   archiveRoot,
@@ -135,6 +136,7 @@ export interface ArchiveSource {
   samples: TaskSample[];
   deviations: DeviationEntry[];
   planning: PlanningSummary | null;
+  verify: VerifySummary | null;
   /** Tasks neither done in events nor `status: done` in tasks.yaml, as `<id> (<status>)`. */
   unfinished: string[];
 }
@@ -177,6 +179,7 @@ export function readArchiveSource(
     samples: input === null ? [] : taskSamples([input]),
     deviations: input === null ? [] : deviationEntries([input]),
     planning: planningSummary(events),
+    verify: verifySummary(events),
     unfinished,
   };
 }
@@ -219,7 +222,11 @@ export async function writeArchive(
   const counts = source.samples.length > 0 || source.deviations.length > 0;
   // A shelved spec always keeps it: unshelve reads where its work is from there.
   const keepHistory =
-    counts || outcome.kind === 'shelved' || outcome.shelved !== null || source.planning !== null;
+    counts ||
+    outcome.kind === 'shelved' ||
+    outcome.shelved !== null ||
+    source.planning !== null ||
+    source.verify !== null;
   if (keepHistory) {
     const history: History = {
       version: 1,
@@ -229,6 +236,7 @@ export async function writeArchive(
       commit: baseCommit,
       outcome,
       planning: source.planning,
+      verify: source.verify,
       samples: source.samples,
       deviations: source.deviations,
     };

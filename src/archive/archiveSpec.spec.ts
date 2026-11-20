@@ -221,6 +221,29 @@ describe('archiveSpec', () => {
       }),
     );
     expect(readArchivedHistories(repo, config)[0]?.planning).toBeNull();
+    expect(readArchivedHistories(repo, config)[0]?.verify).toBeNull();
+  });
+
+  it('keeps the verify timings in history.json', async () => {
+    writeEvents(
+      doneTask('D-1', 10, 0.3),
+      doneTask('D-2', 20, 0.9),
+      eventLine({
+        t: 'verify.finished',
+        task: 'D-2',
+        round: 0,
+        ok: true,
+        durationMs: 4000,
+        steps: [{ name: 'test', ok: true, durationMs: 4000 }],
+        log: 'verify.log',
+      }),
+    );
+    commitAll();
+
+    await archive();
+
+    const [history] = readArchivedHistories(repo, config);
+    expect(history?.verify).toMatchObject({ runs: 1, sumMs: 4000, steps: [{ name: 'test' }] });
   });
 
   it('refuses unfinished tasks unless forced', async () => {

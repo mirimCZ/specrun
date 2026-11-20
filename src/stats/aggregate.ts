@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { SIZE_NAMES, type Size, type SizeName } from '../config/configSchema.js';
-import type { Deviation, PlanMetrics, SpecrunEvent } from '../events/eventSchema.js';
+import type { Deviation, EventOf, PlanMetrics, SpecrunEvent } from '../events/eventSchema.js';
 import type { SpecState } from '../events/taskState.js';
-import type { PlanningSummary } from './jsonOutput.js';
+import type { PlanningSummary, VerifySummary } from './jsonOutput.js';
 import type { Spec } from '../spec/specSchema.js';
 
 /** SRD-11: fewer samples than this give no suggestion. */
@@ -145,6 +145,46 @@ export function deviationEntries(specs: readonly SpecInput[]): DeviationEntry[] 
       });
     });
   });
+}
+
+type Timing = Omit<VerifySummary, 'sessionMs' | 'steps'>;
+
+function timing(durations: readonly number[], failed: number): Timing {
+  return {
+    runs: durations.length,
+    failed,
+    sumMs: durations.reduce((a, b) => a + b, 0),
+    p50Ms: percentile(durations, 50),
+    p90Ms: percentile(durations, 90),
+    maxMs: Math.max(0, ...durations),
+  };
+}
+
+/** Every verify round of the log, overall and per step; null without any. */
+export function verifySummary(events: readonly SpecrunEvent[]): VerifySummary | null {
+  const rounds = events.filter((e): e is EventOf<'verify.finished'> => e.t === 'verify.finished');
+  if (rounds.length === 0) return null;
+  const steps = new Map<string, { durations: number[]; failed: number }>();
+  for (const round of rounds) {
+    for (const step of round.steps) {
+      const entry = steps.get(step.name) ?? { durations: [], failed: 0 };
+      entry.durations.push(step.durationMs);
+      if (!step.ok) entry.failed += 1;
+      steps.set(step.name, entry);
+    }
+  }
+  const sessionMs = events.reduce(
+    (sum, e) => sum + (e.t === 'session.finished' ? e.durationMs : 0),
+    0,
+  );
+  return {
+    ...timing(
+      rounds.map((r) => r.durationMs),
+      rounds.filter((r) => !r.ok).length,
+    ),
+    sessionMs,
+    steps: [...steps].map(([name, s]) => ({ name, ...timing(s.durations, s.failed) })),
+  };
 }
 
 /** Nearest-rank percentile, p in 0..100; 0 for no values. */
