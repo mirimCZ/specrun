@@ -235,6 +235,7 @@ existing file).
 | `verify`          | required (`init`: `npm run check` or the scripts)                                     | `{ name, command }[]`, run in order after each task; first red stops                         |
 | `verifyFinal`     | `[]`                                                                                  | Steps added after `verify` for the spec's last task and after a merge (`close`, `run --all`) |
 | `limits`          | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`                                        | % left of the 5-hour / weekly window below which a run waits / stops                         |
+| `limits.accounts` | `{}`                                                                                  | Account name → partial `limits` override (see [Global config](#global-config))               |
 | `specsDir`        | `"specrun/specs"`                                                                     | Folder with the specs                                                                        |
 | `models`          | `{ "default": "sonnet", "strong": "opus" }`                                           | Model per `model` value in `tasks.yaml`; `--model` overrides all                             |
 | `maxTurns`        | `150`                                                                                 | Turn limit of one session; reaching it blocks the task                                       |
@@ -242,6 +243,33 @@ existing file).
 | `sizes`           | XS 5–15 turns $0.30 · S 10–25 $0.60 · M 20–45 $1.20 · L 40–70 $2.50 · XL 60–110 $4.50 | Expected range per size; exceeding it is recorded, never enforced                            |
 | `transcriptsDir`  | `"~/.specrun/runs"`                                                                   | Session transcripts (outside the repository)                                                 |
 | `commitTrailers`  | `[]`                                                                                  | Extra trailer lines for every task commit                                                    |
+
+### Global config
+
+`~/.specrun/config.json` holds settings for every repository on this machine: the Claude accounts
+specrun can run tasks with. Without it there is one implicit account `default` that uses your
+Claude Code login, and specrun behaves as described above. The order of `accounts` is the
+priority: the first one is the priority account. `token` is `{ "env": "<VAR>" }` or
+`{ "command": "<shell command>" }`. An account without `token` uses the system login, and at most
+one account may omit it.
+
+```json
+{
+  "accounts": [
+    {
+      "name": "lorem-pro",
+      "token": { "env": "SPECRUN_PRO2_TOKEN" },
+      "limits": { "sessionMinLeft": 10, "weeklyMinLeft": 5 }
+    },
+    { "name": "ipsum", "limits": { "sessionMinLeft": 30, "weeklyMinLeft": 20 } }
+  ]
+}
+```
+
+Each limit field of an account comes from the first level that sets it: `limits.accounts.<name>`
+in `specrun.config.json` > `limits` of the account in `~/.specrun/config.json` > `limits` in
+`specrun.config.json` > the defaults (15 / 5). If `limits.accounts` names an account the global
+config doesn't define, you get a warning, not an error.
 
 ## Other commands
 

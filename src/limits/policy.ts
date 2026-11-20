@@ -1,4 +1,4 @@
-import type { Config } from '../config/configSchema.js';
+import type { AccountLimits } from '../config/configSchema.js';
 import type { UsageSnapshot } from './usage.js';
 
 export type PauseDecision =
@@ -25,7 +25,7 @@ export function limitHitTarget(snapshot: UsageSnapshot | null, now: Date): Date 
 
 export function decide(
   snapshot: UsageSnapshot | null,
-  limits: Config['limits'],
+  limits: AccountLimits,
   now: Date,
 ): PauseDecision {
   if (snapshot === null) return { action: 'go' };

@@ -13,7 +13,9 @@ export type SpecrunErrorCode =
   | 'cancelled'
   | 'claude-missing'
   | 'terminal-required'
-  | 'locked';
+  | 'locked'
+  | 'account-unknown'
+  | 'account-token';
 
 /** User-facing failure; the CLI prints `message` and exits non-zero. */
 export class SpecrunError extends Error {

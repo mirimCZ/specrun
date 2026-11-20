@@ -16,7 +16,7 @@ describe('ConfigSchema', () => {
       models: { default: 'sonnet', strong: 'opus' },
       maxTurns: 150,
       verifyFixRounds: 2,
-      limits: { sessionMinLeft: 15, weeklyMinLeft: 5 },
+      limits: { sessionMinLeft: 15, weeklyMinLeft: 5, accounts: {} },
       sizes: DEFAULT_SIZES,
       transcriptsDir: '~/.specrun/runs',
       commitTrailers: [],
@@ -43,6 +43,28 @@ describe('ConfigSchema', () => {
   it('rejects unknown keys, also nested ones', () => {
     expect(ConfigSchema.safeParse({ verify, verifyRounds: 3 }).success).toBe(false);
     expect(ConfigSchema.safeParse({ verify, models: { fast: 'haiku' } }).success).toBe(false);
+  });
+
+  it('defaults limits.accounts to {} and parses a partial override', () => {
+    expect(ConfigSchema.parse({ verify, limits: { sessionMinLeft: 20 } }).limits.accounts).toEqual(
+      {},
+    );
+    const config = ConfigSchema.parse({
+      verify,
+      limits: { accounts: { lorem: { weeklyMinLeft: 2 } } },
+    });
+    expect(config.limits).toEqual({
+      sessionMinLeft: 15,
+      weeklyMinLeft: 5,
+      accounts: { lorem: { weeklyMinLeft: 2 } },
+    });
+  });
+
+  it('rejects an unknown key or an out-of-range value inside an account override', () => {
+    const parse = (override: unknown): boolean =>
+      ConfigSchema.safeParse({ verify, limits: { accounts: { lorem: override } } }).success;
+    expect(parse({ sessionMin: 10 })).toBe(false);
+    expect(parse({ sessionMinLeft: 101 })).toBe(false);
   });
 
   it('requires at least one verify step', () => {

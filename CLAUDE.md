@@ -27,6 +27,7 @@ src/
   plan/        interactive planning sessions (specrun plan), Claude Code transcripts
   review/     `specrun review`: gathered context + instructions for the Claude Code session
   ui/         Ink dashboard
+  accounts/   Claude accounts: global config, tokens, child env
 plugin/       Claude Code plugin: skills refine, write-spec, plan, feature-map, feedback (loaded as specrun:*)
 spikes/       throwaway experiments — don't import from src/
 ```

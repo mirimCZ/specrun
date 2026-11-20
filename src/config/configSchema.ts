@@ -34,9 +34,22 @@ const ModelsSchema = z.strictObject({
   strong: z.string().min(1).default('opus'),
 });
 
+const PercentSchema = z.number().min(0).max(100);
+
+/** Per-account override of the limits; unset fields fall back to the next level (MAD-3). */
+export const AccountLimitsSchema = z.strictObject({
+  sessionMinLeft: PercentSchema.optional(),
+  weeklyMinLeft: PercentSchema.optional(),
+});
+
+/** The limits of one account after merging every level. */
+export type AccountLimits = { sessionMinLeft: number; weeklyMinLeft: number };
+
 const LimitsSchema = z.strictObject({
-  sessionMinLeft: z.number().min(0).max(100).default(15),
-  weeklyMinLeft: z.number().min(0).max(100).default(5),
+  sessionMinLeft: PercentSchema.default(15),
+  weeklyMinLeft: PercentSchema.default(5),
+  /** Account name → override; names come from `~/.specrun/config.json`. */
+  accounts: z.record(z.string(), AccountLimitsSchema).default({}),
 });
 
 const SizesSchema = z.strictObject({
