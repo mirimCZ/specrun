@@ -24,6 +24,8 @@ export interface TurnUpdate {
 export interface WaitingUpdate {
   until: Date;
   reason: 'session-low' | 'limit-hit';
+  /** The account waited for; absent for the implicit one. */
+  account?: string;
 }
 
 /** What the runner is doing between events, so a UI never looks stuck. */

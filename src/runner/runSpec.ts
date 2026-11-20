@@ -292,7 +292,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       // Nothing runs while waiting, so a stop request ends the wait instead of outlasting it.
       if (stop.requested) return 'stopped';
       append({ t: 'limit.wait', task, account, reason, until: until.toISOString() });
-      reporter.waiting({ until, reason });
+      reporter.waiting({ until, reason, account });
       const waitAbort = new AbortController();
       const forward = (): void => waitAbort.abort();
       signal.addEventListener('abort', forward, { once: true });
@@ -303,7 +303,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         await waitUntil(until, {
           clock,
           signal: waitAbort.signal,
-          onTick: () => reporter.waiting({ until, reason }),
+          onTick: () => reporter.waiting({ until, reason, account }),
         });
         return 'waited';
       } catch (error) {

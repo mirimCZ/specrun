@@ -3,6 +3,13 @@ import { formatTokens, formatUsd } from '../progress/renderProgress.js';
 import type { RunPhase } from '../runner/reporter.js';
 import type { Spec } from '../spec/specSchema.js';
 
+/** Events without an account (or on `default`) render as before multi-account support. */
+function otherAccount(account: string | undefined): string | null {
+  return account === undefined || account === DEFAULT_ACCOUNT ? null : account;
+}
+
+const DEFAULT_ACCOUNT = 'default';
+
 export type Tone = 'red' | 'green' | 'yellow' | 'dim';
 
 /** A piece of a log line; the line reporter paints it with ANSI, the dashboard with `<Text>`. */
@@ -100,7 +107,9 @@ export function createEventFormatter(): EventFormatter {
         case 'session.started': {
           const title = titles.get(event.task);
           const name = title === undefined ? event.task : `${event.task} ${title}`;
-          return one(`▶ ${name} (${event.reason}, ${event.model})`);
+          const account = otherAccount(event.account);
+          const on = account === null ? '' : ` on ${account}`;
+          return one(`▶ ${name} (${event.reason}, ${event.model})${on}`);
         }
         case 'session.finished': {
           const tally = tallies.get(event.task) ?? { turns: 0, peak: 0, cost: 0 };
@@ -135,14 +144,23 @@ export function createEventFormatter(): EventFormatter {
         }
         case 'task.blocked':
           return one(`✖ ${event.task} blocked (${event.source}): ${event.reason}`, 'red');
-        case 'limit.wait':
+        case 'limit.wait': {
+          const account = otherAccount(event.account);
+          const who = account === null ? '' : `${account} `;
           return one(
-            `⏳ waiting until ${clockTime(new Date(event.until))} (${event.reason})`,
+            `⏳ ${who}waiting until ${clockTime(new Date(event.until))} (${event.reason})`,
             'yellow',
           );
-        case 'usage.snapshot':
+        }
+        case 'account.switched':
           return one(
-            `usage: ${usageText({
+            `⇄ ${event.task} account ${event.from} → ${event.to} (${event.reason})`,
+            'yellow',
+          );
+        case 'usage.snapshot': {
+          const account = otherAccount(event.account);
+          return one(
+            `usage${account === null ? '' : ` ${account}`}: ${usageText({
               sessionLeft: event.sessionLeft,
               sessionResetsAt:
                 event.sessionResetsAt === null ? null : new Date(event.sessionResetsAt),
@@ -150,6 +168,7 @@ export function createEventFormatter(): EventFormatter {
             })}`,
             'dim',
           );
+        }
         case 'budget.exceeded':
           return one(
             `! ${event.task} over budget (${event.turns} turns, ${formatUsd(event.costUsd)})`,

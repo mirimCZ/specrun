@@ -65,6 +65,31 @@ function setup(): {
 }
 
 describe('createDashboardStore', () => {
+  it('keeps usage per account and follows the active account', () => {
+    const { store } = setup();
+    store.plan({ spec, events: [] });
+    const snap = (minute: number, account: string, sessionLeft: number): SpecrunEvent =>
+      asEvent(minute, {
+        t: 'usage.snapshot',
+        account,
+        sessionLeft,
+        sessionResetsAt: null,
+        weeklyLeft: 50,
+        weeklyResetsAt: null,
+        source: 'probe',
+      });
+    store.event(snap(0, 'default', 10));
+    store.event(snap(1, 'ipsum', 80));
+    store.event({ ...started(2, 'TR-1'), account: 'ipsum' } as SpecrunEvent);
+    const view = store.snapshot();
+    expect(view.accounts.map((a) => [a.name, a.usage.sessionLeft])).toEqual([
+      ['default', 10],
+      ['ipsum', 80],
+    ]);
+    expect(view.activeAccount).toBe('ipsum');
+    expect(view.usage?.sessionLeft).toBe(80);
+  });
+
   it('starts the rows over for the next spec of run --all and shows its position', () => {
     const clock = createFakeClock(new Date(at(0)));
     const store = createDashboardStore({ now: () => clock.now() });

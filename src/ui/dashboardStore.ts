@@ -32,6 +32,11 @@ export interface UsageView {
   weeklyLeft: number | null;
 }
 
+export interface AccountUsageView {
+  name: string;
+  usage: UsageView;
+}
+
 export interface DashboardView {
   /** Null until the runner has loaded the spec from the worktree. */
   title: string | null;
@@ -44,7 +49,12 @@ export interface DashboardView {
   rows: TaskRowView[];
   /** Latest tool call of the running task. */
   tool: string | null;
+  /** Latest usage of the active (else the only or latest) account. */
   usage: UsageView | null;
+  /** Latest usage per account, in order of first appearance. */
+  accounts: AccountUsageView[];
+  /** Account of the latest `session.started`; null before the first session. */
+  activeAccount: string | null;
   waiting: WaitingUpdate | null;
   /** Milestone lines in order; append-only so Ink's `<Static>` prints each once. */
   log: LogLine[];
@@ -95,7 +105,9 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
   let activity: DashboardView['activity'] = { label: 'starting', since: now() };
   let running: DashboardView['running'] = null;
   let tool: string | null = null;
-  let usage: UsageView | null = null;
+  let latestUsage: UsageView | null = null;
+  const accountUsage = new Map<string, UsageView>();
+  let activeAccount: string | null = null;
   let waiting: WaitingUpdate | null = null;
   const live = new Map<string, { turns: number; context: number }>();
   const models = new Map<string, string>();
@@ -108,8 +120,17 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
     events.push(event);
     state = null;
     if (event.t === 'session.started') models.set(event.task, event.model);
-    usage = usageOf(event) ?? usage;
+    const view = usageOf(event);
+    if (view !== null && event.t === 'usage.snapshot') {
+      accountUsage.set(event.account ?? 'default', view);
+      latestUsage = view;
+    }
+    if (event.t === 'session.started') activeAccount = event.account ?? 'default';
   };
+  const accountViews = (): AccountUsageView[] =>
+    [...accountUsage].map(([name, usage]) => ({ name, usage }));
+  const currentUsage = (): UsageView | null =>
+    (activeAccount === null ? undefined : accountUsage.get(activeAccount)) ?? latestUsage;
 
   const rowOf = (task: Spec['tasks'][number], current: SpecState): TaskRowView => {
     const taskState = current.tasks.get(task.id);
@@ -203,7 +224,9 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
           running,
           rows: [],
           tool,
-          usage,
+          usage: currentUsage(),
+          accounts: accountViews(),
+          activeAccount,
           waiting,
           log: [...log],
         };
@@ -223,7 +246,9 @@ export function createDashboardStore(options: { now: () => Date }): DashboardSto
         running,
         rows,
         tool,
-        usage,
+        usage: currentUsage(),
+        accounts: accountViews(),
+        activeAccount,
         waiting,
         log: [...log],
       };

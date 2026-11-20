@@ -54,10 +54,24 @@ function footer(view: DashboardView, now: Date): { text: string; color?: string 
   if (view.waiting !== null) {
     const left = formatElapsed(view.waiting.until.getTime() - now.getTime());
     const until = clockTime(view.waiting.until).slice(0, 5);
+    const account = view.waiting.account;
+    const who = account === undefined || account === 'default' ? '' : `${account} `;
     return {
-      text: `⏳ waiting until ${until} (${view.waiting.reason}) · ${left} left`,
+      text: `⏳ ${who}waiting until ${until} (${view.waiting.reason}) · ${left} left`,
       color: 'yellow',
     };
+  }
+  const onlyDefault =
+    view.accounts.length === 0 ||
+    (view.accounts.length === 1 && view.accounts[0]?.name === 'default');
+  if (!onlyDefault) {
+    const text = view.accounts
+      .map(({ name, usage }) => {
+        const marker = name === view.activeAccount ? '▸ ' : '';
+        return `${marker}${name} ${usageText(usage)}`;
+      })
+      .join(' | ');
+    return { text };
   }
   return { text: view.usage === null ? 'usage unknown' : usageText(view.usage) };
 }

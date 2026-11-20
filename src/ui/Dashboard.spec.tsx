@@ -48,6 +48,8 @@ function view(over: Partial<DashboardView> = {}): DashboardView {
     ],
     tool: 'Edit src/traits/TraitPicker.tsx',
     usage: { sessionLeft: 41, sessionResetsAt: null, weeklyLeft: 63 },
+    accounts: [],
+    activeAccount: null,
     waiting: null,
     log: [
       {
@@ -61,6 +63,28 @@ function view(over: Partial<DashboardView> = {}): DashboardView {
 }
 
 describe('Dashboard', () => {
+  it('shows every account with the active one marked', () => {
+    const usage = { sessionLeft: 41, sessionResetsAt: null, weeklyLeft: 63 };
+    const { lastFrame } = render(
+      <Dashboard
+        view={view({
+          accounts: [
+            { name: 'default', usage },
+            { name: 'ipsum', usage: { ...usage, sessionLeft: 7 } },
+          ],
+          activeAccount: 'ipsum',
+        })}
+        control={IDLE}
+        now={NOW}
+        frame={0}
+        width={100}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('default session 41 % left');
+    expect(frame).toContain('▸ ipsum session 7 % left');
+  });
+
   it('shows the log, the header with the task clock, task rows, the tool and usage', () => {
     const { lastFrame } = render(
       <Dashboard view={view()} control={IDLE} now={NOW} frame={2} width={80} />,
