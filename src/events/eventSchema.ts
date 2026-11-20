@@ -13,6 +13,8 @@ const IsoOrNull = z.iso.datetime({ offset: true }).nullable();
 const PercentLeft = z.number().min(0).max(100).nullable();
 const Count = z.number().int().min(0);
 const Segment = z.number().int().min(0);
+// Missing on events written before multi-account support: read it as `default` (MAD-12).
+const AccountName = z.string().optional();
 
 export const DEVIATION_KINDS = [
   'spec-bug',
@@ -78,6 +80,7 @@ export const UsageSnapshotEventSchema = z.object({
   weeklyLeft: PercentLeft,
   weeklyResetsAt: IsoOrNull,
   source: z.enum(['event', 'probe']),
+  account: AccountName,
 });
 
 export const LimitWaitSchema = z.object({
@@ -86,6 +89,24 @@ export const LimitWaitSchema = z.object({
   task: z.string().optional(),
   reason: z.enum(['session-low', 'limit-hit']),
   until: z.iso.datetime({ offset: true }),
+  account: AccountName,
+});
+
+export const ACCOUNT_SWITCH_REASONS = [
+  'weekly-low',
+  'session-low',
+  'limit-hit',
+  'priority',
+] as const;
+
+/** A task moved to another Claude account between segments (MAD-9, MAD-12). */
+export const AccountSwitchedSchema = z.object({
+  ...EVENT_BASE,
+  t: z.literal('account.switched'),
+  task: z.string(),
+  from: z.string(),
+  to: z.string(),
+  reason: z.enum(ACCOUNT_SWITCH_REASONS),
 });
 
 export const SESSION_REASONS = [
@@ -106,6 +127,7 @@ export const SessionStartedSchema = z.object({
   model: z.string(),
   reason: z.enum(SESSION_REASONS),
   prompt: z.object({ protocol: Count, spec: Count, brief: Count, deps: Count }),
+  account: AccountName,
 });
 
 export const SESSION_OUTCOMES = [
@@ -135,6 +157,7 @@ export const SessionFinishedSchema = z.object({
   cacheWrite: Count,
   costUsd: z.number().min(0),
   durationMs: z.number().min(0),
+  account: AccountName,
 });
 
 export const TaskCompletedSchema = z.object({
@@ -257,6 +280,7 @@ export const EventSchema = z.discriminatedUnion('t', [
   RunFinishedSchema,
   UsageSnapshotEventSchema,
   LimitWaitSchema,
+  AccountSwitchedSchema,
   SessionStartedSchema,
   SessionFinishedSchema,
   TaskCompletedSchema,

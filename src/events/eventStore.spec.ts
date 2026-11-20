@@ -166,4 +166,52 @@ describe('event store', () => {
     expect(store.read()).toEqual({ events: [first, second], unknown: 0 });
     expect(second).toMatchObject(withMetrics);
   });
+  it('round-trips account.switched and session.started with an account', () => {
+    const store = createEventStore({ file, runId: 'r', clock });
+    const switched: NewEvent = {
+      t: 'account.switched',
+      task: 'SR-1',
+      from: 'lorem',
+      to: 'ipsum',
+      reason: 'session-low',
+    };
+    const started: NewEvent = {
+      t: 'session.started',
+      task: 'SR-1',
+      sessionId: null,
+      segment: 1,
+      attempt: 1,
+      model: 'claude-opus',
+      reason: 'limit-resume',
+      prompt: { protocol: 1, spec: 2, brief: 3, deps: 4 },
+      account: 'ipsum',
+    };
+    const first = store.append(switched);
+    const second = store.append(started);
+
+    expect(store.read()).toEqual({ events: [first, second], unknown: 0 });
+    expect(second).toMatchObject({ account: 'ipsum' });
+  });
+
+  it('still reads a session.started without an account', () => {
+    const flat = join(dir, 'events.jsonl');
+    const line = {
+      v: 1,
+      at: AT.toISOString(),
+      runId: 'r',
+      t: 'session.started',
+      task: 'SR-1',
+      sessionId: 's1',
+      segment: 0,
+      attempt: 1,
+      model: 'claude-opus',
+      reason: 'start',
+      prompt: { protocol: 1, spec: 2, brief: 3, deps: 4 },
+    };
+    writeFileSync(flat, `${JSON.stringify(line)}\n`);
+
+    const [event] = readEvents(flat).events;
+    expect(event).toEqual(line);
+    expect(event).not.toHaveProperty('account');
+  });
 });
