@@ -53,6 +53,7 @@ export function captureDeps(cwd: string): CapturedDeps {
     prompter: () => {
       throw new Error('captureDeps is not interactive');
     },
+    homedir: () => join(cwd, '.test-home'),
     out,
     err,
   };

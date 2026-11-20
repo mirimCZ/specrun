@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Config } from '../config/configSchema.js';
 import { EVENTS_FILE } from '../events/eventStore.js';
@@ -15,6 +16,8 @@ export interface CliDeps {
   /** Both stdin and stdout are terminals, so questions can be asked. */
   interactive: boolean;
   prompter: () => Prompter;
+  /** Where `~/.specrun/config.json` lives; tests point it into a temp dir. */
+  homedir: () => string;
 }
 
 export function defaultCliDeps(): CliDeps {
@@ -26,6 +29,7 @@ export function defaultCliDeps(): CliDeps {
     now: () => new Date(),
     interactive: process.stdin.isTTY === true && process.stdout.isTTY === true,
     prompter: () => createTerminalPrompter(),
+    homedir,
   };
 }
 

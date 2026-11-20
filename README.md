@@ -133,9 +133,13 @@ with a `Specrun-Plan-Session` trailer and `commitTrailers`. An invalid spec stay
 ## Running
 
 ```sh
-specrun run <spec> [--task <id>] [--retry-blocked] [--base <ref>] [--model <alias>] [--no-ui]
-specrun run --all [--dry-run] [--retry-blocked] [--base <ref>] [--model <alias>] [--no-ui]
+specrun run <spec> [--task <id>] [--retry-blocked] [--base <ref>] [--model <alias>] [--account <name>] [-b] [--no-ui]
+specrun run --all [--dry-run] [--retry-blocked] [--base <ref>] [--model <alias>] [--account <name>] [-b] [--no-ui]
 ```
+
+With several accounts in `~/.specrun/config.json`, the run switches to the next account when one
+is used up; `-b` / `--burn` also moves on when the 5-hour window is low instead of waiting for its
+reset, and `--account <name>` pins the run to one account.
 
 For each runnable task (dependencies done, lowest open phase first):
 
@@ -276,6 +280,7 @@ config doesn't define, you get a warning, not an error.
 | Command                                                                   | What it does                                                                                   |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `specrun plan -n <name> [-f <file>] [--resume] [--print]`                 | Plan a spec with Claude Code on this terminal (see Planning)                                   |
+| `specrun accounts`                                                        | List the Claude accounts in priority order with token source, limits and a usage probe         |
 | `specrun status [spec] [--json]`                                          | All specs at a glance, or one spec's task table, branch, worktree and lock                     |
 | `specrun set <spec> <task> <todo\|done\|blocked> --reason <text>`         | Override a task's status by hand (recorded in the log)                                         |
 | `specrun stats [spec...] [--by task\|model\|size\|spec] [--calibrate]`    | Turns, cost and context of finished tasks; `--calibrate` suggests `sizes`                      |

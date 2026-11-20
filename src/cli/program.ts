@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { defaultCliDeps, type CliDeps } from './cliDeps.js';
+import { register as registerAccounts } from './commands/accounts.js';
 import { register as registerAnalyze } from './commands/analyze.js';
 import { register as registerArchive } from './commands/archive.js';
 import { register as registerClose } from './commands/close.js';
@@ -27,6 +28,7 @@ export function createProgram(deps: CliDeps = defaultCliDeps()): Command {
   registerInit(program, deps);
   registerRun(program, deps);
   registerStatus(program, deps);
+  registerAccounts(program, deps);
   registerSet(program, deps);
   registerStats(program, deps);
   registerDeviations(program, deps);

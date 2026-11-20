@@ -11,11 +11,13 @@ import { systemClock } from '../../limits/clock.js';
 import { runCommand } from '../../process/run.js';
 import {
   runSpec,
+  type RunAccount,
   type RunResult,
   type RunSpecDeps,
   type RunSpecOptions,
 } from '../../runner/runSpec.js';
-import { IMPLICIT_ACCOUNT } from '../../accounts/accounts.js';
+import { prepareAccounts } from '../../accounts/prepare.js';
+import { loadGlobalConfig } from '../../config/globalConfig.js';
 import { probeUsage } from '../../session/probeUsage.js';
 import { createSdkSession } from '../../session/sdkSession.js';
 import type { RunReporter } from '../../runner/reporter.js';
@@ -72,6 +74,8 @@ interface RunFlags {
   retryBlocked?: boolean;
   base: string;
   model?: string;
+  burn?: boolean;
+  account?: string;
   // commander turns `--no-ui` into `ui: false`.
   ui: boolean;
 }
@@ -113,6 +117,7 @@ export function buildRunOptions(
     base: flags.base,
     retryBlocked: flags.retryBlocked === true,
     workspace,
+    ...(flags.burn === true ? { burn: true } : {}),
     ...(flags.task === undefined ? {} : { taskFilter: flags.task }),
     ...(flags.model === undefined ? {} : { modelOverride: flags.model }),
   };
@@ -164,6 +169,11 @@ export function register(
     .option('--retry-blocked', 'run blocked tasks again')
     .option('--base <ref>', 'ref the spec branch is created from', 'HEAD')
     .option('--model <alias>', 'model alias for every session')
+    .option(
+      '-b, --burn',
+      'with several accounts: move on when the 5-hour window is low instead of waiting',
+    )
+    .option('--account <name>', 'use only this account (no switching)')
     .option('--no-ui', 'plain log lines instead of the dashboard')
     .action(async (spec: string | undefined, flags: RunFlags) => {
       checkFlags(spec, flags);
@@ -174,6 +184,7 @@ export function register(
       const allOptions = {
         base: flags.base,
         retryBlocked: flags.retryBlocked === true,
+        ...(flags.burn === true ? { burn: true } : {}),
         ...(flags.model === undefined ? {} : { modelOverride: flags.model }),
       };
       if (flags.dryRun === true) {
@@ -182,6 +193,25 @@ export function register(
         setExitCode(plan.conflicts.length > 0 ? 1 : 0);
         return;
       }
+      // MAD-15: tokens are resolved once, before any work starts; a failure ends the command here.
+      const prepared = await prepareAccounts(
+        {
+          config,
+          global: loadGlobalConfig({ homedir: deps.homedir }),
+          selection:
+            flags.account === undefined ? { kind: 'all' } : { kind: 'pinned', name: flags.account },
+        },
+        { env: deps.env, run: runCommand, platform: process.platform, cwd: repoRoot },
+      );
+      for (const warning of prepared.warnings) deps.stderr(`warning: ${warning}\n`);
+      const [firstAccount, ...otherAccounts] = prepared.accounts.map(
+        ({ env, ...account }): RunAccount => ({
+          ...account,
+          env,
+          probe: () => probeUsage({ cwd: repoRoot, ...(env === null ? {} : { env }) }),
+        }),
+      );
+      if (firstAccount === undefined) throw new SpecrunError('account-unknown', 'no account');
       const isTTY = overrides.isTTY ?? process.stdout.isTTY === true;
 
       /** One run with its own controls and dashboard; the questions afterwards may start another. */
@@ -218,18 +248,7 @@ export function register(
             session: createSdkSession(),
             run: runCommand,
             clock: systemClock,
-            // MA-6 replaces this with the configured accounts.
-            accounts: [
-              {
-                name: IMPLICIT_ACCOUNT,
-                limits: {
-                  sessionMinLeft: config.limits.sessionMinLeft,
-                  weeklyMinLeft: config.limits.weeklyMinLeft,
-                },
-                env: null,
-                probe: () => probeUsage({ cwd: repoRoot }),
-              },
-            ],
+            accounts: [firstAccount, ...otherAccounts],
             reporter,
             signal: controller.signal,
             stop: controls.stop,

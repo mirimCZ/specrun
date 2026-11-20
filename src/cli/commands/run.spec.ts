@@ -1,4 +1,4 @@
-import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -86,6 +86,69 @@ describe('specrun run', () => {
     });
     expect(deps.repoRoot).toBe(dir);
     expect(exit).toEqual([75]);
+  });
+
+  function writeGlobal(config: unknown): void {
+    const home = captureDeps(dir).homedir();
+    mkdirSync(join(home, '.specrun'), { recursive: true });
+    writeFileSync(join(home, '.specrun', 'config.json'), JSON.stringify(config));
+  }
+  const twoAccounts = {
+    accounts: [
+      { name: 'f', token: { env: 'LOREM_TOKEN' }, limits: { sessionMinLeft: 30 } },
+      { name: 's' },
+    ],
+  };
+  const withToken = (): ReturnType<typeof captureDeps> => {
+    const cliDeps = captureDeps(dir);
+    cliDeps.env = { LOREM_TOKEN: 'lorem-token' };
+    return cliDeps;
+  };
+  const done: RunResult = { exitCode: 0, reason: 'done' };
+
+  it('passes --burn on', async () => {
+    const { options } = await runCli(['demo', '-b'], done);
+    expect(options.burn).toBe(true);
+  });
+
+  it('hands every configured account to runSpec, in order', async () => {
+    writeGlobal(twoAccounts);
+    const { deps } = await runCli(['demo'], done, {}, withToken());
+    expect(deps.accounts.map((a) => a.name)).toEqual(['f', 's']);
+    expect(deps.accounts[0].limits.sessionMinLeft).toBe(30);
+    expect(deps.accounts[0].env?.['CLAUDE_CODE_OAUTH_TOKEN']).toBe('lorem-token');
+    expect(deps.accounts[1]?.env).toBeNull();
+  });
+
+  it('--account pins one account', async () => {
+    writeGlobal(twoAccounts);
+    const { deps } = await runCli(['demo', '--account', 'f'], done, {}, withToken());
+    expect(deps.accounts.map((a) => a.name)).toEqual(['f']);
+  });
+
+  it('rejects an unknown --account before running', async () => {
+    writeGlobal(twoAccounts);
+    // runCli would throw 'not called' if the action got as far as runSpec.
+    const run = runCli(['demo', '--account', 'nope'], done, {}, withToken());
+    await expect(run).rejects.toMatchObject({ code: 'account-unknown' });
+  });
+
+  it('fails on a missing token variable before running', async () => {
+    writeGlobal(twoAccounts);
+    await expect(runCli(['demo'], done)).rejects.toMatchObject({ code: 'account-token' });
+  });
+
+  it('warns about unknown limits.accounts names', async () => {
+    writeGlobal(twoAccounts);
+    writeFileSync(
+      join(dir, 'specrun.config.json'),
+      JSON.stringify({
+        verify: [{ name: 'ok', command: 'true' }],
+        limits: { accounts: { ghost: { sessionMinLeft: 5 } } },
+      }),
+    );
+    const { err } = await runCli(['demo'], done, {}, withToken());
+    expect(err.join('')).toMatch(/warning: .*ghost/);
   });
 
   it('uses defaults without flags', async () => {
