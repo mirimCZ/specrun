@@ -1,5 +1,7 @@
 # Multiple Claude accounts
 
+> Archived on 2026-11-20 by `specrun archive`. The full spec folder (briefs, prompts, run log) is in git at `6b36233`: `git ls-tree -r --name-only 6b36233 -- docs/004-multi-account`.
+
 specrun can run its agent sessions on more than one Claude subscription. Accounts are listed in
 priority order in a new global config, `~/.specrun/config.json`. Each account has its own limits,
 and a repo can override them. A run uses the priority account and moves to the next account when

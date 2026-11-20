@@ -1,0 +1,297 @@
+{
+  "version": 1,
+  "spec": "004-multi-account",
+  "title": "Multiple Claude accounts",
+  "archivedAt": "2026-11-20T17:09:04.752Z",
+  "commit": "6b36233390f97147691b2cfcca236905e0627344",
+  "outcome": {
+    "kind": "merged",
+    "shelved": null
+  },
+  "planning": null,
+  "verify": {
+    "runs": 10,
+    "failed": 0,
+    "sumMs": 142872,
+    "p50Ms": 14502,
+    "p90Ms": 14954,
+    "maxMs": 15345,
+    "sessionMs": 997032,
+    "steps": [
+      {
+        "name": "typecheck",
+        "runs": 10,
+        "failed": 0,
+        "sumMs": 4995,
+        "p50Ms": 494,
+        "p90Ms": 574,
+        "maxMs": 595
+      },
+      {
+        "name": "test",
+        "runs": 10,
+        "failed": 0,
+        "sumMs": 106135,
+        "p50Ms": 10929,
+        "p90Ms": 11165,
+        "maxMs": 11632
+      },
+      {
+        "name": "format",
+        "runs": 10,
+        "failed": 0,
+        "sumMs": 22381,
+        "p50Ms": 2207,
+        "p90Ms": 2378,
+        "maxMs": 2429
+      },
+      {
+        "name": "features",
+        "runs": 10,
+        "failed": 0,
+        "sumMs": 9361,
+        "p50Ms": 932,
+        "p90Ms": 979,
+        "maxMs": 1025
+      }
+    ]
+  },
+  "samples": [
+    {
+      "spec": "004-multi-account",
+      "task": "MA-1",
+      "model": "strong",
+      "size": "M",
+      "turns": 17,
+      "costUsd": 0.6547874,
+      "peakContext": 40518,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 2,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-2",
+      "model": "default",
+      "size": "M",
+      "turns": 5,
+      "costUsd": 0.1608238,
+      "peakContext": 23697,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-3",
+      "model": "default",
+      "size": "S",
+      "turns": 8,
+      "costUsd": 0.11057900000000001,
+      "peakContext": 21927,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-4",
+      "model": "strong",
+      "size": "M",
+      "turns": 16,
+      "costUsd": 0.5181627,
+      "peakContext": 35759,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-5",
+      "model": "strong",
+      "size": "L",
+      "turns": 18,
+      "costUsd": 1.1207074000000001,
+      "peakContext": 76194,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 3,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-6",
+      "model": "default",
+      "size": "M",
+      "turns": 14,
+      "costUsd": 0.3242521,
+      "peakContext": 46927,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 2,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-7",
+      "model": "default",
+      "size": "S",
+      "turns": 15,
+      "costUsd": 0.24309530000000001,
+      "peakContext": 37744,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 1,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-8",
+      "model": "default",
+      "size": "M",
+      "turns": 12,
+      "costUsd": 0.2230145,
+      "peakContext": 35142,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 1,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-9",
+      "model": "default",
+      "size": "M",
+      "turns": 8,
+      "costUsd": 0.17083150000000002,
+      "peakContext": 30349,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-10",
+      "model": "default",
+      "size": "S",
+      "turns": 7,
+      "costUsd": 0.1695311,
+      "peakContext": 31484,
+      "sessions": 1,
+      "verifyRounds": 1,
+      "deviations": 0,
+      "budgetExceeded": false
+    }
+  ],
+  "deviations": [
+    {
+      "spec": "004-multi-account",
+      "task": "MA-1",
+      "kind": "spec-bug",
+      "decision": null,
+      "what": "Changed the expected `limits` in the existing configSchema.spec.ts 'fills every default' case from { sessionMinLeft: 15, weeklyMinLeft: 5 } to also include accounts: {}.",
+      "why": "The brief requires `limits.accounts` to default to {}, so the exact-equality assertion of the full parsed default config can't pass unchanged; the only change is the new default key.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-1",
+      "kind": "scope",
+      "decision": null,
+      "what": "Changed the parameter type of decide() in src/limits/policy.ts from Config['limits'] to AccountLimits.",
+      "why": "Config['limits'] now requires `accounts`, which broke the existing policy.spec.ts literals at compile time. AccountLimits is the narrower type decide actually uses, so it is a type-only change and the existing tests stay as they are.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-5",
+      "kind": "constraint",
+      "decision": null,
+      "what": "`burn` is optional (`burn?: boolean`, default false) on RunSpecOptions and RunAllOptions, not a required boolean. run.ts doesn't pass `burn: false` explicitly.",
+      "why": "A required field would change existing assertions. run.spec.ts compares the runSpec options and runAll options with toEqual, and runAll.spec.ts calls runAll without burn. The spec rules forbid changing what existing cases assert.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-5",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "lastAccount starts as the priority account, so a first segment on the fallback emits account.switched from the priority account.",
+      "why": "The Done-when cases expect account.switched (weekly-low / session-low) on the run's very first task. Without an initial lastAccount, the first segment has no previous account to switch from.",
+      "question": {
+        "text": "Should the first segment of a run emit account.switched when it doesn't run on the priority account?",
+        "options": [
+          "Yes: lastAccount starts as the priority account",
+          "No: lastAccount starts as null and the first segment never emits a switch"
+        ],
+        "chosen": "Yes: lastAccount starts as the priority account"
+      },
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-5",
+      "kind": "scope",
+      "decision": null,
+      "what": "Added two cases the brief doesn't list: a per-account probe-warning case, and a case where the next task stays on the fallback while the priority account is still blocked. The runAll.spec.ts harness now builds a default account instead of probeUsage.",
+      "why": "These cover the new warning text and the sticky/blocked behaviour. The runAll harness had to change for the type change; no assertions changed.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-6",
+      "kind": "scope",
+      "decision": null,
+      "what": "Added an optional setExitCode override to the accounts command.",
+      "why": "Makes the exit code 1 testable without touching process.exitCode, matching run.ts.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-6",
+      "kind": "ambiguity",
+      "decision": null,
+      "what": "Reset times in `specrun accounts` are shown as relative durations (e.g. 'resets in 1h 30m').",
+      "why": "The brief doesn't fix the format; relative is simplest and independent of the time zone.",
+      "question": {
+        "text": "How should resets be shown in the accounts table?",
+        "options": [
+          "relative duration",
+          "absolute timestamp"
+        ],
+        "chosen": "relative duration"
+      },
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-7",
+      "kind": "scope",
+      "decision": null,
+      "what": "Also refactored run.ts to use the new accountsFor helper.",
+      "why": "The brief asked to extract a shared helper if the code would repeat across commands.",
+      "question": null,
+      "reviewed": true
+    },
+    {
+      "spec": "004-multi-account",
+      "task": "MA-8",
+      "kind": "scope",
+      "decision": null,
+      "what": "Kept `usage` in DashboardView next to the new `accounts` and `activeAccount` fields, and added the two new fields to the Dashboard.spec view() helper.",
+      "why": "The existing Dashboard.spec builds a view with `usage`, and the brief says to keep existing assertions unchanged.",
+      "question": null,
+      "reviewed": true
+    }
+  ]
+}
