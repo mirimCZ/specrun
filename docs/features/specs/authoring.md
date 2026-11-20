@@ -23,6 +23,7 @@ tests:
 specs:
   - v1
   - 001-plan-command
+  - 004-multi-account
 ---
 
 # Planning and writing specs
@@ -36,6 +37,7 @@ consistent and the cost of planning is visible. Decisions: PLD-1 to PLD-11 in
 ## Capabilities
 
 - A user can start planning by name and gets the next numbered spec folder, or continues an existing one.
+- A user can pick the Claude account a planning session runs on.
 - A user can hand over a request file, resume the latest planning session, or only print what Claude would get.
 - Planning runs fixed phases: context, refine with a checklist and questions, a gate before writing, writing, validation.
 - The refine skill turns a vague request into decisions by asking the user focused questions.

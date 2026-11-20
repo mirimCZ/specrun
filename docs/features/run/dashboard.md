@@ -9,14 +9,17 @@ code:
   - src/cli/runControls.ts
   - src/cli/afterRun.ts
   - src/cli/lineReporter.ts
+  - src/cli/eventLines.ts
 tests:
   - src/ui/Dashboard.spec.tsx
   - src/ui/dashboardStore.spec.ts
   - src/cli/runControls.spec.ts
   - src/cli/afterRun.spec.ts
   - src/cli/lineReporter.spec.ts
+  - src/cli/eventLines.spec.ts
 specs:
   - v1
+  - 004-multi-account
 ---
 
 # Run dashboard and controls
@@ -30,7 +33,7 @@ Design: [SRD-2, SRD-25, SRD-27, SRD-33](../../v1/README.md).
 
 - In a terminal the user sees a live log of milestones above every task with its state.
 - The user sees the running task's progress: turns, context size, cost and current activity.
-- The user sees the usage windows, or the countdown while the run waits.
+- The user sees the usage windows, or the countdown while the run waits; with several accounts, those of each account, the active one marked, and every account switch.
 - The user can ask to stop after the current task, which is still verified and committed or blocked.
 - The user can cancel a pending stop and the run goes on.
 - The user can interrupt immediately; the task is resumed on the next run.

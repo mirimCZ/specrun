@@ -14,6 +14,7 @@ tests:
   - src/cli/commands/review.spec.ts
 specs:
   - v1
+  - 004-multi-account
 ---
 
 # Deviation review
@@ -27,6 +28,7 @@ needed already gathered, so decisions are quick and end up in the right place.
 
 - A user can start a review of one or more specs' deviations, optionally of one kind, in Claude Code on the same terminal.
 - The session starts with gathered context: config, spec location, relevant decision rows, task rules, and per task the deviations, commit and brief.
+- A user can pick the Claude account a review session runs on.
 - A user can see the context and instructions without starting a session.
 - Each deviation is judged as confirm, overturn, rule fix or noise, and the user decides what is recorded or changed.
 - Lessons tied to one feature go into that feature's doc when the repo has a feature map.

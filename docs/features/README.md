@@ -6,6 +6,7 @@ happened. The map lists what users can do with it, not how it is built.
 ```mermaid
 flowchart LR
   subgraph run
+    run_accounts["Multiple Claude accounts"]
     run_dashboard["Run dashboard and controls"]
     run_limits["Usage limits"]
     run_orchestration["Run orchestration"]
@@ -32,9 +33,12 @@ flowchart LR
   run_orchestration --> run_verify_commit
   run_orchestration --> run_limits
   run_orchestration --> run_dashboard
+  run_orchestration --> run_accounts
   run_orchestration --> specs_format
   run_orchestration --> insights_run_log
   run_dashboard --> run_orchestration
+  run_accounts --> setup_config
+  run_accounts --> run_limits
   run_limits --> setup_config
   run_verify_commit --> run_orchestration
   run_verify_commit --> run_workspace
@@ -62,6 +66,7 @@ flowchart LR
 | [insights/run-log](insights/run-log.md)           | Run log and analytics                  | See task status, progress and session analytics derived from the run log |
 | [insights/stats](insights/stats.md)               | Stats, deviations and feedback         | See cost and deviations of finished runs and get improvement proposals   |
 | [knowledge/feature-map](knowledge/feature-map.md) | Feature map                            | Check, bootstrap and update the map of what the product does             |
+| [run/accounts](run/accounts.md)                   | Multiple Claude accounts               | Spread runs over several Claude accounts with priority and fallback      |
 | [run/dashboard](run/dashboard.md)                 | Run dashboard and controls             | Watch a run live and steer it                                            |
 | [run/limits](run/limits.md)                       | Usage limits                           | Let runs wait out plan usage limits                                      |
 | [run/orchestration](run/orchestration.md)         | Run orchestration                      | Run a spec's tasks unattended, one agent session each                    |

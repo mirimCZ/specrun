@@ -7,6 +7,7 @@ depends_on:
   - run/verify-commit
   - run/limits
   - run/dashboard
+  - run/accounts
   - specs/format
   - insights/run-log
 code:
@@ -22,6 +23,7 @@ tests:
   - src/session/followUps.spec.ts
 specs:
   - v1
+  - 004-multi-account
 ---
 
 # Run orchestration
@@ -41,6 +43,7 @@ and come back to committed work. Design: [SRD-3, SRD-4, SRD-8, SRD-9](../../v1/R
 - A user can retry blocked tasks; tasks that need a blocked one wait instead of failing.
 - A user can run every spec of the repository in one go, one after another in a shared workspace, and gets a summary row per spec.
 - A user can preview that all-specs run (order, state, reasons it would refuse) without changing anything.
+- A user can run with several Claude accounts; each session uses the account the run chose, see [run/accounts](accounts.md).
 - A task that ends a session without a result gets a follow-up prompt asking for one before it is blocked.
 
 ## Expectations
@@ -51,6 +54,7 @@ and come back to committed work. Design: [SRD-3, SRD-4, SRD-8, SRD-9](../../v1/R
 - A later phase may run while an earlier one waits for a blocked task; phases only order work.
 - The all-specs run refuses to start while a spec has its own worktree or branch.
 - A failing, stopped or interrupted spec ends the all-specs run with that spec's exit code.
+- Without a global configuration the run uses one implicit account and behaves as before.
 - Exit codes are stable: 0 done or stopped on request, 1 failure, 75 weekly limit, 130 interrupted.
 
 ## Pitfalls

@@ -7,6 +7,7 @@ depends_on:
 code:
   - src/limits/
   - src/session/probeUsage.ts
+  - src/accounts/
 tests:
   - src/limits/policy.spec.ts
   - src/limits/usage.spec.ts
@@ -15,6 +16,7 @@ tests:
   - src/session/probeUsage.spec.ts
 specs:
   - v1
+  - 004-multi-account
 ---
 
 # Usage limits
@@ -31,6 +33,7 @@ and stops cleanly on the weekly one. Design: [SRD-10, SRD-25](../../v1/README.md
 - A run that finds the weekly window nearly used up stops with a distinct exit code instead of waiting days.
 - A session that hits a usage limit mid-task waits for the reset and then resumes the same session.
 - The user can see the waiting countdown and the current usage windows while a run waits.
+- With several accounts the thresholds apply per account; see [run/accounts](accounts.md) for how the run picks one.
 - On macOS the machine is kept awake while a run is active.
 
 ## Expectations
@@ -42,4 +45,5 @@ and stops cleanly on the weekly one. Design: [SRD-10, SRD-25](../../v1/README.md
 
 ## Pitfalls
 
+- With several accounts the run waits only when no account can work; the weekly stop needs every account below its minimum.
 - Waiting for the 5-hour window can take hours; the run looks idle but is not stuck.

@@ -12,8 +12,8 @@
 | 1     | MA-6  | CLI: run flags and specrun accounts         | M    | default | done   | 1        | 14    | 47k      | $0.32 | 4836afa | Wired accounts into `specrun run` (-b/--burn, --account, warnings, token errors before start) and added `specrun accounts` with tests and README updates.                                                                                                                                                                                                  |
 | 1     | MA-7  | --account for plan and review               | S    | default | done   | 1        | 15    | 38k      | $0.24 | 2a720c8 | Added --account to plan and review, launching claude on the pinned or priority account via a shared accountsFor helper also used by run.                                                                                                                                                                                                                   |
 | 1     | MA-8  | Dashboard and log lines per account         | M    | default | done   | 1        | 12    | 35k      | $0.22 | 0076bdb | Dashboard and log lines now show accounts: account labels in log lines, an account.switched line, per-account usage and an active marker in the dashboard, and the account on waiting updates.                                                                                                                                                             |
-| 1     | MA-9  | Stats per account                           | M    | default | done   | 1        | 8     | 30k      | $0.17 | —       | Added per-account stats: accountSummary, AccountSummarySchema, `accounts` in --json, ACCOUNTS table, docs and tests.                                                                                                                                                                                                                                       |
-| 1     | MA-10 | Update the feature map                      | S    | default | todo   | —        | —     | —        | —     | —       |                                                                                                                                                                                                                                                                                                                                                            |
+| 1     | MA-9  | Stats per account                           | M    | default | done   | 1        | 8     | 30k      | $0.17 | 50a75c7 | Added per-account stats: accountSummary, AccountSummarySchema, `accounts` in --json, ACCOUNTS table, docs and tests.                                                                                                                                                                                                                                       |
+| 1     | MA-10 | Update the feature map                      | S    | default | done   | 1        | 7     | 31k      | $0.17 | —       | Updated the feature docs touched by the multi-account spec and added the new run/accounts feature (doc, index row, diagram node and edges).                                                                                                                                                                                                                |
 
 ## Deviations
 
@@ -31,5 +31,5 @@
 
 ## Totals
 
-- Tasks: 10 (9 done · 0 blocked · 0 interrupted · 1 todo)
-- Sessions: 9 · Turns: 113 · Cost: $3.53 · Time: 16m
+- Tasks: 10 (10 done · 0 blocked · 0 interrupted · 0 todo)
+- Sessions: 10 · Turns: 120 · Cost: $3.70 · Time: 17m

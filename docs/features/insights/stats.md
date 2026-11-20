@@ -16,6 +16,7 @@ tests:
   - src/cli/commands/deviations.spec.ts
 specs:
   - v1
+  - 004-multi-account
 ---
 
 # Stats, deviations and feedback
@@ -33,6 +34,7 @@ evidence-backed proposals to improve specs, rules and sizes. Output format: [jso
 - A user can see the token use of planning sessions next to run costs.
 - A user can see how long verify rounds and each verify step took per spec, and what share of the task time verify took, to judge changes to the verify setup.
 - A user can ask for feedback after runs and get proposals for briefs, task rules, skills, CLAUDE.md and sizes, each with its evidence.
+- With several accounts a user can see segments, turns and cost per account.
 - A user can read stats and deviations as machine-readable output, also during a run.
 
 ## Expectations
