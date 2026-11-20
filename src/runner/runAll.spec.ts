@@ -60,7 +60,14 @@ function deps(segments: FakeSegment[], extra: Partial<RunAllDeps> = {}): RunAllD
     session: createFakeSession(segments, { gitEnv: env }),
     run,
     clock: createFakeClock(new Date('2026-11-13T10:00:00.000Z')),
-    probeUsage: () => Promise.resolve(null),
+    accounts: [
+      {
+        name: 'default',
+        limits: { sessionMinLeft: 15, weeklyMinLeft: 5 },
+        env: null,
+        probe: () => Promise.resolve(null),
+      },
+    ],
     reporter: nullReporter,
     signal: new AbortController().signal,
     version: '0.0.0-test',

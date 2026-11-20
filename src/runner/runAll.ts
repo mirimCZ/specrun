@@ -31,6 +31,8 @@ export interface RunAllOptions {
   base: string;
   retryBlocked: boolean;
   modelOverride?: string;
+  /** Passed on to every spec run (MAD-7). Default: false. */
+  burn?: boolean;
 }
 
 export interface RunAllDeps extends RunSpecDeps {
@@ -268,6 +270,7 @@ export async function runAll(options: RunAllOptions, deps: RunAllDeps): Promise<
             ...(options.modelOverride === undefined
               ? {}
               : { modelOverride: options.modelOverride }),
+            ...(options.burn === undefined ? {} : { burn: options.burn }),
           },
           { ...deps, reporter: withPosition(deps.reporter, index + 1, withWork.length) },
         );

@@ -13,7 +13,7 @@ import { readEvents } from '../events/eventStore.js';
 import type { UsageSnapshot } from '../limits/usage.js';
 import { runCommand } from '../process/run.js';
 import { nullReporter, type RunReporter } from './reporter.js';
-import { runSpec, type RunSpecOptions } from './runSpec.js';
+import { runSpec, SNAPSHOT_MAX_AGE_MS, type RunAccount, type RunSpecOptions } from './runSpec.js';
 import { createStopRequest, type StopRequest } from './stopRequest.js';
 
 const env = {
@@ -84,6 +84,8 @@ interface Harness {
   pid?: number;
   isAlive?: (pid: number) => boolean;
   probeUsage?: () => Promise<UsageSnapshot | null>;
+  /** Replaces the `default` account built from `probeUsage` / `probes`. */
+  accounts?: [RunAccount, ...RunAccount[]];
   controller?: AbortController;
   reporter?: RunReporter;
   stop?: StopRequest;
@@ -92,15 +94,25 @@ interface Harness {
 async function start(h: Harness) {
   const session = createFakeSession(h.segments, { gitEnv: env });
   const probes = [...(h.probes ?? [])];
+  const config = h.config ?? makeConfig();
+  const implicit: RunAccount = {
+    name: 'default',
+    limits: {
+      sessionMinLeft: config.limits.sessionMinLeft,
+      weeklyMinLeft: config.limits.weeklyMinLeft,
+    },
+    env: null,
+    probe: h.probeUsage ?? (() => Promise.resolve(probes.shift() ?? null)),
+  };
   const result = await runSpec(
     { spec: 'demo', base: 'main', retryBlocked: false, workspace: 'own', ...h.options },
     {
       repoRoot: repo,
-      config: h.config ?? makeConfig(),
+      config,
       session,
       run: (cmd, args, opts) => runCommand(cmd, args, { ...opts, env }),
       clock,
-      probeUsage: h.probeUsage ?? (() => Promise.resolve(probes.shift() ?? null)),
+      accounts: h.accounts ?? [implicit],
       reporter: h.reporter ?? nullReporter,
       signal: (h.controller ?? new AbortController()).signal,
       ...(h.stop === undefined ? {} : { stop: h.stop }),
@@ -556,5 +568,219 @@ describe('runSpec', () => {
     expect(result).toEqual({ exitCode: 130, reason: 'interrupted' });
     expect(session.inputs).toHaveLength(0);
     expect(subjects()).toEqual(['chore(specrun): demo run log']);
+  });
+});
+
+describe('runSpec with several accounts', () => {
+  const LIMITS = { sessionMinLeft: 15, weeklyMinLeft: 5 };
+
+  /** `snapshots` are returned in order, then the last one again. */
+  function account(name: string, snapshots: UsageSnapshot[] = []): RunAccount {
+    const queue = [...snapshots];
+    return {
+      name,
+      limits: LIMITS,
+      env: { CLAUDE_CODE_OAUTH_TOKEN: `lorem-token-${name}` },
+      probe: () => Promise.resolve(queue.length > 1 ? (queue.shift() ?? null) : (queue[0] ?? null)),
+    };
+  }
+
+  const accountsOf = (t: EventType): (string | undefined)[] =>
+    events()
+      .filter((e) => e.t === t)
+      .map((e) => ('account' in e ? e.account : undefined));
+
+  it('runs on the fallback when the priority account is weekly-low', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const { result, session } = await start({
+      accounts: [account('p', [snapshot(90, 2)]), account('f', [snapshot(90)])],
+      segments: [{}],
+    });
+
+    expect(result).toEqual({ exitCode: 0, reason: 'done' });
+    expect(session.inputs[0]?.env).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: 'lorem-token-f' });
+    expect(ofType('account.switched')).toMatchObject([
+      { task: 'A-1', from: 'p', to: 'f', reason: 'weekly-low' },
+    ]);
+    expect(accountsOf('session.started')).toEqual(['f']);
+    expect(accountsOf('session.finished')).toEqual(['f']);
+    expect(accountsOf('usage.snapshot')).toEqual(['p', 'f']);
+  });
+
+  it('waits for the priority account without burn when its session window is low', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const { result, session } = await start({
+      accounts: [
+        account('p', [snapshot(10, 80, HOUR), snapshot(90)]),
+        account('f', [snapshot(90)]),
+      ],
+      segments: [{}],
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ofType('limit.wait')).toMatchObject([
+      { task: 'A-1', account: 'p', reason: 'session-low' },
+    ]);
+    expect(ofType('account.switched')).toEqual([]);
+    expect(accountsOf('session.started')).toEqual(['p']);
+    expect(session.inputs[0]?.env).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: 'lorem-token-p' });
+  });
+
+  it('runs on the fallback with burn when the priority session window is low', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const { result, session } = await start({
+      accounts: [account('p', [snapshot(10)]), account('f', [snapshot(90)])],
+      options: { burn: true },
+      segments: [{}],
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ofType('limit.wait')).toEqual([]);
+    expect(ofType('account.switched')).toMatchObject([
+      { from: 'p', to: 'f', reason: 'session-low' },
+    ]);
+    expect(session.inputs[0]?.env).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: 'lorem-token-f' });
+  });
+
+  it('resumes the same session on the fallback after a limit hit with burn', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const resetsAt = new Date(START.getTime() + HOUR);
+    const { result, session } = await start({
+      accounts: [account('p', [snapshot(90)]), account('f', [snapshot(90)])],
+      options: { burn: true },
+      segments: [{ outcome: 'limit', toolCall: null, limitResetsAt: resetsAt }, {}],
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ofType('limit.wait')).toEqual([]);
+    expect(clock.now().getTime()).toBeLessThan(resetsAt.getTime());
+    expect(ofType('session.started').map((e) => [e.reason, e.sessionId, e.account])).toEqual([
+      ['start', null, 'p'],
+      ['limit-resume', 'session-1', 'f'],
+    ]);
+    expect(ofType('account.switched')).toMatchObject([{ from: 'p', to: 'f', reason: 'limit-hit' }]);
+    expect(session.inputs[1]?.resumeSessionId).toBe('session-1');
+    expect(session.inputs[1]?.env).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: 'lorem-token-f' });
+  });
+
+  it('waits for the reset and resumes on the same account after a limit hit without burn', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const resetsAt = new Date(START.getTime() + HOUR);
+    const { result } = await start({
+      accounts: [account('p', [snapshot(90)]), account('f', [snapshot(90)])],
+      segments: [{ outcome: 'limit', toolCall: null, limitResetsAt: resetsAt }, {}],
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ofType('limit.wait')).toMatchObject([
+      {
+        account: 'p',
+        reason: 'limit-hit',
+        until: new Date(resetsAt.getTime() + 60_000).toISOString(),
+      },
+    ]);
+    expect(ofType('session.started').map((e) => [e.reason, e.sessionId, e.account])).toEqual([
+      ['start', null, 'p'],
+      ['limit-resume', 'session-1', 'p'],
+    ]);
+    expect(ofType('account.switched')).toEqual([]);
+  });
+
+  it('keeps the next task on the fallback while the priority account is blocked', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2', needs: ['A-1'] }]);
+    const resetsAt = new Date(START.getTime() + HOUR);
+    const { result } = await start({
+      // The fallback's snapshot ages out during the run; the priority one recovers after the wait.
+      accounts: [account('p', [snapshot(90), snapshot(90)]), account('f', [snapshot(90)])],
+      options: { burn: true },
+      segments: [
+        { outcome: 'limit', toolCall: null, limitResetsAt: resetsAt, edits: { 'one.txt': '1' } },
+        {},
+        { edits: { 'two.txt': '2' } },
+      ],
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ofType('session.started').map((e) => [e.task, e.account])).toEqual([
+      ['A-1', 'p'],
+      ['A-1', 'f'],
+      ['A-2', 'f'],
+    ]);
+    // p is still blocked when A-2 starts, so the run stays on f: no switch back yet.
+    expect(ofType('account.switched').map((e) => [e.task, e.from, e.to, e.reason])).toEqual([
+      ['A-1', 'p', 'f', 'limit-hit'],
+    ]);
+  });
+
+  it('goes back to the priority account with reason priority after a task on the fallback', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2', needs: ['A-1'] }]);
+    const { result } = await start({
+      // p is session-low at first; its next probe (after the snapshot went stale) is fine again.
+      accounts: [account('p', [snapshot(10), snapshot(90)]), account('f', [snapshot(90)])],
+      options: { burn: true },
+      segments: [{ edits: { 'one.txt': '1' } }, { edits: { 'two.txt': '2' } }],
+      reporter: {
+        ...nullReporter,
+        // Age the snapshots so the next task's pause check probes again.
+        event: (event) => {
+          if (event.t === 'session.finished') clock.advance(SNAPSHOT_MAX_AGE_MS + 1);
+        },
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ofType('session.started').map((e) => [e.task, e.account])).toEqual([
+      ['A-1', 'f'],
+      ['A-2', 'p'],
+    ]);
+    expect(ofType('account.switched').map((e) => [e.task, e.from, e.to, e.reason])).toEqual([
+      ['A-1', 'p', 'f', 'session-low'],
+      ['A-2', 'f', 'p', 'priority'],
+    ]);
+  });
+
+  it('stops with exit 75 when every account is weekly-low', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const { result, session } = await start({
+      accounts: [account('p', [snapshot(90, 2)]), account('f', [snapshot(90, 1)])],
+      segments: [{}],
+    });
+
+    expect(result).toEqual({
+      exitCode: 75,
+      reason: 'paused-weekly',
+      message: 'weekly usage left below the minimum on every account',
+    });
+    expect(session.inputs).toHaveLength(0);
+  });
+
+  it('warns once per failing account', async () => {
+    setupRepo([{ id: 'A-1' }, { id: 'A-2', needs: ['A-1'] }]);
+    const logs: string[] = [];
+    await start({
+      accounts: [account('p'), account('f', [snapshot(90)])],
+      segments: [{ edits: { 'one.txt': '1' } }, { edits: { 'two.txt': '2' } }],
+      reporter: { ...nullReporter, log: (_level, message) => void logs.push(message) },
+    });
+
+    expect(logs).toEqual(['usage probe failed for p — running without limit data']);
+  });
+});
+
+describe('runSpec with the implicit account', () => {
+  it('writes account default on every account-carrying event', async () => {
+    setupRepo([{ id: 'A-1' }]);
+    const resetsAt = new Date(START.getTime() + HOUR);
+    await start({
+      probes: [snapshot(90)],
+      segments: [{ outcome: 'limit', toolCall: null, limitResetsAt: resetsAt }, {}],
+    });
+
+    const carrying = events().filter((e) =>
+      ['session.started', 'session.finished', 'usage.snapshot', 'limit.wait'].includes(e.t),
+    );
+    expect(new Set(carrying.map((e) => e.t)).size).toBe(4);
+    expect(carrying.every((e) => 'account' in e && e.account === 'default')).toBe(true);
+    expect(ofType('account.switched')).toEqual([]);
   });
 });

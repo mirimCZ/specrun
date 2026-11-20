@@ -15,6 +15,7 @@ import {
   type RunSpecDeps,
   type RunSpecOptions,
 } from '../../runner/runSpec.js';
+import { IMPLICIT_ACCOUNT } from '../../accounts/accounts.js';
 import { probeUsage } from '../../session/probeUsage.js';
 import { createSdkSession } from '../../session/sdkSession.js';
 import type { RunReporter } from '../../runner/reporter.js';
@@ -217,7 +218,18 @@ export function register(
             session: createSdkSession(),
             run: runCommand,
             clock: systemClock,
-            probeUsage: () => probeUsage({ cwd: repoRoot }),
+            // MA-6 replaces this with the configured accounts.
+            accounts: [
+              {
+                name: IMPLICIT_ACCOUNT,
+                limits: {
+                  sessionMinLeft: config.limits.sessionMinLeft,
+                  weeklyMinLeft: config.limits.weeklyMinLeft,
+                },
+                env: null,
+                probe: () => probeUsage({ cwd: repoRoot }),
+              },
+            ],
             reporter,
             signal: controller.signal,
             stop: controls.stop,

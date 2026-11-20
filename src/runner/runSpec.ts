@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { z } from 'zod';
+import type { PreparedAccount } from '../accounts/prepare.js';
 import type { Config } from '../config/configSchema.js';
 import type {
   CompleteTaskPayload,
@@ -24,7 +25,14 @@ import { createGit } from '../git/git.js';
 import { SHARED_BRANCH, SHARED_ID } from '../git/workspace.js';
 import { ensureCheckout, ensureWorktree, type WorktreeStep } from '../git/worktree.js';
 import { waitUntil, type Clock } from '../limits/clock.js';
-import { decide, limitHitTarget, waitTarget } from '../limits/policy.js';
+import {
+  chooseAccount,
+  limitHitTarget,
+  switchReason,
+  waitTarget,
+  type AccountChoice,
+  type AccountUsage,
+} from '../limits/policy.js';
 import type { UsageSnapshot } from '../limits/usage.js';
 import type { ProcessRunner } from '../process/run.js';
 import { PROGRESS_FILE, renderProgress } from '../progress/renderProgress.js';
@@ -54,7 +62,12 @@ export interface RunSpecOptions {
   workspace: 'own' | 'shared';
   /** Model alias for every session instead of the task's `default` / `strong` mapping. */
   modelOverride?: string;
+  /** MAD-7 / MAD-10: move past an account that only has to wait. Default: false. */
+  burn?: boolean;
 }
+
+/** An account the run may use, with its own usage probe. */
+export type RunAccount = PreparedAccount & { probe: () => Promise<UsageSnapshot | null> };
 
 export interface RunSpecDeps {
   /** Main checkout; the spec runs in its worktree. */
@@ -63,7 +76,8 @@ export interface RunSpecDeps {
   session: AgentSession;
   run: ProcessRunner;
   clock: Clock;
-  probeUsage: () => Promise<UsageSnapshot | null>;
+  /** In priority order (MAD-4); one implicit `default` account without a global config. */
+  accounts: readonly [RunAccount, ...RunAccount[]];
   reporter: RunReporter;
   /** Ctrl-C: aborts the current session or wait. */
   signal: AbortSignal;
@@ -143,9 +157,10 @@ function isAbort(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-function snapshotEvent(snapshot: UsageSnapshot): NewEvent {
+function snapshotEvent(snapshot: UsageSnapshot, account: string): NewEvent {
   return {
     t: 'usage.snapshot',
+    account,
     sessionLeft: snapshot.session?.leftPercent ?? null,
     sessionResetsAt: snapshot.session?.resetsAt?.toISOString() ?? null,
     weeklyLeft: snapshot.weekly?.leftPercent ?? null,
@@ -237,9 +252,15 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
     });
     const git = createGit(worktree, deps.run);
     const protocol = loadProtocol();
-    let latest: UsageSnapshot | null = null;
+    const accounts = deps.accounts;
+    const burn = options.burn ?? false;
+    const single = accounts.length === 1;
+    const snapshots = new Map<string, UsageSnapshot>();
+    const blockedUntil = new Map<string, Date>();
     // Warn once per failure streak: a dead probe would otherwise warn before every segment.
-    let probeFailing = false;
+    const probeFailing = new Set<string>();
+    // The run starts on the priority account: leaving it at once is a switch too (MAD-12).
+    let lastAccount: string = accounts[0].name;
     reporter.plan({ spec, events: store.read().events });
 
     const append = (event: NewEvent): SpecrunEvent => {
@@ -264,12 +285,13 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
 
     const wait = async (
       task: string,
+      account: string,
       reason: WaitingUpdate['reason'],
       until: Date,
     ): Promise<'waited' | 'stopped'> => {
       // Nothing runs while waiting, so a stop request ends the wait instead of outlasting it.
       if (stop.requested) return 'stopped';
-      append({ t: 'limit.wait', task, reason, until: until.toISOString() });
+      append({ t: 'limit.wait', task, account, reason, until: until.toISOString() });
       reporter.waiting({ until, reason });
       const waitAbort = new AbortController();
       const forward = (): void => waitAbort.abort();
@@ -293,28 +315,65 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       }
     };
 
-    /** SRD-10: before each segment. Waits out a low session window; 'stop' on a low week. */
-    const pauseCheck = async (task: string): Promise<'go' | 'stop' | 'stopped'> => {
+    const usageOf = (account: RunAccount): AccountUsage => ({
+      name: account.name,
+      limits: account.limits,
+      snapshot: snapshots.get(account.name) ?? null,
+      blockedUntil: blockedUntil.get(account.name) ?? null,
+    });
+    const accountNamed = (name: string): RunAccount => {
+      const found = accounts.find((account) => account.name === name);
+      if (found === undefined) throw new Error(`unknown account ${name}`);
+      return found;
+    };
+    const choose = (current: string | null): AccountChoice =>
+      chooseAccount(accounts.map(usageOf), { burn, current }, clock.now());
+
+    const refreshUsage = async (account: RunAccount): Promise<void> => {
+      const known = snapshots.get(account.name);
+      const stale =
+        known === undefined || clock.now().getTime() - known.at.getTime() > SNAPSHOT_MAX_AGE_MS;
+      if (!stale) return;
+      reporter.phase({ kind: 'usage' });
+      const probed = await account.probe();
+      if (probed !== null) {
+        snapshots.set(account.name, probed);
+        probeFailing.delete(account.name);
+        append(snapshotEvent(probed, account.name));
+      } else if (!probeFailing.has(account.name)) {
+        probeFailing.add(account.name);
+        const which = single ? '' : ` for ${account.name}`;
+        reporter.log('warn', `usage probe failed${which} — running without limit data`);
+      }
+    };
+
+    /** The waited-for account starts over: fresh usage, no block. */
+    const waitFor = async (
+      task: string,
+      choice: Extract<AccountChoice, { action: 'wait' }>,
+    ): Promise<'waited' | 'stopped'> => {
+      const waited = await wait(task, choice.account, choice.reason, choice.until);
+      if (waited === 'waited') {
+        snapshots.delete(choice.account);
+        blockedUntil.delete(choice.account);
+      }
+      return waited;
+    };
+
+    /**
+     * SRD-10 / MAD-9: before each segment. Picks the account (`current` stays while it can go),
+     * waits when none can go; 'stop' when every account is weekly-low.
+     */
+    const pauseCheck = async (
+      task: string,
+      current: string | null,
+    ): Promise<RunAccount | 'stop' | 'stopped'> => {
       for (;;) {
-        const stale =
-          latest === null || clock.now().getTime() - latest.at.getTime() > SNAPSHOT_MAX_AGE_MS;
-        if (stale) {
-          reporter.phase({ kind: 'usage' });
-          const probed = await deps.probeUsage();
-          if (probed !== null) {
-            latest = probed;
-            probeFailing = false;
-            append(snapshotEvent(probed));
-          } else if (!probeFailing) {
-            probeFailing = true;
-            reporter.log('warn', 'usage probe failed — running without limit data');
-          }
-        }
-        const decision = decide(latest, config.limits, clock.now());
-        if (decision.action === 'go') return 'go';
-        if (decision.action === 'stop') return 'stop';
-        if ((await wait(task, decision.reason, decision.until)) === 'stopped') return 'stopped';
-        latest = null;
+        for (const account of accounts) await refreshUsage(account);
+        const choice = choose(current);
+        if (choice.action === 'go') return accountNamed(choice.account);
+        if (choice.action === 'stop') return 'stop';
+        if ((await waitFor(task, choice)) === 'stopped') return 'stopped';
       }
     };
 
@@ -400,6 +459,28 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       message: `stopped while waiting for limits; ${task} continues on the next run`,
     });
 
+    const pausedWeekly: RunEnd = {
+      reason: 'paused-weekly',
+      message: single
+        ? 'weekly usage left below the minimum'
+        : 'weekly usage left below the minimum on every account',
+    };
+
+    /** MAD-12: recorded whenever a segment runs on another account than the one before. */
+    const switchTo = (task: string, account: RunAccount): void => {
+      if (account.name !== lastAccount) {
+        const from = accountNamed(lastAccount);
+        append({
+          t: 'account.switched',
+          task,
+          from: from.name,
+          to: account.name,
+          reason: switchReason(usageOf(from), clock.now()),
+        });
+      }
+      lastAccount = account.name;
+    };
+
     /** One task through all its segments; null when it ended in a commit or a block. */
     const runTask = async (task: SpecTask, state: SpecState): Promise<RunEnd | null> => {
       const initial = state.tasks.get(task.id);
@@ -416,13 +497,16 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
       };
       let fixRounds = 0;
       let verifyRound = 0;
+      // MAD-9: chosen in priority order at task start, then sticky.
+      let taskAccount: string | null = null;
 
       for (;;) {
-        const pause = await pauseCheck(task.id);
-        if (pause === 'stop') {
-          return { reason: 'paused-weekly', message: 'weekly usage left below the minimum' };
-        }
+        const pause = await pauseCheck(task.id, taskAccount);
+        if (pause === 'stop') return pausedWeekly;
         if (pause === 'stopped') return stoppedWhileWaiting(task.id);
+        const account = pause;
+        switchTo(task.id, account);
+        taskAccount = account.name;
         const current = currentState();
         let reason = next.reason;
         let prompt = next.prompt;
@@ -440,6 +524,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
         append({
           t: 'session.started',
           task: task.id,
+          account: account.name,
           sessionId,
           segment,
           attempt,
@@ -487,13 +572,14 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
             previous,
             transcriptFile,
             signal,
-            env: null,
+            env: account.env,
           },
           observer,
         );
         append({
           t: 'session.finished',
           task: task.id,
+          account: account.name,
           sessionId: result.sessionId ?? sessionId,
           segment,
           outcome: result.outcome,
@@ -519,8 +605,8 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
           }
         }
         if (seen.snapshot !== null) {
-          latest = seen.snapshot;
-          append(snapshotEvent(seen.snapshot));
+          snapshots.set(account.name, seen.snapshot);
+          append(snapshotEvent(seen.snapshot, account.name));
         }
         sessionId = result.sessionId ?? sessionId;
         previous = result.cumulative;
@@ -532,14 +618,18 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
             return { reason: 'interrupted' };
           case 'limit': {
             const now = clock.now();
-            const until =
+            blockedUntil.set(
+              account.name,
               result.limitResetsAt === null
-                ? limitHitTarget(latest, now)
-                : waitTarget(result.limitResetsAt, now);
-            if ((await wait(task.id, 'limit-hit', until)) === 'stopped') {
+                ? limitHitTarget(snapshots.get(account.name) ?? null, now)
+                : waitTarget(result.limitResetsAt, now),
+            );
+            // MAD-10: decided on what is known — no probe right after a limit hit.
+            const choice = choose(account.name);
+            if (choice.action === 'stop') return pausedWeekly;
+            if (choice.action === 'wait' && (await waitFor(task.id, choice)) === 'stopped') {
               return stoppedWhileWaiting(task.id);
             }
-            latest = null;
             next = { reason: 'limit-resume', prompt: limitResumePrompt() };
             continue;
           }
