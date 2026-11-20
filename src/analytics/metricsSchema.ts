@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Bump when the computation changes; `analyze --reindex` then appends events with the new value. */
-export const ANALYZER_VERSION = 1;
+export const ANALYZER_VERSION = 2;
 
 const PhaseSchema = z.object({ turns: z.number().int().min(0), tokens: z.number().min(0) });
 

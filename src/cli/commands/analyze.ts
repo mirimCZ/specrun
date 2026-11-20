@@ -12,6 +12,7 @@ import { formatTokens } from '../../progress/renderProgress.js';
 import { isProcessAlive, lockFile, readLockPid } from '../../runner/lock.js';
 import { loadSpec } from '../../spec/loadSpec.js';
 import { AnalyzeJsonSchema, type AnalyzeJson } from '../../stats/jsonOutput.js';
+import { verifySteps } from '../../verify/verify.js';
 import { activeSpecFiles, type CliDeps } from '../cliDeps.js';
 import { loadSpecInputs } from '../specInputs.js';
 
@@ -47,7 +48,9 @@ function summarize(task: string, segments: SessionMetrics[]): AnalyzedTask {
     task,
     segments: segments.length,
     peakContext: Math.max(0, ...segments.map((m) => m.peakContext)),
+    // Files only edited have no result to rank.
     topFiles: [...files]
+      .filter(([, resultChars]) => resultChars > 0)
       .map(([path, resultChars]) => ({ path, resultChars }))
       .sort((a, b) => b.resultChars - a.resultChars)
       .slice(0, 5),
@@ -130,6 +133,7 @@ export function register(program: Command, deps: CliDeps): void {
                   segment: s.segment,
                   reason: s.reason ?? 'start',
                   briefPath: loaded.briefPath(s.task),
+                  verifyCommands: verifySteps(config, true).map((step) => step.command),
                 });
                 reindexed += 1;
               } catch (error) {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { SpecrunEvent } from '../events/eventSchema.js';
 import type { EventStore } from '../events/eventStore.js';
 import { readTranscript } from '../session/transcript.js';
-import { analyzeSession } from './analyzeSession.js';
+import { analyzeSession, testPatternsFor } from './analyzeSession.js';
 import { ANALYZER_VERSION } from './metricsSchema.js';
 import { parseReadFirst } from './readFirst.js';
 
@@ -15,7 +15,8 @@ export interface RecordAnalyticsInput {
   /** Why the segment started; `verify-fix` makes every turn a fix turn. */
   reason: string;
   briefPath: string;
-  testPatterns?: readonly string[];
+  /** The project's verify commands: running them counts as testing. */
+  verifyCommands: readonly string[];
 }
 
 /** Reads the transcript, analyzes it and appends the `analytics.session` event; throws on failure. */
@@ -30,7 +31,7 @@ export function recordAnalytics(input: RecordAnalyticsInput): SpecrunEvent {
   }
   const metrics = analyzeSession(messages, {
     readFirst,
-    ...(input.testPatterns === undefined ? {} : { testPatterns: input.testPatterns }),
+    testPatterns: testPatternsFor(input.verifyCommands),
     fixFromTurn: input.reason === 'verify-fix' ? 1 : Number.POSITIVE_INFINITY,
   });
   return input.store.append({

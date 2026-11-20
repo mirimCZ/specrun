@@ -13,6 +13,7 @@ tests:
   - src/events/taskState.spec.ts
   - src/progress/renderProgress.spec.ts
   - src/analytics/analyzeSession.spec.ts
+  - src/analytics/bashFiles.spec.ts
   - src/analytics/latestMetrics.spec.ts
   - src/analytics/readFirst.spec.ts
   - src/cli/commands/analyze.spec.ts
@@ -32,7 +33,7 @@ table and per-session analytics from it. Design: [SRD-2, SRD-5](../../v1/README.
 - A user can see every task's status, derived from the spec's run log, from another terminal while a run is going.
 - A user gets a generated progress table in the spec folder that is refreshed with every commit.
 - A user can see per task the sessions, turns, tokens, cost and the agent's reported deviations.
-- A user can run an analysis of the session transcripts: files read and edited, rereads, tool and shell calls.
+- A user can run an analysis of the session transcripts: files read and edited (through the file tools or shell commands), rereads, tool and shell calls.
 - A user can rebuild the analytics of earlier runs from the transcripts.
 - A user can see which files an agent read first, to judge whether a brief's reading list was enough.
 - A user can read the status and analytics as machine-readable output.
@@ -47,3 +48,4 @@ table and per-session analytics from it. Design: [SRD-2, SRD-5](../../v1/README.
 ## Pitfalls
 
 - Phase numbers in the analysis are estimates.
+- Files read or edited through shell commands are recognized from the command text; Python scripts and commands with unknown paths count as edits without a file, searches (`grep`) not as reads.

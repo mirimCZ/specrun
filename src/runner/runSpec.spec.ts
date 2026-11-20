@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { createFakeClock, type FakeClock } from '../../test/fakes/fakeClock.js';
 import { createFakeSession, type FakeSegment } from '../../test/fakes/fakeSession.js';
+import { ANALYZER_VERSION } from '../analytics/metricsSchema.js';
 import { ConfigSchema, type Config } from '../config/configSchema.js';
 import type { EventOf, EventType, SpecrunEvent } from '../events/eventSchema.js';
 import { readEvents } from '../events/eventStore.js';
@@ -194,7 +195,7 @@ describe('runSpec', () => {
       .filter((t) => t === 'session.finished' || t === 'analytics.session');
     expect(types).toEqual(['session.finished', 'analytics.session']);
     expect(ofType('analytics.session')).toMatchObject([
-      { task: 'A-1', sessionId: 'session-1', segment: 0, analyzerVersion: 1 },
+      { task: 'A-1', sessionId: 'session-1', segment: 0, analyzerVersion: ANALYZER_VERSION },
     ]);
   });
 

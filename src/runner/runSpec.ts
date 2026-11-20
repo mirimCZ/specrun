@@ -511,6 +511,7 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
               segment: thisSegment,
               reason,
               briefPath: loaded.briefPath(task.id),
+              verifyCommands: verifySteps(config, true).map((step) => step.command),
             });
           } catch (error) {
             reporter.log('warn', `analytics for ${task.id} failed: ${errorMessage(error)}`);

@@ -4,7 +4,7 @@ import {
   initMessage,
   toolResultMessage,
 } from '../../test/fixtures/sdkMessages.js';
-import { analyzeSession } from './analyzeSession.js';
+import { analyzeSession, testPatternsFor } from './analyzeSession.js';
 
 const read = (path: string, id: string) => ({ name: 'Read', input: { file_path: path }, id });
 
@@ -115,5 +115,53 @@ describe('analyzeSession', () => {
     });
     const all = analyzeSession(messages, { readFirst: null, fixFromTurn: 1 }).phases;
     expect(all.fix.turns).toBe(5);
+  });
+
+  it('reads and edits through Bash, carrying cd over between calls like Claude Code', () => {
+    const bash = (command: string, id: string) => ({ name: 'Bash', input: { command }, id });
+    const m = analyzeSession(
+      [
+        initMessage(),
+        assistantMessage({ id: '1', toolUses: [bash('cd lorem && sed -n 1,40p a.ts', 'b1')] }),
+        toolResultMessage({ toolUseId: 'b1', text: 'x'.repeat(300) }),
+        // Still in lorem/: the failed cd changes nothing.
+        assistantMessage({ id: '2', toolUses: [bash('cd lorem; cat b.ts c.ts', 'b2')] }),
+        toolResultMessage({
+          toolUseId: 'b2',
+          text: '(eval):cd:1: no such file or directory: lorem\n' + 'y'.repeat(100),
+        }),
+        assistantMessage({ id: '3', toolUses: [bash("sed -i '' 's/a/b/' a.ts", 'b3')] }),
+        // Leaving the worktree puts the shell back into it; /tmp is scratch, not an edit.
+        assistantMessage({ id: '4', toolUses: [bash('cd /tmp && cat > x.log <<E\nx\nE', 'b4')] }),
+        assistantMessage({ id: '5', toolUses: [bash('cat ipsum/d.ts', 'b5')] }),
+      ],
+      { readFirst: ['lorem/a.ts', 'lorem/b.ts', 'ipsum/'] },
+    );
+    expect(m.files).toEqual([
+      { path: 'lorem/a.ts', reads: 1, edits: 1, resultChars: 300 },
+      { path: 'lorem/b.ts', reads: 1, edits: 0, resultChars: 0 },
+      { path: 'lorem/c.ts', reads: 1, edits: 0, resultChars: 0 },
+      { path: 'ipsum/d.ts', reads: 1, edits: 0, resultChars: 0 },
+    ]);
+    expect(m.rereads).toBe(0);
+    expect(m.brief?.unread).toEqual([]);
+    expect(m.phases.orient.turns).toBe(2);
+    expect(m.phases.implement.turns).toBe(3);
+  });
+
+  it('counts the project verify commands and nx test targets as tests', () => {
+    const patterns = testPatternsFor(['make check']);
+    const bash = (command: string, id: string) => ({ name: 'Bash', input: { command }, id });
+    const m = analyzeSession(
+      [
+        initMessage(),
+        assistantMessage({ id: '1', toolUses: [bash('echo x > src/a.ts', 'b1')] }),
+        assistantMessage({ id: '2', toolUses: [bash('make check', 'b2')] }),
+        assistantMessage({ id: '3', toolUses: [bash('npx nx run lorem:test -- src', 'b3')] }),
+      ],
+      { readFirst: null, testPatterns: patterns },
+    );
+    expect(m.phases.implement.turns).toBe(1);
+    expect(m.phases.test.turns).toBe(2);
   });
 });

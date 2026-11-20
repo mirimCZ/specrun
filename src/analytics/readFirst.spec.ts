@@ -27,6 +27,34 @@ describe('parseReadFirst', () => {
     ]);
   });
 
+  it('resolves shortened siblings, brace groups, continuation lines and nested bullets', () => {
+    const brief = [
+      '## Read first',
+      '',
+      '- `lorem/ipsum/Dolor.tsx` + `.spec.tsx`, `Sit.tsx` — the steps (lines',
+      '  10–20), `Amet.ts` too',
+      '  - `Dolor.test.ts`',
+      '- `lorem/locales/{cs,en}/common.json` — keys',
+      '- `docs/features/board/a.md`, `board/b.md`,',
+      '  `rooms/c.md`',
+      '- `src/x.ts`, `src/y.ts`',
+    ].join('\n');
+    expect(parseReadFirst(brief)).toEqual([
+      'lorem/ipsum/Dolor.tsx',
+      'lorem/ipsum/Dolor.spec.tsx',
+      'lorem/ipsum/Sit.tsx',
+      'lorem/ipsum/Amet.ts',
+      'lorem/ipsum/Dolor.test.ts',
+      'lorem/locales/cs/common.json',
+      'lorem/locales/en/common.json',
+      'docs/features/board/a.md',
+      'docs/features/board/b.md',
+      'docs/features/rooms/c.md',
+      'src/x.ts',
+      'src/y.ts',
+    ]);
+  });
+
   it('returns nothing without the section', () => {
     expect(parseReadFirst('# T\n\n## Changes\n- `a.ts`\n')).toEqual([]);
   });

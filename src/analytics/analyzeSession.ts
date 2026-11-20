@@ -1,4 +1,5 @@
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import { bashFileAccess } from './bashFiles.js';
 import type { SessionMetrics } from './metricsSchema.js';
 import { COMMON_FILES } from './readFirst.js';
 
@@ -9,7 +10,15 @@ export const DEFAULT_TEST_PATTERNS: readonly string[] = [
   'spec-verify',
   'tsc',
   'typecheck',
+  'lint',
+  ':test',
+  'nx test',
 ];
+
+/** The default patterns plus the project's own verify commands, which agents often run as is. */
+export function testPatternsFor(verifyCommands: readonly string[]): string[] {
+  return [...new Set([...DEFAULT_TEST_PATTERNS, ...verifyCommands])];
+}
 
 export interface AnalyzeOptions {
   /** Paths from the brief; `null` when the brief could not be read. */
@@ -31,21 +40,79 @@ const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
 type ToolUse = { id: string; name: string; input: unknown };
 type Turn = { usage: Rec; tools: ToolUse[] };
 type Counter = { calls: number; resultChars: number };
+type FileAccess = { reads: string[]; edits: string[]; changesFiles: boolean };
+const NO_ACCESS: FileAccess = { reads: [], edits: [], changesFiles: false };
 
-function resultChars(content: unknown): number {
-  if (typeof content === 'string') return content.length;
-  if (!Array.isArray(content)) return 0;
-  let total = 0;
-  for (const block of content) {
-    if (isRec(block) && typeof block.text === 'string') total += block.text.length;
-  }
-  return total;
+function resultText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((block) => (isRec(block) && typeof block.text === 'string' ? block.text : ''))
+    .join('');
+}
+
+// zsh: `cd:1: no such file or directory: <dir>`, bash: `cd: <dir>: No such file or directory`.
+const FAILED_CD = [
+  /\bcd:\d*: no such file or directory: (.+)$/gim,
+  /\bcd: (.+): No such file or directory$/gim,
+];
+
+/** Directories a command's `cd` could not enter: the shell stayed where it was. */
+function failedCds(output: string): string[] {
+  return FAILED_CD.flatMap((pattern) => [...output.matchAll(pattern)].map((m) => m[1] ?? ''));
 }
 
 function relativize(path: string, cwd: string | null): string {
   if (cwd === null) return path;
   const base = cwd.endsWith('/') ? cwd : `${cwd}/`;
   return path.startsWith(base) ? path.slice(base.length) : path;
+}
+
+function isInside(path: string, cwd: string): boolean {
+  return path === cwd || path.startsWith(cwd.endsWith('/') ? cwd : `${cwd}/`);
+}
+
+/** The Bash tool's working directory, which carries over between calls like Claude Code's. */
+type Shell = { dir: string | null };
+
+/**
+ * Agents read and edit through Bash (`sed -n`, `cat`, Python scripts) as much as through
+ * Read / Edit, so both count. Bash paths outside the worktree are scratch files and logs.
+ */
+function fileAccess(
+  tool: { name: string; input: unknown },
+  cwd: string | null,
+  shell: Shell,
+  output: string,
+): FileAccess {
+  const input = isRec(tool.input) ? tool.input : {};
+  if (tool.name === 'Bash') {
+    if (typeof input.command !== 'string') return NO_ACCESS;
+    const access = bashFileAccess(input.command, {
+      dir: shell.dir,
+      root: cwd,
+      failedCds: failedCds(output),
+    });
+    // Claude Code moves a shell that left the working directory back into it.
+    shell.dir =
+      cwd !== null && access.dir !== null && !isInside(access.dir, cwd) ? cwd : access.dir;
+    const inside = (path: string): boolean => cwd === null || isInside(path, cwd);
+    const local = (paths: string[]): string[] =>
+      paths.filter(inside).map((p) => relativize(p, cwd));
+    const edits = local(access.edits);
+    const outsideOnly = access.edits.length > 0 && edits.length === 0;
+    return {
+      reads: local(access.reads),
+      edits,
+      changesFiles: access.changesFiles && !outsideOnly,
+    };
+  }
+  const path = typeof input.file_path === 'string' ? relativize(input.file_path, cwd) : null;
+  if (EDIT_TOOLS.has(tool.name))
+    return { reads: [], edits: path === null ? [] : [path], changesFiles: true };
+  if (tool.name === 'Read' && path !== null)
+    return { reads: [path], edits: [], changesFiles: false };
+  return NO_ACCESS;
 }
 
 function isTestTurn(tools: readonly ToolUse[], patterns: readonly string[]): boolean {
@@ -75,6 +142,7 @@ export function analyzeSession(
   const turns = new Map<string, Turn>();
   const toolById = new Map<string, { name: string; input: unknown }>();
   const results: { id: string; chars: number }[] = [];
+  const outputs = new Map<string, string>();
 
   for (const message of messages as readonly unknown[]) {
     if (!isRec(message)) continue;
@@ -106,7 +174,9 @@ export function analyzeSession(
     } else if (message.type === 'user' && Array.isArray(body.content)) {
       for (const block of body.content) {
         if (isRec(block) && block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
-          results.push({ id: block.tool_use_id, chars: resultChars(block.content) });
+          const text = resultText(block.content);
+          results.push({ id: block.tool_use_id, chars: text.length });
+          outputs.set(block.tool_use_id, text);
         }
       }
     }
@@ -116,10 +186,12 @@ export function analyzeSession(
   const fileStats = new Map<string, { reads: number; edits: number; resultChars: number }>();
   const bashStats = new Map<string, { calls: number; outputChars: number }>();
   const readPaths = new Set<string>();
+  // Bash reads are mostly line ranges: reading another range is no re-read.
+  const readToolPaths = new Set<string>();
+  const accessById = new Map<string, FileAccess>();
   let rereads = 0;
+  const shell: Shell = { dir: cwd ?? '' };
 
-  const fileOf = (input: unknown): string | null =>
-    isRec(input) && typeof input.file_path === 'string' ? relativize(input.file_path, cwd) : null;
   const fileEntry = (path: string): { reads: number; edits: number; resultChars: number } => {
     const entry = fileStats.get(path) ?? { reads: 0, edits: 0, resultChars: 0 };
     fileStats.set(path, entry);
@@ -131,13 +203,18 @@ export function analyzeSession(
       const stat = toolStats.get(tool.name) ?? { calls: 0, resultChars: 0 };
       stat.calls += 1;
       toolStats.set(tool.name, stat);
-      const path = fileOf(tool.input);
-      if (tool.name === 'Read' && path !== null) {
+      const access = fileAccess(tool, cwd, shell, outputs.get(tool.id) ?? '');
+      accessById.set(tool.id, access);
+      for (const path of access.reads) {
         fileEntry(path).reads += 1;
-        if (readPaths.has(path)) rereads += 1;
         readPaths.add(path);
-      } else if (EDIT_TOOLS.has(tool.name) && path !== null) {
-        fileEntry(path).edits += 1;
+      }
+      for (const path of access.edits) fileEntry(path).edits += 1;
+      if (tool.name === 'Read') {
+        for (const path of access.reads) {
+          if (readToolPaths.has(path)) rereads += 1;
+          readToolPaths.add(path);
+        }
       }
       const command = bashCommand(tool);
       if (command !== null) {
@@ -152,8 +229,10 @@ export function analyzeSession(
     if (tool === undefined) continue;
     const stat = toolStats.get(tool.name);
     if (stat !== undefined) stat.resultChars += result.chars;
-    const path = fileOf(tool.input);
-    if (tool.name === 'Read' && path !== null) fileEntry(path).resultChars += result.chars;
+    // Output of a command printing several files cannot be split between them.
+    const reads = accessById.get(result.id)?.reads ?? [];
+    const [only] = reads;
+    if (reads.length === 1 && only !== undefined) fileEntry(only).resultChars += result.chars;
     const command = bashCommand(tool);
     const entry = command === null ? undefined : bashStats.get(command);
     if (entry !== undefined) entry.outputChars += result.chars;
@@ -173,7 +252,9 @@ export function analyzeSession(
     };
   });
 
-  const firstEdit = turnList.findIndex((t) => t.raw.tools.some((x) => EDIT_TOOLS.has(x.name)));
+  const firstEdit = turnList.findIndex((t) =>
+    t.raw.tools.some((x) => accessById.get(x.id)?.changesFiles === true),
+  );
   // Without any edit the whole segment was orientation.
   const firstEditN = firstEdit === -1 ? Number.POSITIVE_INFINITY : firstEdit + 1;
   const phases: SessionMetrics['phases'] = {

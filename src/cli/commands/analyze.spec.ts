@@ -44,10 +44,14 @@ async function writeTranscript(): Promise<void> {
     assistantMessage({
       id: 'msg_1',
       usage: { input: 100, output: 5 },
-      toolUses: [{ name: 'Read', input: { file_path: '/work/src/b.ts' }, id: 'toolu_1' }],
+      toolUses: [
+        { name: 'Read', input: { file_path: '/work/src/b.ts' }, id: 'toolu_1' },
+        { name: 'Edit', input: { file_path: '/work/src/c.ts' }, id: 'toolu_2' },
+      ],
     }),
   );
   writer.write(toolResultMessage({ toolUseId: 'toolu_1', text: 'x'.repeat(500) }));
+  writer.write(toolResultMessage({ toolUseId: 'toolu_2', text: 'ok' }));
   await writer.close();
 }
 
@@ -74,7 +78,8 @@ describe('specrun analyze', () => {
     const json = AnalyzeJsonSchema.parse(JSON.parse((await analyze('demo', '--json')).out));
     const task = json.specs[0]?.tasks[0];
     expect(task).toMatchObject({ task: 'D-1', segments: 1, unreadFirst: ['src/a.ts'] });
-    expect(task?.topFiles[0]).toMatchObject({ resultChars: 500 });
+    // src/c.ts was only edited: no result to rank.
+    expect(task?.topFiles).toEqual([{ path: 'src/b.ts', resultChars: 500 }]);
   });
 
   it('refuses to reindex while a run holds the lock', async () => {
