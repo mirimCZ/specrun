@@ -60,6 +60,13 @@ const SizesSchema = z.strictObject({
   XL: SizeSchema.default(DEFAULT_SIZES.XL),
 });
 
+const ClockTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'expected a time as HH:MM' });
+
+/** Local time; `from` after `to` spans midnight. */
+const SilentWindowSchema = z.strictObject({ from: ClockTimeSchema, to: ClockTimeSchema });
+
 // Nested objects use `prefault({})` so a partial override (e.g. only `models.strong`) keeps the
 // remaining defaults.
 export const ConfigSchema = z.strictObject({
@@ -81,5 +88,9 @@ export const ConfigSchema = z.strictObject({
   sizes: SizesSchema.prefault({}),
   transcriptsDir: z.string().min(1).default('~/.specrun/runs'),
   commitTrailers: z.array(z.string().min(1)).default([]),
+  /** Repeat a sound when a run ends until a key is pressed; `run --chime` / `--no-chime` win. */
+  chimeOnFinish: z.boolean().default(false),
+  /** No chime when a run ends in this window; null: always. */
+  chimeSilentBetween: SilentWindowSchema.nullable().default({ from: '00:00', to: '08:00' }),
 });
 export type Config = z.infer<typeof ConfigSchema>;

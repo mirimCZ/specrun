@@ -134,13 +134,19 @@ with a `Specrun-Plan-Session` trailer and `commitTrailers`. An invalid spec stay
 ## Running
 
 ```sh
-specrun run <spec> [--task <id>] [--retry-blocked] [--base <ref>] [--model <alias>] [--account <name>] [-b] [--no-ui]
-specrun run --all [--dry-run] [--retry-blocked] [--base <ref>] [--model <alias>] [--account <name>] [-b] [--no-ui]
+specrun run <spec> [--task <id>] [--retry-blocked] [--base <ref>] [--model <alias>] [--account <name>] [-b] [--no-ui] [--chime | --no-chime]
+specrun run --all [--dry-run] [--retry-blocked] [--base <ref>] [--model <alias>] [--account <name>] [-b] [--no-ui] [--chime | --no-chime]
 ```
 
 With several accounts in `~/.specrun/config.json`, the run switches to the next account when one
 is used up; `-b` / `--burn` also moves on when the 5-hour window is low instead of waiting for its
 reset, and `--account <name>` pins the run to one account.
+
+With `chimeOnFinish` (or `--chime`; `--no-chime` wins over the config) a run that ends on a
+terminal calls you back: a sound every 2 s (macOS: Glass on success, Basso otherwise; elsewhere
+the terminal bell) until you press a key, at most 30 minutes, before the questions after a
+complete run. Ctrl+C at that point stops the sound and skips the questions. No chime after
+Ctrl+C during the run, outside a terminal, or when the run ends within `chimeSilentBetween`.
 
 For each runnable task (dependencies done, lowest open phase first):
 
@@ -232,22 +238,24 @@ order — prefilled from the existing file, whose other keys it keeps — and ca
 away; `specrun init --yes` writes the detected defaults without asking (`--force` to change an
 existing file).
 
-| Key               | Default                                                                               | Meaning                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `worktree`        | `true`                                                                                | Run each spec in its own worktree (see [Workspace](#workspace))                              |
-| `worktreeFiles`   | `[]`                                                                                  | Ignored files copied from the checkout into a new worktree                                   |
-| `setup`           | `null` (`init`: from the lockfile, e.g. `npm ci`)                                     | Runs once in a new worktree                                                                  |
-| `verify`          | required (`init`: `npm run check` or the scripts)                                     | `{ name, command }[]`, run in order after each task; first red stops                         |
-| `verifyFinal`     | `[]`                                                                                  | Steps added after `verify` for the spec's last task and after a merge (`close`, `run --all`) |
-| `limits`          | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`                                        | % left of the 5-hour / weekly window below which a run waits / stops                         |
-| `limits.accounts` | `{}`                                                                                  | Account name → partial `limits` override (see [Global config](#global-config))               |
-| `specsDir`        | `"specrun/specs"`                                                                     | Folder with the specs                                                                        |
-| `models`          | `{ "default": "sonnet", "strong": "opus" }`                                           | Model per `model` value in `tasks.yaml`; `--model` overrides all                             |
-| `maxTurns`        | `150`                                                                                 | Turn limit of one session; reaching it blocks the task                                       |
-| `verifyFixRounds` | `2`                                                                                   | Fix attempts after a red check                                                               |
-| `sizes`           | XS 5–15 turns $0.30 · S 10–25 $0.60 · M 20–45 $1.20 · L 40–70 $2.50 · XL 60–110 $4.50 | Expected range per size; exceeding it is recorded, never enforced                            |
-| `transcriptsDir`  | `"~/.specrun/runs"`                                                                   | Session transcripts (outside the repository)                                                 |
-| `commitTrailers`  | `[]`                                                                                  | Extra trailer lines for every task commit                                                    |
+| Key                  | Default                                                                               | Meaning                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `worktree`           | `true`                                                                                | Run each spec in its own worktree (see [Workspace](#workspace))                              |
+| `worktreeFiles`      | `[]`                                                                                  | Ignored files copied from the checkout into a new worktree                                   |
+| `setup`              | `null` (`init`: from the lockfile, e.g. `npm ci`)                                     | Runs once in a new worktree                                                                  |
+| `verify`             | required (`init`: `npm run check` or the scripts)                                     | `{ name, command }[]`, run in order after each task; first red stops                         |
+| `verifyFinal`        | `[]`                                                                                  | Steps added after `verify` for the spec's last task and after a merge (`close`, `run --all`) |
+| `limits`             | `{ "sessionMinLeft": 15, "weeklyMinLeft": 5 }`                                        | % left of the 5-hour / weekly window below which a run waits / stops                         |
+| `limits.accounts`    | `{}`                                                                                  | Account name → partial `limits` override (see [Global config](#global-config))               |
+| `specsDir`           | `"specrun/specs"`                                                                     | Folder with the specs                                                                        |
+| `models`             | `{ "default": "sonnet", "strong": "opus" }`                                           | Model per `model` value in `tasks.yaml`; `--model` overrides all                             |
+| `maxTurns`           | `150`                                                                                 | Turn limit of one session; reaching it blocks the task                                       |
+| `verifyFixRounds`    | `2`                                                                                   | Fix attempts after a red check                                                               |
+| `sizes`              | XS 5–15 turns $0.30 · S 10–25 $0.60 · M 20–45 $1.20 · L 40–70 $2.50 · XL 60–110 $4.50 | Expected range per size; exceeding it is recorded, never enforced                            |
+| `transcriptsDir`     | `"~/.specrun/runs"`                                                                   | Session transcripts (outside the repository)                                                 |
+| `commitTrailers`     | `[]`                                                                                  | Extra trailer lines for every task commit                                                    |
+| `chimeOnFinish`      | `false`                                                                               | Repeat a sound when a run ends until a key is pressed; `--chime` / `--no-chime` override     |
+| `chimeSilentBetween` | `{ "from": "00:00", "to": "08:00" }`                                                  | Local `HH:MM` window without the chime (may span midnight); `null`: always chime             |
 
 ### Global config
 

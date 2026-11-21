@@ -20,7 +20,22 @@ describe('ConfigSchema', () => {
       sizes: DEFAULT_SIZES,
       transcriptsDir: '~/.specrun/runs',
       commitTrailers: [],
+      chimeOnFinish: false,
+      chimeSilentBetween: { from: '00:00', to: '08:00' },
     });
+  });
+
+  it('accepts a silent window as HH:MM or null and rejects other times', () => {
+    const window = { from: '22:30', to: '07:00' };
+    expect(ConfigSchema.parse({ verify, chimeSilentBetween: window }).chimeSilentBetween).toEqual(
+      window,
+    );
+    expect(ConfigSchema.parse({ verify, chimeSilentBetween: null }).chimeSilentBetween).toBeNull();
+    for (const from of ['24:00', '7:00', '07:60', 'noon']) {
+      expect(
+        ConfigSchema.safeParse({ verify, chimeSilentBetween: { from, to: '08:00' } }).success,
+      ).toBe(false);
+    }
   });
 
   it('keeps the remaining defaults of a partially overridden nested object', () => {

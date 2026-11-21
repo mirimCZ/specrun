@@ -29,6 +29,7 @@ async function runCli(
   const program = new Command('specrun');
   register(program, cliDeps, {
     isTTY: false,
+    chime: () => Promise.resolve('key'),
     ...extra,
     runSpec: (options, deps) => {
       captured.options = options;
@@ -175,6 +176,90 @@ describe('specrun run', () => {
     // unmount runs again in `finally`; the real reporter makes the second call a no-op.
     expect(calls.slice(0, 2)).toEqual(['mount', 'unmount (0 errors printed)']);
     expect(err).toEqual(['specrun: boom\n']);
+  });
+
+  describe('chime', () => {
+    const chimes: string[] = [];
+    const extra: RunCommandOverrides = {
+      isTTY: true,
+      createInkReporter: fakeInk([]),
+      afterRun: () => Promise.resolve(),
+      chime: (outcome) => {
+        chimes.push(outcome);
+        return Promise.resolve('key');
+      },
+    };
+    // captureDeps' clock reads 10:00 UTC; an empty window keeps the tests independent of the zone.
+    const terminal = (): ReturnType<typeof captureDeps> => ({
+      ...captureDeps(dir),
+      interactive: true,
+    });
+    const writeConfig = (fields: Record<string, unknown>): void =>
+      writeFileSync(
+        join(dir, 'specrun.config.json'),
+        JSON.stringify({ verify: [{ name: 't', command: 'true' }], ...fields }),
+      );
+    beforeEach(() => {
+      chimes.length = 0;
+      writeConfig({ chimeOnFinish: true, chimeSilentBetween: null });
+    });
+
+    it('chimes after a run on a terminal, but not after Ctrl+C or without one', async () => {
+      await runCli(['demo'], { exitCode: 0, reason: 'done' }, extra, terminal());
+      await runCli(
+        ['demo', '--no-ui'],
+        { exitCode: 75, reason: 'paused-weekly' },
+        extra,
+        terminal(),
+      );
+      await runCli(['demo'], { exitCode: 130, reason: 'interrupted' }, extra, terminal());
+      await runCli(
+        ['demo'],
+        { exitCode: 0, reason: 'done' },
+        { ...extra, isTTY: false },
+        terminal(),
+      );
+      await runCli(['demo'], { exitCode: 0, reason: 'done' }, extra);
+      expect(chimes).toEqual(['success', 'failure']);
+    });
+
+    it('lets --chime and --no-chime override chimeOnFinish', async () => {
+      await runCli(['demo', '--no-chime'], { exitCode: 0, reason: 'done' }, extra, terminal());
+      writeConfig({ chimeSilentBetween: null });
+      await runCli(['demo'], { exitCode: 0, reason: 'done' }, extra, terminal());
+      await runCli(['demo', '--chime'], { exitCode: 1, reason: 'failed' }, extra, terminal());
+      expect(chimes).toEqual(['failure']);
+    });
+
+    it('stays silent within chimeSilentBetween', async () => {
+      writeConfig({ chimeOnFinish: true, chimeSilentBetween: { from: '00:00', to: '23:59' } });
+      const deps = { ...terminal(), now: () => new Date(2026, 0, 1, 12) };
+      await runCli(['demo'], { exitCode: 0, reason: 'done' }, extra, deps);
+      expect(chimes).toEqual([]);
+    });
+
+    it('prints the hint, notes a timeout and skips the questions after Ctrl+C', async () => {
+      writeFileSync(
+        join(dir, 'specrun', 'specs', 'demo', 'events.jsonl'),
+        doneTask('D-1', 1, 0) + doneTask('D-2', 1, 0),
+      );
+      const asked: string[] = [];
+      const ending = (end: 'timeout' | 'interrupt'): RunCommandOverrides => ({
+        ...extra,
+        chime: () => Promise.resolve(end),
+        afterRun: () => {
+          asked.push(end);
+          return Promise.resolve();
+        },
+      });
+      const deps = terminal();
+      await runCli(['demo'], { exitCode: 0, reason: 'done' }, ending('timeout'), deps);
+      await runCli(['demo'], { exitCode: 0, reason: 'done' }, ending('interrupt'), deps);
+      expect(asked).toEqual(['timeout']);
+      expect(deps.out.join('')).toContain(
+        '♪ specrun finished — press any key to stop the chime\nchime stopped after 30 min\n',
+      );
+    });
   });
 
   it('prints log lines with --no-ui or without a TTY', async () => {

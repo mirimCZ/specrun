@@ -8,6 +8,14 @@ import { SpecrunError } from '../../errors.js';
 import { runsShared } from '../../git/workspace.js';
 import { keepAwake } from '../../limits/keepAwake.js';
 import { systemClock } from '../../limits/clock.js';
+import {
+  chime,
+  chimeUntilKey,
+  CHIME_MAX_MS,
+  inSilentWindow,
+  type ChimeEnd,
+  type ChimeOutcome,
+} from '../../process/chime.js';
 import { runCommand } from '../../process/run.js';
 import {
   runSpec,
@@ -34,6 +42,7 @@ import type { CliDeps } from '../cliDeps.js';
 import { createLineReporter } from '../lineReporter.js';
 import { createRunControls, type RunControls } from '../runControls.js';
 import { table } from '../table.js';
+import { waitForKey } from '../waitForKey.js';
 import { runClose } from './close.js';
 import { setupConfig } from './init.js';
 import { accountsFor } from '../accountsFor.js';
@@ -54,6 +63,8 @@ export interface RunCommandOverrides {
   /** Registers the SIGINT and SIGTERM handlers; returns the unregister function. */
   onSignal?: (handlers: SignalHandlers) => () => void;
   keepAwake?: boolean;
+  /** The repeated sound at the end of a run on a terminal; resolves on the key that stops it. */
+  chime?: (outcome: ChimeOutcome) => Promise<ChimeEnd>;
   /** Defaults to `process.stdout.isTTY`. */
   isTTY?: boolean;
   createInkReporter?: (controls: RunControls) => InkReporter;
@@ -75,6 +86,8 @@ interface RunFlags {
   model?: string;
   burn?: boolean;
   account?: string;
+  /** `--chime` / `--no-chime`; unset → `chimeOnFinish` from the config. */
+  chime?: boolean;
   // commander turns `--no-ui` into `ui: false`.
   ui: boolean;
 }
@@ -104,6 +117,19 @@ function processSignals({ interrupt, terminate }: SignalHandlers): () => void {
     process.off('SIGINT', interrupt);
     process.off('SIGTERM', terminate);
   };
+}
+
+function chimeOnTerminal(outcome: ChimeOutcome): Promise<ChimeEnd> {
+  return chimeUntilKey(outcome, {
+    play: (played) =>
+      chime(played, {
+        platform: process.platform,
+        spawn,
+        bell: () => void process.stdout.write('\u0007'),
+      }),
+    clock: systemClock,
+    waitForKey: (signal) => waitForKey(signal),
+  });
 }
 
 export function buildRunOptions(
@@ -173,6 +199,8 @@ export function register(
       'with several accounts: move on when the 5-hour window is low instead of waiting',
     )
     .option('--account <name>', 'use only this account (no switching)')
+    .option('--chime', 'repeat a sound when the run ends until a key is pressed')
+    .option('--no-chime', 'no sound when the run ends')
     .option('--no-ui', 'plain log lines instead of the dashboard')
     .action(async (spec: string | undefined, flags: RunFlags) => {
       checkFlags(spec, flags);
@@ -272,8 +300,24 @@ export function register(
         }
       };
 
+      /**
+       * Calls whoever is away from the terminal until they press a key; false after Ctrl+C, which
+       * also skips the questions.
+       */
+      const callUser = async (code: number): Promise<boolean> => {
+        const wanted = flags.chime ?? config.chimeOnFinish;
+        // Ctrl+C (130): whoever ended the run is already at the terminal.
+        if (!wanted || code === 130 || !isTTY || !deps.interactive) return true;
+        if (inSilentWindow(deps.now(), config.chimeSilentBetween)) return true;
+        deps.stdout('♪ specrun finished — press any key to stop the chime\n');
+        const end = await (overrides.chime ?? chimeOnTerminal)(code === 0 ? 'success' : 'failure');
+        if (end === 'timeout') deps.stdout(`chime stopped after ${CHIME_MAX_MS / 60_000} min\n`);
+        return end !== 'interrupt';
+      };
+
       const code = await execute();
       setExitCode(code);
+      if (!(await callUser(code))) return;
       // SRD-33: only after a complete run, and only where someone can answer.
       const specs = spec === undefined ? listSpecs(repoRoot, config) : [spec];
       const answerable = flags.ui && isTTY && deps.interactive;
@@ -287,6 +331,7 @@ export function register(
           rerun: async () => {
             const again = await execute();
             setExitCode(again);
+            if (!(await callUser(again))) return false;
             return again === 0 && allDone(repoRoot, config, specs);
           },
           review: () => runReview(specs, {}, repoRoot, config, deps),
