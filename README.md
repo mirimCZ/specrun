@@ -320,9 +320,11 @@ restores the spec folder, merges and verifies like `close` and archives the spec
 first gathers what the review needs — the config, each task's brief, its commit (message, changed
 files, the diffs of files a deviation names), the decision log rows the deviations cite and the
 next free IDs — and hands it over as part of the system prompt (`.specrun/review/<spec>.md`), so
-Claude starts with its findings instead of reading files. It re-asks every question an agent
-decided on its own, with a recommendation to confirm or overturn it, and proposes fixes for the
-rules that caused the rest. After your OK it edits those files, records the decisions in the
+Claude starts with an overview of every deviation and its verdict instead of reading files. It
+then asks until everything is decided: every question an agent decided on its own, with a
+recommendation to confirm or overturn it, each proposed fix for the rules that caused the rest as
+its own yes/no question, and the clear cases in one final question. Every option shows a preview of
+what it changes and costs. With your answers it edits those files, records the decisions in the
 spec's README and adds fix tasks (with briefs) for overturned picks, so `specrun run <spec>` can
 apply them. When Claude exits, specrun asks whether to mark the deviations as reviewed (in
 `events.jsonl`, or `history.json` of an archived spec — commit it with the review's edits); the

@@ -15,7 +15,8 @@ the user's OK.
 ## 1. Start from the context, ask second
 
 - **Don't re-gather the review context** — no reading the config, the briefs or the commit
-  messages again, no `git log` to find the commits. Start your first answer with the findings.
+  messages again, no `git log` to find the commits. Start your first answer with the overview
+  (section 3).
 - Read further only where a verdict depends on it: a diff the context doesn't show
   (`git show <sha> -- <path>`), the code as it is now, a brief marked as not included.
 - Decide what the code and docs already answer. Never ask what you can find out yourself.
@@ -26,7 +27,7 @@ the user's OK.
 | Verdict      | When                                                                    | Follow-up                                          |
 | ------------ | ----------------------------------------------------------------------- | -------------------------------------------------- |
 | **Confirm**  | The agent's choice is what the user would have picked                   | Record the decision in the spec README             |
-| **Overturn** | The choice is wrong, inconsistent with the app, or a hack               | Record it, plus a fix task (section 4)             |
+| **Overturn** | The choice is wrong, inconsistent with the app, or a hack               | Record it, plus a fix task (section 5)             |
 | **Rule fix** | The cause is upstream: a wrong or missing brief claim, a missing recipe | A concrete edit of the file that caused it (below) |
 | **Noise**    | Nothing to learn (an expected, harmless detail)                         | None — say so in one line                          |
 
@@ -48,30 +49,59 @@ A finding can have both a verdict and a rule fix. Be honest when the user's own 
 run analytics stay as they ran, so the fix shows up in tracking as its own task with its own
 commit and cost. This holds for every finding that needs code changed, not only overturned picks.
 
-## 3. Ask with `AskUserQuestion`
+## 3. Show the overview
+
+Your first answer opens with an overview of **every** deviation, so the user sees what you would
+decide on your own before any question: one table per spec with a short ID per finding (`F1`,
+`F2`, …), the deviations it covers, one plain sentence on what happened, your verdict and its
+follow-up (README row, fix task, rule fix, none). Mark the findings you will ask about.
+
+## 4. Ask until every finding is decided
+
+Nothing is settled silently. Ask with `AskUserQuestion` in as many rounds as it takes — a
+long review is fine, a skipped decision is not. In this order:
+
+1. **The agents' questions** (`ambiguity` and any deviation with `Q:`): every one of them, re-asked
+   with the agent's options; say which one it implemented and recommend confirming or
+   overturning it.
+2. **Findings you are unsure about** and every overturn you propose.
+3. **Rule fixes**: one yes/no question per concrete edit, in the same round as its finding where
+   it fits.
+4. **The rest at once**: one question naming the remaining findings by ID (confirms and noise
+   from the overview) — "Agree with all (Recommended)" / "Go through them one by one"; "Other"
+   lets the user name the IDs to discuss. Ask the named or all of them in further rounds.
+
+An answer is final. Never ask again whether to apply what the user already decided, and never
+offer a menu of edits to pick from: recording a confirmed or overturned pick in the README
+follows from the answer and is not a question of its own. No `multiSelect` questions.
+
+### Writing a question
 
 - **Max 4 questions per round**, each with **2–4 options**. "Other" is added automatically —
-  never add one yourself. `header` ≤ 12 characters.
-- **Recommended option first**, its label ending with ` (Recommended)`.
-- **Descriptions state consequences** — what changes for the user, what it costs, what it rules
-  out — not just names.
-- One decision per question. Ask in the user's language: the one they write in, otherwise the
-  one their CLAUDE.md or memory names, otherwise the spec README's.
+  never add one yourself. `header` ≤ 12 characters. Recommended option first, its label ending
+  with ` (Recommended)`. One decision per question.
+- **The question reads without the code**: which task and finding (`F3 · TX-1`), what the agent
+  did, why it matters — what a user of the app notices or what breaks later. Explain every
+  identifier in words; a bare function or file name tells the user nothing.
+- **Labels** are a few plain words naming the outcome ("Hide the button"), not an identifier.
+- **Descriptions** state the consequence in one or two sentences: what changes, what it costs,
+  what it rules out.
+- **Every option gets a `preview`** (markdown, shown next to the options, at most ~15 lines):
+  - **What changes** — for the user of the app and in the code;
+  - a short code sketch, the relevant diff lines or, for a rule fix, the exact wording and
+    target file;
+  - **Cost** — fix task and its size, or none;
+  - **Rules out** — what this option gives up.
+- Ask in the user's language: the one they write in, otherwise the one their CLAUDE.md or memory
+  names, otherwise the spec README's.
 
-Rounds:
+Run another round whenever findings are left or answers open new questions. Never ask "Shall I
+continue?".
 
-1. **The agents' questions** (`ambiguity` and any deviation with `Q:`): re-ask each one with the
-   agent's options; say which one it implemented and recommend confirming or overturning it.
-2. **Other findings** that need a policy decision (verdicts you are unsure about).
-3. **Rule fixes and README entries**: one `multiSelect` menu "Which of these should I apply?",
-   one option per concrete edit (target file + wording in the description).
+## 5. Apply what the user decided
 
-Run another round only when answers open new questions. Never ask "Shall I continue?".
-
-## 4. Apply what the user chose
-
-- **Rule fixes** — minimal edits to the named files. Briefs only of tasks that haven't started;
-  a done or running task gets a fix task instead.
+- **Rule fixes** the user said yes to — minimal edits to the named files. Briefs only of tasks
+  that haven't started; a done or running task gets a fix task instead.
 - **Spec README** — for each confirmed or overturned pick, a row in the decision log (the next
   free ID from the context, the README's format; mark it as decided in review with today's date)
   and a row in the resolved questions table. The context names the line of each table's last
@@ -93,7 +123,7 @@ Run another round only when answers open new questions. Never ask "Shall I conti
     fixes for the user.
 - Commit only when the user asks.
 
-## 5. Finish
+## 6. Finish
 
 A compact summary: decisions (deviation → verdict → consequence), files changed, fix tasks
 added, and the next command (`specrun run <spec>`) when there are any. Offer `specrun archive
