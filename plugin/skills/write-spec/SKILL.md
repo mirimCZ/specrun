@@ -136,7 +136,9 @@ With a feature map, each task also gets `features: [<area>/<name>]` — the feat
 - §1 Request: the user's request close to verbatim (in English), mapped to tasks.
 - §2 Analysis: facts from the code with paths; "Side effects to keep in mind".
 - §3 Decision log: one row per decision, precise enough to implement without guessing (names,
-  formats, keys, signatures). Date + "agreed with the product owner".
+  formats, keys, signatures). Date + "agreed with the product owner". With a user-visible
+  change, a `### UI/UX` subsection below the table holds the agreed walkthrough (refine §4) in
+  English: entry points, flow, mockups, states, texts.
 - §4 Tasks: the overview table only (link, Needs, size, model — the same as `tasks.yaml`);
   details live in the briefs.
 - §5 Resolved questions (`Q1…`, answer in bold, decision ID). §6 Out of scope.
@@ -144,7 +146,8 @@ With a feature map, each task also gets `features: [<area>/<name>]` — the feat
 **tasks/<PX>-n.md** — self-contained; the agent sees nothing else from the spec:
 
 - **Decisions:** quote verbatim every decision the task implements, the §5 answers it depends
-  on, and the side effects from §2 that concern it. Don't reference IDs without the text.
+  on, and the side effects from §2 that concern it. Don't reference IDs without the text. A UI
+  task quotes the parts of the §3 UI/UX walkthrough it builds (mockups and texts verbatim).
 - **Read first:** the file map for this task — files to change, one pattern per kind of new
   file (module + its test, component, endpoint, schema), types it uses; each with a symbol or
   line range and why. 3–10 entries, paths only, never pasted code (it goes stale when earlier

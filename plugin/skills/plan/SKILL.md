@@ -34,7 +34,7 @@ Follow the **refine** skill. Before the questions, walk this checklist and mark 
 - data model and migration
 - permissions and security
 - edge cases and legacy data
-- UI states and user-visible texts
+- UI states and user-visible texts — resolved only by the agreed UI/UX walkthrough (refine §4)
 - tests and verify
 - docs to update
 - feature map impact (features touched, new features) — only with a map

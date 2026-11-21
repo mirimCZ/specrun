@@ -78,12 +78,42 @@ Order of rounds:
 Run another round only when answers open new questions or reveal a dependency. Stop when every
 remaining point has a sensible default. Never ask "Shall I continue?" or "Is the plan OK?".
 
-## 4. Summarize the outcome
+## 4. UI/UX walkthrough
+
+Whenever the change has user-visible behaviour (screens, dialogs, CLI commands and their output,
+TUI, notifications, emails), show how the user will operate it **before the summary**, after the
+last question round, so the walkthrough reflects every answer. Skip it only for changes nobody
+sees, and say so in the summary.
+
+Print it as one separate block headed **UI/UX**, in the user's language:
+
+- **Entry points** — where the user starts it (menu item, button, route, command and flags,
+  shortcut) and who sees it.
+- **Flow** — numbered steps: what the user does, what they see after each step.
+- **Mockups** — ASCII sketch of each screen or output that changes, in code blocks.
+- **States** — empty, loading, disabled (with the hint shown), error, success; only the ones
+  that apply.
+- **Texts** — labels, messages, confirmations, errors as the user will read them.
+
+Then ask one `AskUserQuestion` (header `UI/UX`): **"Does the UI/UX work like this?"** with the
+options **Agree (Recommended)** and **Show alternatives**, labels in the user's language. The
+automatic "Other" field takes the user's own changes — never add a "Something else" option.
+
+- **Agree** → it becomes a decision; continue with the summary.
+- **Show alternatives** → offer 2–3 variants of the parts with a real choice as a single-select
+  question with `preview` mockups, then print the updated block and ask again.
+- **Free text** → apply it, print the updated block and ask again.
+
+Repeat until the user agrees. Don't ask the same question for every detail: one walkthrough per
+refine session, redrawn as a whole.
+
+## 5. Summarize the outcome
 
 After the last round, give a compact summary the user can scan:
 
 - **Decisions** — one line each: question → answer → consequence. Mark which ones were your
   defaults (not asked) so the user can still object.
+- **UI/UX** — the agreed walkthrough from §4 (or "no user-visible change").
 - **Risks accepted / mitigated** — what you will handle and how.
 - **Out of scope** — what was explicitly declined.
 - **File map** — the list from §1, updated with the decisions (drop files a declined variant

@@ -47,6 +47,19 @@ Prefix `<PD>-`.
 | ------ | ------- | -------------------------------------------------------- |
 | <PD>-1 | <topic> | <decision, precise enough to implement without guessing> |
 
+<!-- Only when the spec changes something the user sees. The walkthrough agreed in refine. -->
+
+### UI/UX
+
+- **Entry points:** <where the user starts it and who sees it>
+- **Flow:** <numbered steps: action → what the user sees>
+- **States:** <empty / loading / disabled / error / success — those that apply>
+- **Texts:** <labels, messages, confirmations, errors>
+
+```
+<ASCII mockup of each screen or output that changes>
+```
+
 ---
 
 ## 4. Tasks
