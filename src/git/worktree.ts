@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { SpecrunError } from '../errors.js';
 import { runShell, type ProcessRunner } from '../process/run.js';
-import { createGit } from './git.js';
+import { createGit, type Git } from './git.js';
 
 export const PROTECTED_BRANCHES: readonly string[] = ['main', 'master'];
 
@@ -13,6 +13,11 @@ export interface EnsureWorktreeInput {
   /** Ref the branch is created from when it doesn't exist yet. */
   base: string;
   setup: string | null;
+  /**
+   * Paths relative to the repo root (the spec) that a new branch must get from `base` exactly as the
+   * main checkout has them; an existing worktree is reused as it is, so it must not start without them.
+   */
+  committed?: readonly string[];
   /** Paths relative to the repo root, copied into a new worktree before `setup`; missing ones are skipped. */
   copyFiles?: readonly string[];
   /** Called before the slow steps of creating a worktree; nothing is reported for an existing one. */
@@ -50,6 +55,16 @@ async function checkBranchName(
   }
 }
 
+async function checkCommitted(git: Git, base: string, paths: readonly string[]): Promise<void> {
+  if (paths.length === 0) return;
+  const changed = await git.changedFiles(base, paths);
+  if (changed.length > 0) {
+    throw new SpecrunError('checkout-dirty', `Not committed on ${base}: ${changed.join(', ')}`, [
+      'commit them first — the worktree is created from the committed state',
+    ]);
+  }
+}
+
 function copyInto(repoRoot: string, target: string, files: readonly string[]): string[] {
   const copied: string[] = [];
   for (const file of files) {
@@ -78,9 +93,12 @@ export async function ensureWorktree(input: EnsureWorktreeInput): Promise<Worktr
     return { path: existing.path, created: false, copied: [] };
   }
 
+  const branchExists = await git.branchExists(branch);
+  if (!branchExists) await checkCommitted(git, base, input.committed ?? []);
+
   const path = worktreePath(repoRoot, spec);
   onProgress?.({ step: 'add', path });
-  const args = (await git.branchExists(branch))
+  const args = branchExists
     ? ['worktree', 'add', path, branch]
     : ['worktree', 'add', '-b', branch, path, base];
   const added = await run('git', args, { cwd: repoRoot });

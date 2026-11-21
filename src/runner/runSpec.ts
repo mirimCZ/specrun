@@ -44,7 +44,7 @@ import {
   noCallNudgePrompt,
   verifyFailedPrompt,
 } from '../session/followUps.js';
-import { loadSpec } from '../spec/loadSpec.js';
+import { loadSpec, specDir } from '../spec/loadSpec.js';
 import type { SpecTask } from '../spec/specSchema.js';
 import { runVerify, verifySteps } from '../verify/verify.js';
 import { acquireLock, isProcessAlive, lockFile, type Lock } from './lock.js';
@@ -233,6 +233,9 @@ export async function runSpec(options: RunSpecOptions, deps: RunSpecDeps): Promi
           ...workspace,
           setup: config.setup,
           copyFiles: config.worktreeFiles,
+          ...(shared
+            ? {}
+            : { committed: [relative(repoRoot, specDir(repoRoot, config, options.spec))] }),
         })
       : await ensureCheckout(workspace);
     if (copied.length > 0) reporter.log('info', `copied into the worktree: ${copied.join(', ')}`);

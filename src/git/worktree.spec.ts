@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -97,6 +98,26 @@ describe('ensureWorktree', () => {
     );
     expect(copied).toEqual(['.env']);
     expect(readFileSync(join(path, 'seen.txt'), 'utf8')).toBe('KEY=1\n');
+  });
+
+  it('refuses to create a worktree while the committed paths differ from base', async () => {
+    mkdirSync(join(repo, 'specs', 'demo'), { recursive: true });
+    writeFileSync(join(repo, 'specs', 'demo', 'tasks.yaml'), 'lorem\n');
+    writeFileSync(join(repo, 'b.txt'), 'unrelated\n');
+    const committed = ['specs/demo'];
+
+    await expect(ensureWorktree(input({ committed }))).rejects.toMatchObject({
+      code: 'checkout-dirty',
+      summary: 'Not committed on HEAD: specs/demo/tasks.yaml',
+    });
+    expect(existsSync(join(repo, '.specrun', 'worktrees', 'demo'))).toBe(false);
+    expect(git('branch', '--list', 'specrun/demo')).toBe('');
+
+    git('add', 'specs');
+    git('commit', '-q', '-m', 'spec');
+    writeFileSync(join(repo, 'a.txt'), 'changed\n');
+    const { path } = await ensureWorktree(input({ committed }));
+    expect(readFileSync(join(path, 'specs', 'demo', 'tasks.yaml'), 'utf8')).toBe('lorem\n');
   });
 
   it('refuses when the main checkout itself is on the spec branch', async () => {

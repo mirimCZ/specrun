@@ -39,7 +39,8 @@ export interface Git {
   /** Moves the checked-out branch to `sha`, discarding changes. */
   resetHard(sha: string): Promise<void>;
   diffStat(from: string, to: string): Promise<DiffStat>;
-  changedFiles(from: string): Promise<string[]>;
+  /** Working-tree changes against `from`, untracked files included; limited to `paths` when given. */
+  changedFiles(from: string, paths?: readonly string[]): Promise<string[]>;
   parkChanges(ref: string, message: string): Promise<string | null>;
   updateRef(ref: string, sha: string): Promise<void>;
   worktreeList(): Promise<WorktreeEntry[]>;
@@ -183,9 +184,12 @@ export function createGit(cwd: string, run: ProcessRunner): Git {
       return stat;
     },
 
-    async changedFiles(from) {
-      const tracked = lines(await git(['diff', '--name-only', from]));
-      const untracked = lines(await git(['ls-files', '--others', '--exclude-standard']));
+    async changedFiles(from, paths) {
+      const pathArgs = paths === undefined ? [] : ['--', ...paths];
+      const tracked = lines(await git(['diff', '--name-only', from, ...pathArgs]));
+      const untracked = lines(
+        await git(['ls-files', '--others', '--exclude-standard', ...pathArgs]),
+      );
       return [...new Set([...tracked, ...untracked])].sort();
     },
 
