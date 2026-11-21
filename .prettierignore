@@ -1,2 +1,4 @@
 package-lock.json
 .tmp/
+# Written by `specrun archive`, not by hand.
+history.json
