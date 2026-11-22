@@ -308,7 +308,10 @@ export function register(
         const wanted = flags.chime ?? config.chimeOnFinish;
         // Ctrl+C (130): whoever ended the run is already at the terminal.
         if (!wanted || code === 130 || !isTTY || !deps.interactive) return true;
-        if (inSilentWindow(deps.now(), config.chimeSilentBetween)) return true;
+        // An explicit --chime asks for the sound now, so only the config default is kept quiet.
+        const silenced =
+          flags.chime !== true && inSilentWindow(deps.now(), config.chimeSilentBetween);
+        if (silenced) return true;
         deps.stdout('♪ specrun finished — press any key to stop the chime\n');
         const end = await (overrides.chime ?? chimeOnTerminal)(code === 0 ? 'success' : 'failure');
         if (end === 'timeout') deps.stdout(`chime stopped after ${CHIME_MAX_MS / 60_000} min\n`);

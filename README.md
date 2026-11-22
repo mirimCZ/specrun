@@ -146,7 +146,8 @@ With `chimeOnFinish` (or `--chime`; `--no-chime` wins over the config) a run tha
 terminal calls you back: a sound every 2 s (macOS: Glass on success, Basso otherwise; elsewhere
 the terminal bell) until you press a key, at most 30 minutes, before the questions after a
 complete run. Ctrl+C at that point stops the sound and skips the questions. No chime after
-Ctrl+C during the run, outside a terminal, or when the run ends within `chimeSilentBetween`.
+Ctrl+C during the run, outside a terminal, or when the run ends within `chimeSilentBetween`
+(unless `--chime` was given).
 
 For each runnable task (dependencies done, lowest open phase first):
 

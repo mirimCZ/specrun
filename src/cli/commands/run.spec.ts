@@ -238,6 +238,13 @@ describe('specrun run', () => {
       expect(chimes).toEqual([]);
     });
 
+    it('chimes within chimeSilentBetween when --chime is given', async () => {
+      writeConfig({ chimeSilentBetween: { from: '00:00', to: '23:59' } });
+      const deps = { ...terminal(), now: () => new Date(2026, 0, 1, 12) };
+      await runCli(['demo', '--chime'], { exitCode: 0, reason: 'done' }, extra, deps);
+      expect(chimes).toEqual(['success']);
+    });
+
     it('prints the hint, notes a timeout and skips the questions after Ctrl+C', async () => {
       writeFileSync(
         join(dir, 'specrun', 'specs', 'demo', 'events.jsonl'),
