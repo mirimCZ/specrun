@@ -20,7 +20,6 @@ export interface CheckFeatureMapInput {
 }
 
 const MIN_CAPABILITIES = 3;
-const MAX_CAPABILITIES = 10;
 
 /** FMD-6: errors and warnings of a loaded feature map; pure, the caller reads the repo's specs. */
 export function checkFeatureMap(map: FeatureMap, input: CheckFeatureMapInput): Problem[] {
@@ -101,10 +100,11 @@ export function checkFeatureMap(map: FeatureMap, input: CheckFeatureMapInput): P
     if (known.some((s, i) => s !== sorted[i])) {
       error(doc.path, `sections out of order, expected: ${order.map((s) => `## ${s}`).join(', ')}`);
     }
-    if (doc.capabilities < MIN_CAPABILITIES || doc.capabilities > MAX_CAPABILITIES) {
+    // No upper bound: a cap made agents merge bullets instead of splitting features.
+    if (doc.capabilities < MIN_CAPABILITIES) {
       warning(
         doc.path,
-        `${String(doc.capabilities)} capabilities, expected ${String(MIN_CAPABILITIES)}–${String(MAX_CAPABILITIES)}`,
+        `${String(doc.capabilities)} capabilities, expected at least ${String(MIN_CAPABILITIES)}`,
       );
     }
   }

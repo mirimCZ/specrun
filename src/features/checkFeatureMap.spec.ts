@@ -163,12 +163,16 @@ describe('checkFeatureMap', () => {
     expect(out).toEqual(['error|specrun/specs/v1/tasks.yaml|task V-1: unknown feature "nope/x"']);
   });
 
-  it('warns on capabilities outside 3–10', () => {
-    for (const n of [2, 11]) {
-      const map = validMap();
-      map.docs = [doc('board/turns', { capabilities: n })];
-      expect(check(map).map((p) => p.level)).toEqual(['warning']);
-    }
+  it('warns on fewer than 3 capabilities', () => {
+    const map = validMap();
+    map.docs = [doc('board/turns', { capabilities: 2 })];
+    expect(check(map).map((p) => p.level)).toEqual(['warning']);
+  });
+
+  it('accepts any number of capabilities above the minimum', () => {
+    const map = validMap();
+    map.docs = [doc('board/turns', { capabilities: 25 })];
+    expect(check(map)).toEqual([]);
   });
 
   it('warns on a specs entry that is not a known spec', () => {

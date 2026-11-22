@@ -46,7 +46,8 @@ Frontmatter (see `templates/feature.md`):
 Sections, in this order:
 
 - `## Purpose` — 1–3 sentences: what problem, for whom.
-- `## Capabilities` — 3–10 bullets, each "who can do what / what happens", at user level.
+- `## Capabilities` — at least 3 bullets, one capability each: "who can do what / what happens",
+  at user level, short. No upper limit; details go to `## Expectations`.
 - `## Expectations` — invariants that must hold: rules, permissions, data consistency.
 - `## Pitfalls` (optional) — known traps, surprising side effects.
 - `## Out of scope` (optional).
@@ -54,8 +55,11 @@ Sections, in this order:
 ## Detail rule
 
 A feature is a whole the user can name and use. **Stability test:** renaming a button, moving a
-panel or restyling must not require a change to the doc. More than 10 capabilities → split the
-feature.
+panel or restyling must not require a change to the doc.
+
+**Split rule:** split a feature when its capabilities live in separate parts of `code:` that change
+independently — a change to one part keeps pulling in a doc about the others. The number of
+bullets is not a reason to split, and never a reason to merge or lengthen bullets.
 
 - Good: "A player can reveal a cell; neighbouring empty cells open with it."
 - Too detailed: "Clicking the blue Reveal button in the toolbar calls `revealCell()`." — it breaks
@@ -67,6 +71,9 @@ feature.
    fitting doc → add a feature doc, an index row and a graph node.
 2. Touch only what the change affects: capabilities, expectations, pitfalls; `code` / `tests` when
    files moved or were added; `depends_on` and edges when the feature starts or stops using another.
+   A change to an existing capability extends its bullet; a new capability gets a short bullet of
+   its own. When the doc meets the split rule, propose the split to the user as a change of its
+   own — don't split inside an unrelated task.
 3. Add the spec folder to `specs:` when a spec changed the feature.
 4. Removing a feature: delete its doc, row and node, and fix `depends_on` elsewhere.
 5. Status: only a human sets `verified`. Keep the status you found; new docs start as `draft`.

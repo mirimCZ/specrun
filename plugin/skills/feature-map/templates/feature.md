@@ -20,7 +20,7 @@ specs: []
 
 - <Who can do what, or what happens, at user level.>
 - <Another capability.>
-- <Another capability. 3–10 in total; more means the feature should be split.>
+- <Another capability. At least 3, one per bullet; see the split rule in the skill.>
 
 ## Expectations
 
