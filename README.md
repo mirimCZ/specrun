@@ -285,6 +285,44 @@ in `specrun.config.json` > `limits` of the account in `~/.specrun/config.json` >
 `specrun.config.json` > the defaults (15 / 5). If `limits.accounts` names an account the global
 config doesn't define, you get a warning, not an error.
 
+#### Adding a second account
+
+1. Create a long-lived token for the second account. Run `claude setup-token` in a terminal of
+   its own (not through a Claude Code session, whose transcript would keep the token) and sign in
+   with the **second** account in the browser — sign out of claude.ai first or use a private
+   window. Your Claude Code login doesn't change.
+2. Store the token outside the config. On macOS, the Keychain (prompts for the token, so it stays
+   out of the shell history):
+
+   ```sh
+   security add-generic-password -a "$USER" -s specrun-lorem-pro -w
+   ```
+
+   and use it as a `command` token source:
+
+   ```json
+   { "command": "security find-generic-password -s specrun-lorem-pro -w" }
+   ```
+
+   On Linux use e.g. `secret-tool lookup …`, or `{ "env": "<VAR>" }` with a variable set in your
+   shell profile.
+
+3. Check that the token belongs to the second account: start
+   `CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s specrun-lorem-pro -w)" claude`
+   and run `/status`.
+4. Write `~/.specrun/config.json` (see the example above) and run `specrun accounts` in a
+   repository. Every account should show its token source, limits and usage windows; a failing
+   token or usage probe is reported per account and exits with code 1.
+
+Pitfalls:
+
+- If macOS asks whether `security` may access the Keychain item, choose **Always Allow** —
+  otherwise an unattended run hangs on the dialog and fails with a token error after 10 s.
+- `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` in your environment take precedence over the
+  system login of the account without `token`; accounts with a token remove them.
+- Without `-b` a run waits for the 5-hour reset of the priority account even when the next
+  account could go; use `specrun run <spec> -b` to move on instead.
+
 ## Other commands
 
 | Command                                                                      | What it does                                                                                   |
