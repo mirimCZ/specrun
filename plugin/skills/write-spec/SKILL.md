@@ -155,6 +155,10 @@ With a feature map, each task also gets `features: [<area>/<name>]` — the feat
   them.
 - **Changes:** concrete changes with real paths, names of new modules / functions / props,
   translation keys, docs to annotate ("superseded by <PX>-n").
+  - A brief that uses an API, component or key created by an earlier task of the same spec names
+    it by role ("the delete mutation from <PX>-n"), never by an exact identifier — the earlier
+    task may have had to name it differently. A new endpoint name is checked against the
+    endpoints already injected into the same API (a duplicate injection is silently ignored).
 - **Done when:** tests that must exist and what they assert; behaviour that must stay unchanged
   and the existing tests guarding it.
   - A must-find-nothing grep searches for code identifiers only (symbol, key, path names), never
